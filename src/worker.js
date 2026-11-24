@@ -34,6 +34,7 @@ async function ensureSchema(db) {
     }
   }
   try { await db.prepare("ALTER TABLE customers ADD COLUMN presales TEXT DEFAULT ''").run(); } catch (e) { /* kolom sudah ada */ }
+  try { await db.prepare("ALTER TABLE customers ADD COLUMN sales TEXT DEFAULT ''").run(); } catch (e) { /* kolom sudah ada */ }
   try { await db.prepare("ALTER TABLE devices ADD COLUMN muteWarranty TEXT DEFAULT ''").run(); } catch (e) { /* kolom sudah ada */ }
   try { await db.prepare("ALTER TABLE devices ADD COLUMN renewalStatus TEXT DEFAULT ''").run(); } catch (e) { /* kolom sudah ada */ }
   try { await db.prepare("ALTER TABLE devices ADD COLUMN renewalOwner TEXT DEFAULT ''").run(); } catch (e) { /* kolom sudah ada */ }
@@ -139,7 +140,7 @@ const SEED_SALES = [
 ];
 const SITE_DEFAULT = { ...SITE_DEFAULT_EN };   // diganti versi Indonesia setelah SITE_ID didefinisikan
 const SITE_KEYS = Object.keys(SITE_DEFAULT);
-const ITEM_KINDS = { service: ["title", "desc", "sla", "inputs"], member: ["name", "role", "region", "email", "photo", "expertise", "coverage"], report: ["title", "desc", "url"], resource: ["title", "desc", "url", "category"], sales: ["name", "email", "director", "directorName", "gm", "gmName", "team", "mgr", "mgrEmail", "presales", "active"], salesContact: ["name", "type", "email"], vendor: ["brand", "product", "category", "eosl", "url", "note"], skill: ["person", "domain", "level", "cert", "certDate", "certFile", "certFileName", "note"], org: ["name", "title", "dept", "level", "photo", "you"], proposal: ["title", "customer", "sales", "presales", "productBrand", "productPics", "productPicEmails", "notifyEmails", "prebid", "submission", "rksUrl", "status", "adminDocumentsReady", "productPricingConfirmed", "proposalUploaded", "analysis", "note", "submittedAt", "archivedAt", "cancelledAt"] };
+const ITEM_KINDS = { service: ["title", "desc", "sla", "inputs"], member: ["name", "role", "region", "email", "photo", "expertise", "coverage", "inactive"], report: ["title", "desc", "url"], resource: ["title", "desc", "url", "category"], sales: ["name", "email", "director", "directorName", "gm", "gmName", "team", "mgr", "mgrEmail", "presales", "active"], salesContact: ["name", "type", "email"], vendor: ["brand", "product", "category", "eosl", "url", "note"], skill: ["person", "domain", "level", "cert", "certDate", "certFile", "certFileName", "note"], org: ["name", "title", "dept", "level", "photo", "you"], proposal: ["title", "customer", "sales", "presales", "productBrand", "productPics", "productPicEmails", "notifyEmails", "prebid", "submission", "rksUrl", "status", "adminDocumentsReady", "productPricingConfirmed", "proposalUploaded", "analysis", "note", "submittedAt", "archivedAt", "cancelledAt"] };
 const PROPOSAL_SUBMISSION_CHECKS = [["adminDocumentsReady","Administrative documents are ready"],["productPricingConfirmed","Product pricing is confirmed"],["proposalUploaded","Proposal has been uploaded"]];
 function proposalSubmissionGaps(proposal) {
   const missing = PROPOSAL_SUBMISSION_CHECKS.filter(([key]) => proposal[key] !== "1").map(([, label]) => label);
@@ -263,10 +264,14 @@ async function readSite(db, withPrivate) {
   await loadRosterIfNeeded(db);
   await seedOrgIfNeeded(db);
   const kinds = ["service", "member", "resource", "sales", "salesContact", "vendor", "skill", "org", "proposal"];
-  const rows = (await db.prepare("SELECT id,kind,sort,CASE WHEN kind='skill' THEN json_remove(data,'$.certFile') ELSE data END AS data FROM site_items WHERE kind IN (" + kinds.map(() => "?").join(",") + ") ORDER BY sort, id").bind(...kinds).all()).results;
+  const rows = (await db.prepare("SELECT id,kind,sort,CASE WHEN kind='skill' THEN json_remove(data,'$.certFile') ELSE data END AS data,updatedBy FROM site_items WHERE kind IN (" + kinds.map(() => "?").join(",") + ") ORDER BY sort, id").bind(...kinds).all()).results;
   const out = { site, services: [], members: [], resources: [], sales: [], salesContacts: [], vendors: [], skills: [], org: [], proposals: [] };
   const kmap = { service: "services", member: "members", resource: "resources", sales: "sales", salesContact: "salesContacts", vendor: "vendors", skill: "skills", org: "org", proposal: "proposals" };
-  for (const x of rows) (out[kmap[x.kind]] || []).push({ id: x.id, sort: x.sort, ...JSON.parse(x.data) });
+  for (const x of rows) {
+    const item = { id: x.id, sort: x.sort, ...JSON.parse(x.data) };
+    if (x.kind === "proposal") item.editedBy = String(x.updatedBy || "").toLowerCase();
+    (out[kmap[x.kind]] || []).push(item);
+  }
   return out;
 }
 
@@ -933,7 +938,7 @@ function proposalReminderRecipients(proposal, site, productTeam) {
   const gm=sales&&(site.salesContacts||[]).find(row=>row.type==="GM"&&row.email&&normalize(row.name)===normalize(sales.gmName));
   const brand=normalize(proposal.productBrand);
   const tpsAlias=brand==="dell isg"?"dell":"";
-  const specialists=brand?productTeam.filter(row=>row.products.some(value=>{
+  const specialists=brand?productTeam.filter(row=>!row.inactive&&row.products.some(value=>{
     const product=normalize(value);
     return product===brand||(row.role==="TPS"&&tpsAlias&&product===tpsAlias);
   })):[];
@@ -941,7 +946,7 @@ function proposalReminderRecipients(proposal, site, productTeam) {
     ...split(proposal.notifyEmails),...split(proposal.productPicEmails),
     sales?.email,manager?.email||sales?.mgrEmail,gm?.email,
     ...(assigned.size?["tss.solution-architect-eri@berca.co.id"]:[]),
-    ...(site.members||[]).filter(row=>assigned.has(normalize(row.name))||assigned.has(normalize(row.email))).map(row=>row.email),
+    ...(site.members||[]).filter(row=>row.inactive!=="1"&&(assigned.has(normalize(row.name))||assigned.has(normalize(row.email)))).map(row=>row.email),
     ...specialists.flatMap(row=>[row.email,row.managerEmail])
   ];
   return [...new Set(candidates.map(normalize).filter(email=>/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(email)))].join(", ");
@@ -949,14 +954,14 @@ function proposalReminderRecipients(proposal, site, productTeam) {
 
 const API = {
   async getProductTeam(db) {
-    const saved=await db.prepare("SELECT k,v FROM settings WHERE k LIKE 'product_team_email:%' OR k LIKE 'product_team_spv:%'").all();
+    const saved=await db.prepare("SELECT k,v FROM settings WHERE k LIKE 'product_team_email:%' OR k LIKE 'product_team_spv:%' OR k LIKE 'product_team_off:%'").all();
     const emails=new Map(saved.results.map(row=>[row.k,row.v]));
     return PRODUCT_TEAM.map(row=>{
       const id=row.name?productTeamKey(row):"";
       const managerId=row.manager?productTeamManagerKey(row):"";
       const spvId=row.name&&row.level!=="SPV"?productTeamSpvKey(row):"";
       const spv=spvId?emails.get(spvId)||"":"";
-      return {...row,id,email:emails.get(id)||"",managerId,managerEmail:emails.get(managerId)||"",spvId,spv:PRODUCT_TEAM.some(x=>x.level==="SPV"&&x.name===spv&&x.role===row.role&&x.group===row.group)?spv:""};
+      return {...row,id,inactive:!!(id&&emails.get("product_team_off:"+id)==="1"),email:emails.get(id)||"",managerId,managerEmail:emails.get(managerId)||"",spvId,spv:PRODUCT_TEAM.some(x=>x.level==="SPV"&&x.name===spv&&x.role===row.role&&x.group===row.group)?spv:""};
     });
   },
   // Atasan langsung (SPV) untuk anggota non-SPV; hanya boleh SPV dari role+grup yang sama. Kosong = hapus.
@@ -968,6 +973,14 @@ const API = {
     if(spv) await db.prepare("INSERT INTO settings (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(id,spv).run();
     else await db.prepare("DELETE FROM settings WHERE k=?").bind(id).run();
     return {id,spv};
+  },
+  // Activate / deactivate a Product Team member (master only). Inactive people are hidden from product contacts and reminders.
+  async saveProductTeamActive(db,id,active) {
+    if(typeof id!=="string"||!PRODUCT_TEAM.some(row=>row.name&&productTeamKey(row)===id)) return null;
+    const k="product_team_off:"+id;
+    if(active) await db.prepare("DELETE FROM settings WHERE k=?").bind(k).run();
+    else await db.prepare("INSERT INTO settings (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(k,"1").run();
+    return {id,inactive:!active};
   },
   async saveProductTeamEmail(db,id,value) {
     if(typeof value!=="string"||!PRODUCT_TEAM.some(row=>(row.name&&productTeamKey(row)===id)||(row.manager&&productTeamManagerKey(row)===id))) return null;
@@ -1048,6 +1061,12 @@ const API = {
         }
       }
     }
+    if (kind === "proposal") {
+      const prev = rec.id ? await db.prepare("SELECT data FROM site_items WHERE id=? AND kind='proposal'").bind(clean(rec.id)).first() : null;
+      let creator = "";
+      try { creator = prev ? String(JSON.parse(prev.data).createdBy || "") : (who && who !== "admin" ? String(who).toLowerCase() : ""); } catch (_) {}
+      d.createdBy = creator;
+    }
     const id = clean(rec.id) || (kind.slice(0, 3) + "-" + uuid().slice(0, 8));
     const sort = Number.isFinite(+rec.sort) && rec.sort !== "" ? Math.round(+rec.sort) : Date.now() % 1e6;
     await db.prepare("INSERT INTO site_items (id,kind,sort,data,updatedAt,updatedBy) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET sort=excluded.sort,data=excluded.data,updatedAt=excluded.updatedAt,updatedBy=excluded.updatedBy")
@@ -1061,18 +1080,23 @@ const API = {
   async getAll(db, ctx, full) {
     // ctx: { master:boolean, edit:Set(customerId) } — hak lihat detail (SN, PIC, email) per customer
     ctx = ctx || { master: false, edit: new Set() };
-    const canSee = id => full || ctx.master || ctx.edit.has(id);
+    const tagged = ctx.tagged || new Set();
+    const canSee = id => full || ctx.master || ctx.edit.has(id) || tagged.has(id);
     await seedIfEmpty(db);
     await seedBayanIfNeeded(db);
-    const c = await db.prepare("SELECT id,name,code,pic,note,presales,updatedAt,createdBy FROM customers").all();
+    const c = await db.prepare("SELECT id,name,code,pic,note,presales,COALESCE(sales,'') AS sales,updatedAt,createdBy FROM customers").all();
     const d = await db.prepare("SELECT " + DEV_COLS.join(",") + ",COALESCE(muteWarranty,'') AS muteWarranty,COALESCE(renewalStatus,'') AS renewalStatus,COALESCE(renewalOwner,'') AS renewalOwner,COALESCE(dismantled,'') AS dismantled FROM devices").all();
     // Pengunjung tanpa login: alamat email disamarkan (h***@berca.co.id)
-    const customers = c.results.map(({ createdBy, ...customer }) => {
+    // Sales accounts only see the customers they are tagged on (or administer)
+    const ownRow = x => ctx.master || ctx.edit.has(x.id) || tagged.has(x.id) || mayEditCustomer(ctx, { id: x.id, createdBy: x.createdBy });
+    const rows = ctx.salesOnly && !full ? c.results.filter(ownRow) : c.results;
+    const customers = rows.map(({ createdBy, ...customer }) => {
       const canEdit = mayEditCustomer(ctx, { id: customer.id, createdBy });
       return (canSee(customer.id) || canEdit) ? { ...customer, canEdit }
-        : { ...customer, pic: "", note: maskEmails(customer.note), presales: maskEmails(customer.presales), canEdit };
+        : { ...customer, pic: "", note: maskEmails(customer.note), presales: maskEmails(customer.presales), sales: maskEmails(customer.sales), canEdit };
     });
     let devices = d.results;
+    if (ctx.salesOnly && !full) { const ok = new Set(rows.map(x => x.id)); devices = devices.filter(x => ok.has(x.customerId)); }
     if (devices.some(x => !canSee(x.customerId))) {
       // Pengunjung tanpa login: Serial Number disembunyikan, termasuk SN yang tertulis di keterangan
       const sns = [...new Set(devices.map(x => String(x.sn || "").trim()).filter(v => v.length >= 4))]
@@ -1086,23 +1110,25 @@ const API = {
       };
       devices = devices.map(x => canSee(x.customerId) ? x : ({ ...x, sn: SN_MASK, note: hideNote(x.note), muteWarranty: x.muteWarranty ? "*" : "", renewalStatus: "", renewalOwner: "" }));
     }
-    return { customers, devices, canWrite: ctx.master || ctx.edit.size > 0, isMaster: !!ctx.master, editable: [...ctx.edit], sheetUrl: "" };
+    return { customers, devices, canWrite: ctx.master || ctx.edit.size > 0, isMaster: !!ctx.master, editable: [...ctx.edit], sheetUrl: "", salesOnly: !!(ctx.salesOnly && !full) };
   },
   async saveCustomer(db, who, rec) {
     const existingId = clean(rec && rec.id);
-    const c = { id: existingId || uuid(), name: clean(rec && rec.name), code: clean(rec && rec.code), pic: clean(rec && rec.pic), note: clean(rec && rec.note), presales: clean(rec && rec.presales), updatedAt: new Date().toISOString(), updatedBy: who };
+    const c = { id: existingId || uuid(), name: clean(rec && rec.name), code: clean(rec && rec.code), pic: clean(rec && rec.pic), note: clean(rec && rec.note), presales: clean(rec && rec.presales), sales: clean(rec && rec.sales).toLowerCase(), updatedAt: new Date().toISOString(), updatedBy: who };
     if (!c.name) throw new UserError("Customer name is required.");
     const dup = await db.prepare("SELECT 1 FROM customers WHERE lower(name)=lower(?) AND id<>?").bind(c.name, c.id).first();
     if (dup) throw new UserError("Customer " + c.name + " already exists.");
     const bad = c.presales.split(/[\s,;]+/).filter(Boolean).filter(e => !EMAIL_RE.test(e));
     if (bad.length) throw new UserError("Presales PIC email is not valid: " + bad.join(", ") + ". Separate multiple emails with commas.");
-    const values = [c.name, c.code, c.pic, c.note, c.presales, c.updatedAt, c.updatedBy];
+    const badSales = c.sales.split(/[\s,;]+/).filter(Boolean).filter(e => !EMAIL_RE.test(e));
+    if (badSales.length) throw new UserError("Sales email is not valid: " + badSales.join(", ") + ". Separate multiple emails with commas.");
+    const values = [c.name, c.code, c.pic, c.note, c.presales, c.sales, c.updatedAt, c.updatedBy];
     if (existingId) {
-      const result = await db.prepare("UPDATE customers SET name=?,code=?,pic=?,note=?,presales=?,updatedAt=?,updatedBy=? WHERE id=?")
+      const result = await db.prepare("UPDATE customers SET name=?,code=?,pic=?,note=?,presales=?,sales=?,updatedAt=?,updatedBy=? WHERE id=?")
         .bind(...values, existingId).run();
       if (!result.meta.changes) throw new UserError("Customer not found.");
     } else {
-      await db.prepare("INSERT INTO customers (name,code,pic,note,presales,updatedAt,updatedBy,id,createdBy) VALUES (?,?,?,?,?,?,?,?,?)")
+      await db.prepare("INSERT INTO customers (name,code,pic,note,presales,sales,updatedAt,updatedBy,id,createdBy) VALUES (?,?,?,?,?,?,?,?,?,?)")
         .bind(...values, c.id, who).run();
     }
     return c;
@@ -1264,31 +1290,74 @@ async function accessCtx(env, me) {
   if (!presales && me.email) {
     const members = await env.DB.prepare("SELECT data FROM site_items WHERE kind='member'").all();
     presales = (members.results || []).some(r => {
-      try { return String(JSON.parse(r.data).email || "").trim().toLowerCase() === me.email; } catch (_) { return false; }
+      try { const d = JSON.parse(r.data); return d.inactive !== "1" && String(d.email || "").trim().toLowerCase() === me.email; } catch (_) { return false; }
     });
   }
   const edit = new Set();
   if (!master && me.email) (await env.DB.prepare("SELECT customerId FROM customer_admins WHERE email=?").bind(me.email).all()).results.forEach(r => edit.add(r.customerId));
   // Presales who created a customer can manage that customer's devices automatically
   if (!master && presales && me.email) (await env.DB.prepare("SELECT id FROM customers WHERE lower(createdBy)=?").bind(me.email).all()).results.forEach(r => edit.add(r.id));
-  return { master, presales, edit, email: me.email };
+  // Sales: tagged customers (customer card "Sales" field). A sales person's Manager gets the same access.
+  const tagged = new Set(); let salesOnly = false;
+  if (!master && me.email) {
+    const em = me.email.toLowerCase();
+    const items = (await env.DB.prepare("SELECT kind,data FROM site_items WHERE kind IN ('sales','salesContact')").all()).results || [];
+    const salesRecs = [], contacts = [];
+    for (const r of items) { try { (r.kind === "sales" ? salesRecs : contacts).push(JSON.parse(r.data)); } catch (_) {} }
+    const low = v => String(v || "").trim().toLowerCase();
+    const contactEmail = name => { const n = low(name); const c = n && contacts.find(x => low(x.name) === n && x.email); return c ? low(c.email) : ""; };
+    const covered = new Set([em]);   // sales e-mails whose customers this account may view
+    let isManager = false;
+    for (const rec of salesRecs) {
+      if (!rec.email) continue;
+      const mgrEmail = low(rec.mgrEmail) || contactEmail(rec.mgr);
+      if (mgrEmail && mgrEmail === em) { covered.add(low(rec.email)); isManager = true; }
+    }
+    (await env.DB.prepare("SELECT id,COALESCE(sales,'') AS sales FROM customers").all()).results.forEach(r => {
+      if (String(r.sales).toLowerCase().split(/[\s,;]+/).some(x => covered.has(x))) tagged.add(r.id);
+    });
+    // Sales side = Sales Directory person, a Sales Manager, or any Sales Contact. They only see customers they are tagged on.
+    if (!presales) salesOnly = isManager || salesRecs.some(r => low(r.email) === em) || contacts.some(c => low(c.email) === em);
+  }
+  return { master, presales, edit, email: me.email, tagged, salesOnly };
 }
 function proposalsVisibleTo(data, ctx, email) {
   if (ctx.master) return data;
   const userEmail = String(email || "").trim().toLowerCase();
   if (!userEmail) return { ...data, proposals: [] };
-  const memberNames = new Set((data.members || [])
-    .filter(x => String(x.email || "").trim().toLowerCase() === userEmail)
-    .map(x => String(x.name || "").trim().toLowerCase()).filter(Boolean));
-  const salesNames = new Set((data.sales || [])
-    .filter(x => String(x.email || "").trim().toLowerCase() === userEmail)
-    .map(x => String(x.name || "").trim().toLowerCase()).filter(Boolean));
+  const toks = v => [...new Set(String(v || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean))];
+  // Same person if names are equal, or the shorter name (2+ words) is fully contained in the longer one ("Tasya Putri" ~ "Tasya Putri Kamila")
+  const same = (a, b) => {
+    const x = toks(a), y = toks(b);
+    if (!x.length || !y.length) return false;
+    const [sm, lg] = x.length <= y.length ? [x, y] : [y, x];
+    return sm.length >= 2 ? sm.every(t => lg.includes(t)) : (x.length === y.length && x[0] === y[0]);
+  };
+  const mine = [];
+  for (const x of (data.members || [])) if (x.inactive !== "1" && String(x.email || "").trim().toLowerCase() === userEmail && x.name) mine.push(x.name);
+  for (const x of (data.sales || [])) if (String(x.email || "").trim().toLowerCase() === userEmail && x.name) mine.push(x.name);
+  // The email's own name parts (e.g. tasya.kamila@ -> "tasya kamila") count as an identity too
+  const local = userEmail.split("@")[0].replace(/[._-]+/g, " ");
+  if (toks(local).length >= 2) mine.push(local);
+  for (const x of (data.salesContacts || [])) if (String(x.email || "").trim().toLowerCase() === userEmail && x.name) mine.push(x.name);
+  const isMe = name => mine.some(n => same(n, name));
+  // Manager access: sales people who report to this account (by manager email, the Manager contact's email, or manager name)
+  const contactEmail = name => { const c = (data.salesContacts || []).find(x => x.email && same(x.name, name)); return c ? String(c.email).trim().toLowerCase() : ""; };
+  const reports = (data.sales || []).filter(r => r.name && r.mgr !== undefined && (
+    String(r.mgrEmail || "").trim().toLowerCase() === userEmail ||
+    (r.mgr && (contactEmail(r.mgr) === userEmail || mine.some(n => same(n, r.mgr)))))).map(r => r.name);
+  const isMyReport = name => reports.some(n => same(n, name));
   return {
     ...data,
     proposals: (data.proposals || []).filter(p => {
-      const sales = String(p.sales || "").trim().toLowerCase();
-      if (sales && salesNames.has(sales)) return true;
-      return String(p.presales || "").split(/[,;\n]+/).some(name => memberNames.has(name.trim().toLowerCase()));
+      // 1) created or last edited by this account
+      if (String(p.createdBy || "").toLowerCase() === userEmail || String(p.editedBy || "").toLowerCase() === userEmail) return true;
+      // 2) tagged as Sales
+      if (isMe(String(p.sales || "").trim())) return true;
+      // 2b) tagged Sales reports to this account (Manager view)
+      if (isMyReport(String(p.sales || "").trim())) return true;
+      // 3) tagged as Presales
+      return String(p.presales || "").split(/[,;\n]+/).some(name => isMe(name.trim()));
     })
   };
 }
@@ -1419,8 +1488,23 @@ export default {
       const me = parseWho(await readSession(env.DB, request));
       const isAdmin = me.admin;
       const isViewer = isAdmin || !!me.email || !gated;
-      const ctx = isViewer ? await accessCtx(env, me) : { master: false, edit: new Set() };
-      if (p === "/auth/me") return json({ admin: ctx.master, master: ctx.master, presales: ctx.presales, pwAdmin: isAdmin, editable: [...ctx.edit], viewer: isViewer, email: me.email, gated, clientId: gated ? env.GOOGLE_CLIENT_ID : "", domain });
+      const realCtx = isViewer ? await accessCtx(env, me) : { master: false, edit: new Set() };
+      // Master-only "Preview as": see the app exactly as another user would (read-only)
+      if (p === "/auth/preview" && request.method === "POST") {
+        if (!realCtx.master) return json({ error: "Only master admins can preview as another user." }, 403);
+        const body = await request.json().catch(() => ({}));
+        const target = String(body && body.email || "").trim().toLowerCase();
+        if (target && (!EMAIL_RE.test(target) || !target.endsWith("@" + domain))) return json({ error: "Enter a valid @" + domain + " email address." }, 400);
+        return new Response(JSON.stringify({ ok: true, email: target }), { headers: { "content-type": "application/json", "set-cookie": "previewAs=" + encodeURIComponent(target) + "; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=" + (target ? 8 * 3600 : 0) } });
+      }
+      let ctx = realCtx, previewAs = "";
+      if (realCtx.master) {
+        const pm = String(request.headers.get("cookie") || "").match(/(?:^|;\s*)previewAs=([^;]+)/);
+        const pe = pm ? decodeURIComponent(pm[1]).trim().toLowerCase() : "";
+        if (pe && EMAIL_RE.test(pe) && pe.endsWith("@" + domain)) { previewAs = pe; ctx = await accessCtx(env, { admin: false, email: pe }); }
+      }
+      const eff = previewAs ? { admin: false, email: previewAs } : me;
+      if (p === "/auth/me") return json({ admin: ctx.master, master: ctx.master, presales: ctx.presales, pwAdmin: previewAs ? false : isAdmin, editable: [...ctx.edit], viewer: isViewer, email: eff.email, gated, clientId: gated ? env.GOOGLE_CLIENT_ID : "", domain, previewAs, realMaster: realCtx.master, realEmail: me.email || "" });
       const certMatch = p.match(/^\/api\/certificate\/([A-Za-z0-9_-]+)$/);
       if (certMatch && request.method === "GET") {
         if (!isViewer) return json({ error: "Sign in with an authorized company account to view certificates.", login: true }, 401);
@@ -1451,6 +1535,7 @@ export default {
       const m = p.match(/^\/api\/([A-Za-z]+)$/);
       if (m && request.method === "POST" && API[m[1]]) {
         if (!isViewer) return json({ error: "Please sign in with a Google @" + domain + " account.", login: true }, 401);
+        if (previewAs && !["getAll", "getSite", "getPublic", "getProductTeam"].includes(m[1])) return json({ error: "Preview mode is read-only. Exit the preview to make changes." }, 403);
         if (m[1] === "getProductTeam") return me.email || isAdmin ? json({ result: await API.getProductTeam(env.DB) }) : json({ error: "Sign in to view the directory." }, 403);
         if (m[1] === "saveProductTeamEmail") {
           if(!ctx.master) return json({error:"Master Admin access required."},403);
@@ -1458,6 +1543,13 @@ export default {
           if(!Array.isArray(args)) return json({error:"Invalid request."},400);
           const saved=await API.saveProductTeamEmail(env.DB,args[0],args[1]);
           return saved?json({result:saved}):json({error:"Invalid PIC or email address."},400);
+        }
+        if (m[1] === "saveProductTeamActive") {
+          if(!ctx.master) return json({error:"Master Admin access required."},403);
+          const args=await request.json().catch(()=>null);
+          if(!Array.isArray(args)) return json({error:"Invalid request."},400);
+          const saved=await API.saveProductTeamActive(env.DB,args[0],!!args[1]);
+          return saved?json({result:saved}):json({error:"Unknown product team member."},400);
         }
         if (m[1] === "saveProductTeamSpv") {
           if(!ctx.master) return json({error:"Master Admin access required."},403);
@@ -1467,8 +1559,8 @@ export default {
           return saved?json({result:saved}):json({error:"Invalid person or SPV."},400);
         }
         if (m[1] === "getAll") return json({ result: await API.getAll(env.DB, ctx) });
-        if (m[1] === "getSite") return json({ result: { ...proposalsVisibleTo(await API.getSite(env.DB), ctx, me.email), isMaster: ctx.master } });
-        if (m[1] === "getPublic") return json({ result: proposalsVisibleTo(await API.getSite(env.DB), ctx, me.email) });
+        if (m[1] === "getSite") return json({ result: { ...proposalsVisibleTo(await API.getSite(env.DB), ctx, eff.email), isMaster: ctx.master } });
+        if (m[1] === "getPublic") return json({ result: proposalsVisibleTo(await API.getSite(env.DB), ctx, eff.email) });
         let args = await request.json().catch(() => []); if (!Array.isArray(args)) args = [];
         const canCreateProposal = m[1] === "saveItem" && args[0] === "proposal" && ctx.presales && !clean(args[1] && args[1].id);
         const canSaveCustomer = m[1] === "saveCustomer" && ctx.presales && !!ctx.email;

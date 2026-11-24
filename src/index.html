@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+<script>try{if(localStorage.getItem("presalesMe"))document.documentElement.classList.add("pre-me")}catch(e){}</script>
 <meta charset="utf-8">
 <script>(function(){try{var t=localStorage.getItem("inv-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -1622,7 +1623,7 @@ input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea{b
 .sidebar-account summary .acc-txt{display:flex;flex-direction:column;min-width:0;flex:1;line-height:1.25}
 @media(min-width:861px){
 body.side-min .wrap{grid-template-columns:76px minmax(0,1fr)!important}
-body.side-min .sidebar{width:100%;padding:16px 10px!important;overflow:hidden;transition:width .3s cubic-bezier(.4,0,.2,1),box-shadow .3s ease;will-change:width}
+body.side-min .sidebar{width:100%;padding:16px 10px!important;overflow-x:hidden;overflow-y:auto;scrollbar-width:none;transition:width .3s cubic-bezier(.4,0,.2,1),box-shadow .3s ease;will-change:width}
 body.side-min.side-open .sidebar{width:258px;position:sticky;z-index:60;box-shadow:0 30px 60px -20px rgba(0,0,0,.55)!important}
 body.side-min .sidebar .topnav a,body.side-min .sidebar .sidesub a{justify-content:flex-start!important;padding:11px 18px!important;width:auto!important;white-space:nowrap;overflow:hidden}
 body.side-min .sidebar a::before,body.side-min .sidebar a::after{display:none!important}
@@ -1638,7 +1639,7 @@ body.side-min .side-toggle{position:absolute!important;top:16px;right:14px;margi
 body.side-min .side-toggle svg{transform:rotate(180deg)}
 body.side-min .sidebar .sidesub,body.side-min .sidebar .topnav,body.side-min .side-group{display:flex;flex-direction:column;align-items:stretch;gap:6px}
 body.side-min .sidebar .sidesub[hidden]{display:none!important}
-body.side-min .sidebar-account{margin-top:auto!important;border:0!important;padding:0!important;overflow:hidden}
+body.side-min .sidebar-account{margin-top:auto!important;border:0!important;padding:0!important}
 body.side-min .sidebar-account summary{padding:8px 11px!important;justify-content:flex-start;white-space:nowrap;overflow:hidden}
 body.side-min .sidebar .side-group{border:0!important;margin:0!important;padding:0!important}
 @media(prefers-reduced-motion:reduce){body.side-min .sidebar,body.side-min .nav-lb,body.side-min .side-group-label,body.side-min .sidebar .brandbar .bt{transition:none!important}}
@@ -1717,6 +1718,92 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
 .dv2-follow .home-chip{color:#0f4f40!important;background:#cfeee1!important;font-weight:700;letter-spacing:.02em}
 .dv2-follow .home-panel-link{display:inline-block;margin-top:14px;padding:6px 6px 0;font-weight:700;color:#0f6b55}
 .dv2-follow .home-panel-link:hover{text-decoration:underline}
+/* ===== round 4: single big avatar, inventory nav mint, proposal wizard ===== */
+.sidebar .brandbar .bl:not(.has-me):not(.anon)>img,.sidebar .brandbar .bl:not(.has-me):not(.anon) .bt{visibility:hidden}
+.sidebar-account .acc-av{display:none!important}
+.sidebar-account summary{padding-left:12px!important}
+.sidebar .brandbar .bl.has-me{height:92px;align-items:center;gap:10px;padding:0 0 0 0!important}
+.top-av{width:56px;height:56px;transition:width .3s cubic-bezier(.4,0,.2,1),height .3s cubic-bezier(.4,0,.2,1),font-size .3s}
+body:not(.side-min) .top-av,body.side-min.side-open .top-av{width:80px;height:80px;font-size:28px}
+body.side-min .sidebar .brandbar .bl.has-me{margin-left:0}
+.bl.has-me .bt{min-width:0}
+.bl.has-me .bt b{font-size:17px}
+#inventoryCustomerNav{border-top:1px solid rgba(155,227,200,.18)}
+#inventoryCustomerNav input{background:rgba(155,227,200,.08);border:1px solid rgba(155,227,200,.22);color:#fff;border-radius:999px;padding:9px 14px}
+#inventoryCustomerNav input::placeholder{color:rgba(255,255,255,.55)}
+#inventoryCustomerNav input:focus{outline:none;border-color:#9be3c8;background:rgba(155,227,200,.14)}
+#inventoryCustomerNav .customer-switch-item{border:0!important;border-radius:999px;padding:9px 14px;color:rgba(255,255,255,.88);font-weight:500;transition:background .2s,color .2s}
+#inventoryCustomerNav .customer-switch-item:hover{background:rgba(155,227,200,.14)!important;color:#fff}
+#inventoryCustomerNav .customer-switch-item[aria-current="true"]{background:#9be3c8!important;color:#0f2b27!important;font-weight:700;border:0!important}
+#inventoryCustomerNav .customer-switch-item[data-customer-add]{border:1px dashed rgba(155,227,200,.45)!important}
+/* proposal wizard */
+#itemOv .modal:has(#proposalWizardNav:not([hidden])){width:min(720px,100%);padding:28px 30px 24px;gap:18px;border-radius:28px;box-shadow:0 30px 80px -20px rgba(10,30,26,.45)}
+#itemOv .modal:has(#proposalWizardNav:not([hidden])) h2{font-size:24px;letter-spacing:-.02em}
+#proposalWizardNav{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;counter-reset:wz;position:relative;padding-bottom:12px}
+#proposalWizardNav::after{content:"";position:absolute;left:0;bottom:0;height:3px;width:100%;border-radius:3px;background:linear-gradient(90deg,#0f6b55 calc(var(--wp,0)*100%),rgba(15,43,39,.1) calc(var(--wp,0)*100%));transition:background .3s}
+#proposalWizardNav button{counter-increment:wz;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 2px;border:0;background:none;font-size:12px;font-weight:600;color:var(--muted);border-radius:14px;white-space:normal;text-align:center;line-height:1.2}
+#proposalWizardNav button::before{content:counter(wz);width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:rgba(15,43,39,.08);color:#0f2b27;font-size:13px;font-weight:800;transition:background .2s,color .2s}
+#proposalWizardNav button[data-done]::before{content:"\2713";background:#cfeee1;color:#0f6b55}
+#proposalWizardNav button[aria-current="step"]{background:none;color:#0f2b27}
+#proposalWizardNav button[aria-current="step"]::before{background:#0f2b27;color:#9be3c8;box-shadow:0 0 0 4px rgba(155,227,200,.5)}
+#proposalWizardNav button:hover{background:rgba(155,227,200,.2)}
+.proposal-wizard-panel{gap:14px 16px;padding:4px 0}
+.proposal-wizard-panel .field>label,.proposal-wizard-panel .field>span:first-child{font-weight:700;font-size:13px;color:#0f2b27}
+.proposal-wizard-panel input,.proposal-wizard-panel select,.proposal-wizard-panel textarea{border-radius:14px;padding:11px 14px;min-height:44px;border:1px solid rgba(15,43,39,.18);background:#fff}
+.proposal-wizard-panel input:focus,.proposal-wizard-panel select:focus,.proposal-wizard-panel textarea:focus{outline:none;border-color:#0f6b55;box-shadow:0 0 0 3px rgba(155,227,200,.55)}
+#itemOv .modal:has(#proposalWizardNav:not([hidden])) .mfoot{padding-top:14px;border-top:1px solid rgba(15,43,39,.1);gap:10px}
+#itemOv .modal:has(#proposalWizardNav:not([hidden])) .mfoot button{border-radius:999px;padding:10px 22px;font-weight:700}
+#itemOv .modal:has(#proposalWizardNav:not([hidden])) .mfoot button.primary{background:#0f2b27!important;color:#9be3c8!important;border-color:#0f2b27!important;box-shadow:none!important}
+#itemOv .modal:has(#proposalWizardNav:not([hidden])) .mfoot button.primary:hover{background:#17463d!important}
+.proposal-wizard-panel:not([data-proposal-step="4"]) #submissionChecklistHeading{display:none}
+#itemOv .modal:has(#proposalWizardNav:not([hidden])) .chk-presales{display:none}
+@media(max-width:600px){#proposalWizardNav button{font-size:0}#proposalWizardNav button::before{font-size:13px}}
+/* deactivate + product list */
+.ps-mem.off,.product-team-card.off{opacity:.55}
+.ps-mem.off:hover{transform:none}
+.product-team-card{position:relative}
+.product-team-card .sacts{margin-top:8px;display:flex;gap:10px}
+.ps-mem .soff-badge,.product-team-card .soff-badge{z-index:2}
+#productTeamProducts{display:none}
+#psProductTeam.prod-mode #productTeamProducts{display:block}
+#psProductTeam.prod-mode #productTeamGrid,#psProductTeam.prod-mode #productTeamManagers{display:none!important}
+.ptprod-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:4px 2px 12px;color:var(--muted);font-size:13px}
+.ptprod-wrap{background:#fff;border-radius:24px;padding:8px 8px 14px;box-shadow:0 10px 30px -18px rgba(15,43,39,.35);overflow:auto}
+.ptp-table{width:100%;border-collapse:collapse;font-size:14px}
+.ptp-table th{position:sticky;top:0;background:#fff;text-align:left;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#0f6b55;padding:14px 16px;border-bottom:2px solid #cfeee1}
+.ptp-table td{padding:10px 16px;border-bottom:1px solid rgba(15,43,39,.07);vertical-align:middle}
+.ptp-table tr.ptp-first td{border-top:1px solid rgba(15,43,39,.14)}
+.ptp-prod{font-weight:800;color:#0f2b27;width:28%}
+.ptp-pic{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.ptp-pic small{flex-basis:100%;color:var(--muted)}
+.ptp-pic.off{opacity:.55}
+.ptp-lv{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:#cfeee1;color:#0f4f40}
+.ptp-lv.bad{background:#fde0dc;color:#9a2a1c}
+.ptp-tier{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;font-size:12.5px;white-space:nowrap}
+.ptp-tier b{font-weight:800}.ptp-tier i{font-style:normal;opacity:.75;font-size:11px}
+.ptp-tier.ps{background:#cfeee1;color:#0f4f40}.ptp-tier.tps{background:#e2e6fb;color:#2c3a8c}
+@media(max-width:700px){.ptp-table th:nth-child(3),.ptp-table td:nth-child(3){display:none}}
+/* copy email button */
+.cp-mail{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;margin-left:6px;padding:0!important;border:0!important;border-radius:7px!important;background:rgba(15,107,85,.1)!important;color:#0f6b55!important;cursor:pointer;vertical-align:middle;flex:none}
+.cp-mail:hover{background:rgba(15,107,85,.22)!important}
+.cp-mail.ok{background:#0f6b55!important;color:#fff!important}
+.cp-mail svg{width:13px;height:13px;pointer-events:none}
+/* sales with no tagged customers: hide the whole inventory dashboard */
+#viewDash.sales-empty .dsum,#viewDash.sales-empty .dhead,#viewDash.sales-empty .toolbar,#viewDash.sales-empty #inventoryAnalytics,#viewDash.sales-empty .custgrid{display:none!important}
+#viewDash.sales-empty #cempty{padding:56px 24px;border-radius:28px;background:#fff;text-align:center;max-width:640px;margin:24px auto}
+/* master preview-as */
+.pv-box{margin:10px 6px 4px;padding:12px;border-radius:16px;background:rgba(155,227,200,.1);border:1px solid rgba(155,227,200,.22);display:grid;gap:8px}
+.pv-box label{font-size:12px;font-weight:700;letter-spacing:.04em;color:#9be3c8;text-transform:uppercase}
+.pv-box input{width:100%;min-width:0;padding:9px 12px;border-radius:999px;border:1px solid rgba(155,227,200,.3);background:rgba(0,0,0,.25);color:#fff;font:inherit;font-size:13px}
+.pv-box input:focus{outline:none;border-color:#9be3c8}
+.pv-box .pv-row{display:flex;gap:8px}
+.pv-box button{flex:1;border-radius:999px;padding:8px 12px;font-weight:700;font-size:13px;border:0;cursor:pointer}
+.pv-box .pv-apply{background:#9be3c8;color:#0f2b27}
+.pv-box .pv-reset{background:rgba(255,255,255,.12);color:#fff;flex:none;width:auto}
+.pv-box small{color:#ffb4a8;min-height:0}
+#pvBanner{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:12px;padding:10px 12px 10px 18px;border-radius:999px;background:#0f2b27;color:#fff;box-shadow:0 16px 40px -10px rgba(0,0,0,.5);font-size:14px}
+#pvBanner b{color:#9be3c8}
+#pvBanner button{border:0;border-radius:999px;padding:7px 14px;background:#9be3c8;color:#0f2b27;font-weight:700;cursor:pointer}
 @media(max-width:1100px){.dv2{grid-template-columns:1fr}.dv2-follow,.dv2-side{grid-column:1}.dv2-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.dv2-hero{padding:26px 22px;flex-direction:column;align-items:flex-start}.dv2-kpis{gap:12px}}
 
@@ -1937,7 +2024,7 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
 
   <section class="ps-sec" id="psProductTeam">
     <header class="pghead ps-head"><div><div class="eyebrow">Product management</div><h1 class="sech">Product Team Directory</h1><p class="lead">Product Management Team · H2 2026 R2</p></div></header>
-    <div class="viewtoggle" role="group" aria-label="View"><button type="button" class="on" data-orgview="dir" aria-pressed="true">Directory</button><button type="button" data-orgview="org" aria-pressed="false">Org chart</button></div>
+    <div class="viewtoggle" role="group" aria-label="View"><button type="button" class="on" data-orgview="dir" aria-pressed="true">Directory</button><button type="button" data-orgview="prod" aria-pressed="false">Products</button><button type="button" data-orgview="org" aria-pressed="false">Org chart</button></div>
     <div class="toolbar">
       <input type="search" id="productTeamQuery" placeholder="Search product, vendor, or PIC" aria-label="Search product team">
       <select id="productTeamRole" aria-label="Specialist role"><option value="">All roles</option><option value="PS">Product Specialist (PS)</option><option value="TPS">Technical Product Specialist (TPS)</option></select>
@@ -1950,6 +2037,7 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
       <div class="product-team-grid" id="productTeamManagerGrid"></div>
     </details>
     <div class="product-team-sections ps-sales" id="productTeamGrid"></div>
+    <div class="ptprod" id="productTeamProducts"><div class="ptprod-bar"><span id="ptprodCount" role="status"></span><label class="mine"><input type="checkbox" id="ptprodTier"> Group by tier</label></div><div class="ptprod-wrap" id="ptprodTable"></div></div>
     <div class="otree-wrap" id="productTeamOrg" hidden></div>
   </section>
   <section class="ps-sec" id="psSales">
@@ -2147,6 +2235,7 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
     <div class="grid2">
       <div class="field"><label for="cNote">Notes / Sales Manager</label><input id="cNote" autocomplete="off" placeholder="name@berca.co.id"></div>
       <div class="field"><label for="cPresales">Presales PIC (email)</label><input id="cPresales" type="text" inputmode="email" autocomplete="off" placeholder="name@berca.co.id"></div>
+      <div class="field"><label for="cSales">Sales (email) &mdash; can view this customer</label><input id="cSales" type="text" inputmode="email" autocomplete="off" placeholder="sales@berca.co.id, sales2@berca.co.id"><div class="fieldhint">Sales accounts tagged here can view this customer&rsquo;s assets. Sales who are not tagged cannot see this customer.</div></div>
     </div>
     <div class="hint" style="font-size:12px;color:var(--muted);margin:-4px 0 8px">Warranty/EOSL email notifications are sent to the emails in the <b>Notes / Sales Manager</b> and <b>Presales PIC</b> fields. For more than one email, separate them with commas.</div>
     <div class="err" id="custErr"></div>
@@ -2239,7 +2328,7 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
   const $=id=>document.getElementById(id);
   const DEF_TYPES=["Server","Storage","SAN Switch","Network Switch","Router","Firewall","HCI Node","Backup Appliance","Tape Library","Load Balancer","UPS","Rack/PDU"];
   const DEF_BRANDS=["Dell","HPE","Lenovo","Cisco","Juniper","NetApp","Huawei","Hitachi Vantara","Cohesity","Quantum","Brocade","Fortinet","NVIDIA"];
-  let items=[], allItems=[], customers=[], curCust=null, ccol=null, custLoaded=false, editCustId=null, db=null, col=null, canWrite=false, isMaster=false, editable=new Set(), pwAdmin=false, ME=null, editId=null, delId=null;
+  let items=[], allItems=[], customers=[], curCust=null, ccol=null, custLoaded=false, editCustId=null, db=null, col=null, canWrite=false, isMaster=false, salesOnlyMode=false, editable=new Set(), pwAdmin=false, ME=null, editId=null, delId=null;
   let sortKey="status", sortDir=1, loaded=false;
   let loc="", page=1, pageSize=10;
   try{ const s=JSON.parse(localStorage.getItem("inv-view")||"{}"); if([10,25,50].includes(s.pageSize)) pageSize=s.pageSize; if(typeof s.loc==="string") loc=s.loc; }catch(_){}
@@ -2397,7 +2486,7 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
     const next=dated.filter(x=>x.n>=0&&x.n<=RWIN).sort((a,b)=>a.n-b.n)[0];
     const overdue=dated.filter(x=>x.n<0).sort((a,b)=>b.n-a.n);
     const row=(lbl,val)=>val?'<div class="pcrow"><span class="pclbl">'+lbl+'</span><span class="pcval">'+esc(val)+'</span></div>':'';
-    const contacts=row("Customer PIC",c.pic)+row("Sales / Manager",c.note)+row("Presales PIC",c.presales);
+    const contacts=row("Customer PIC",c.pic)+row("Sales / Manager",c.note)+row("Presales PIC",c.presales)+row("Sales (tagged)",c.sales);
     el.innerHTML='<div class="pcard">'+
       '<div class="pcol"><div class="pc-h">Contacts &amp; PIC</div>'+(contacts||'<div class="sub">No contacts yet — click “Edit Customer” to add them.</div>')+'</div>'+
       '<div class="pcol"><div class="pc-h">Installed base</div><div class="pc-big">'+dev.length+' <span>devices</span> · '+locs.size+' <span>locations</span></div><div class="pbchips">'+brandChips+'</div></div>'+
@@ -2444,7 +2533,7 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
     const allDev=allItems.filter(i=>custById(i.customerId)&&!isDism(i)).map(i=>({...i,customerName:custById(i.customerId).name}));
     renderDashCharts($("dashCharts"),allDev, customers.length>1?"customerName":"location", customers.length>1?"By customer":"By location");
     const q=$("cq").value.trim().toLowerCase();
-    const list=customers.filter(c=>!q||[c.name,c.code,c.pic,c.note,c.presales].some(v=>String(v||"").toLowerCase().includes(q)))
+    const list=customers.filter(c=>!q||[c.name,c.code,c.pic,c.note,c.presales,c.sales].some(v=>String(v||"").toLowerCase().includes(q)))
       .map(c=>({c,st:stats(allItems.filter(i=>i.customerId===c.id&&!isDism(i)))}))
       .sort((a,b)=>(b.st.wexp+b.st.wsoon)-(a.st.wexp+a.st.wsoon)||String(a.c.name).localeCompare(String(b.c.name)));
     $("ccount").textContent=list.length+" of "+customers.length+" customers";
@@ -2466,10 +2555,12 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
     }).join("");
     const e=$("cempty");
     if(!custLoaded) e.hidden=false;
+    else if(!customers.length&&salesOnlyMode){ e.hidden=false; $("cemptyTitle").textContent="No customer data available"; $("cemptyText").textContent="None of your customers\u2019 data is available for warranty renewal monitoring. Contact the customer to request their asset data, and ask Presales to add it here."; }
     else if(!customers.length){ e.hidden=false; $("cemptyTitle").textContent="No customers yet"; $("cemptyText").textContent=canAddCustomer()?"Click “+ Add Customer” to create the first customer, then fill in its inventory.":"No customers yet."; }
     else if(!list.length){ e.hidden=false; $("cemptyTitle").textContent="No matches found"; $("cemptyText").textContent="Try a different search term."; }
     else e.hidden=true;
     $("addCustBtn").disabled=!canAddCustomer(); $("addCustBtn").hidden=!canAddCustomer();
+    $("viewDash").classList.toggle("sales-empty",!!(custLoaded&&salesOnlyMode&&!customers.length));
     // Display inventory counts immediately after loading.
   }
   function route(){
@@ -2564,7 +2655,7 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
   function openCustForm(c){
     if(c?!canEditCustomer(c.id):!canAddCustomer()) return;
     editCustId=c?c.id:null; $("custTitle").textContent=c?"Edit Customer":"Add Customer";
-    $("cName").value=c?.name||""; $("cCode").value=c?.code||""; $("cPic").value=c?.pic||""; $("cNote").value=c?.note||""; $("cPresales").value=c?.presales||""; $("custErr").textContent="";
+    $("cName").value=c?.name||""; $("cCode").value=c?.code||""; $("cPic").value=c?.pic||""; $("cNote").value=c?.note||""; $("cPresales").value=c?.presales||""; $("cSales").value=c?.sales||""; $("custErr").textContent="";
     $("custDelBtn").hidden=!c||!isMaster; $("custDelBtn").dataset.confirm="";$("custDelBtn").textContent="Delete customer";
     $("custOv").hidden=false; setTimeout(()=>$("cName").focus(),0);
   }
@@ -2575,7 +2666,7 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
   $("custOv").addEventListener("click",e=>{if(e.target.id==="custOv")closeCust();});
   $("custForm").addEventListener("submit",async e=>{
     e.preventDefault();
-    const rec={name:$("cName").value.trim(),code:$("cCode").value.trim(),pic:$("cPic").value.trim(),note:$("cNote").value.trim(),presales:$("cPresales").value.trim(),updatedAt:new Date().toISOString()};
+    const rec={name:$("cName").value.trim(),code:$("cCode").value.trim(),pic:$("cPic").value.trim(),note:$("cNote").value.trim(),presales:$("cPresales").value.trim(),sales:$("cSales").value.trim(),updatedAt:new Date().toISOString()};
     if(!rec.name){$("custErr").textContent="Customer name is required.";return;}
     if(customers.some(c=>c.name.toLowerCase()===rec.name.toLowerCase()&&c.id!==editCustId)){$("custErr").textContent="Customer "+rec.name+" already exists.";return;}
     if(!ccol){$("custErr").textContent="Storage is not available yet. Reload the page and try again.";return;}
@@ -2815,7 +2906,7 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
     const d=await api("getAll");
     customers=(d.customers||[]).map(c=>({...c,name:String(c.name||"Unnamed")})).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
     allItems=(d.devices||[]).map(i=>({...i,sn:String(i.sn||"")}));
-    canWrite=!!d.canWrite; isMaster=!!d.isMaster; editable=new Set(d.editable||[]); updateRole(); sheetUrl=d.sheetUrl||"";
+    canWrite=!!d.canWrite; isMaster=!!d.isMaster; salesOnlyMode=!!d.salesOnly; editable=new Set(d.editable||[]); updateRole(); sheetUrl=d.sheetUrl||"";
     const sl=$("sheetLink"); if(sl&&sheetUrl){ sl.href=sheetUrl; sl.hidden=false; }
     col=ccol=true; loaded=true; custLoaded=true; notice(""); route();
   }
@@ -2898,7 +2989,7 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
 
   // ---- login Google (domain kantor) untuk melihat data ----
   let gsiReady=null;
-  function setEmail(email){ $("userEmail").textContent=email||""; $("userEmail").hidden=!email; $("signoutBtn").hidden=!email; }
+  function setEmail(email){ window.__authDone=true; $("userEmail").textContent=email||""; $("userEmail").hidden=!email; $("signoutBtn").hidden=!email; }
   function loadGsi(){
     if(gsiReady) return gsiReady;
     gsiReady=new Promise((res,rej)=>{ const sc=document.createElement("script"); sc.src="https://accounts.google.com/gsi/client"; sc.async=true; sc.onload=res; sc.onerror=()=>rej(new Error("Failed to load Google Sign-In")); document.head.appendChild(sc); });
@@ -2939,7 +3030,7 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
   // ================= PORTAL: Beranda, Layanan, Tim, Inventaris, Reports, Kontak =================
   // Dua tab utama: Inventaris Aset (login) dan Presales (Beranda, Layanan, Tim*, Reports*, Kontak; *login)
   const SECT={alur:"psAlur",proposal:"psProposal",tim:"pgTim",struktur:"psOrg",skill:"psSkill","product-team":"psProductTeam",sales:"psSales",resources:"psResources",vendor:"psVendor",sizing:"psSizing",kontak:"pgKontak"};
-  let SITE={site:{},services:[],members:[],resources:[],sales:[],salesContacts:[],vendors:[],skills:[],org:[],proposals:[]}, siteFull=false, curPg="presales"; window.__members=function(){return SITE.members};
+  let SITE={site:{},services:[],members:[],resources:[],sales:[],salesContacts:[],vendors:[],skills:[],org:[],proposals:[]}, siteFull=false, curPg="presales"; window.__members=function(){return SITE.members}; window.__me=function(){return ME}; window.__people=function(){return {sales:SITE.sales||[],contacts:SITE.salesContacts||[]}};
   const SALES={q:"",showInactive:false};
   let proposalView="active";
   let proposalLayout="detail", selectedProposal=null, proposalRouteKey=null;
@@ -3028,14 +3119,16 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
   function renderProductTeam(){
     if(!productTeam) return;
     renderProductTeamOrg();
+    renderProductTable();
     const terms=$("productTeamQuery").value.trim().toLowerCase().split(/\s+/);
     const role=$("productTeamRole").value, group=$("productTeamGroup").value;
     const matches=productTeam.filter(row=>{
+      if(row.inactive&&!isMaster) return false;
       const text=[row.name,row.manager,...row.products].join(" ").toLowerCase();
       return (!role||row.role===role)&&(!group||row.group===group)&&terms.every(term=>text.includes(term));
     });
     $("productTeamStatus").textContent=matches.length?matches.length+" entries":"No matching entries.";
-    const renderCard=row=>'<article class="rescard product-team-card"><header><h2>'+esc(row.name||"PIC not listed")+'</h2><strong>'+esc(row.role)+'</strong></header><p>'+esc([row.group,row.level,"Manager: "+row.manager].filter(Boolean).join(" · "))+'</p><ul>'+row.products.map(product=>'<li>'+esc(product)+'</li>').join("")+'</ul>'+productTeamSpvField(row)+productTeamEmailField(row)+'</article>';
+    const renderCard=row=>'<article class="rescard product-team-card'+(row.inactive?' off':'')+'">'+(row.inactive?'<span class="soff-badge">Inactive</span>':'')+'<header><h2>'+esc(row.name||"PIC not listed")+'</h2><strong>'+esc(row.role)+'</strong></header><p>'+esc([row.group,row.level,"Manager: "+row.manager].filter(Boolean).join(" · "))+'</p><ul>'+row.products.map(product=>'<li>'+esc(product)+'</li>').join("")+'</ul>'+productTeamSpvField(row)+productTeamEmailField(row)+(isMaster&&row.id?'<div class="sacts"><button class="link" type="button" data-pt-toggle="'+esc(row.id)+'">'+(row.inactive?'Activate':'Deactivate')+'</button></div>':'')+'</article>';
     const filtered=terms.some(Boolean)||Boolean(role||group);
     const byName=(x,y)=>String(x.name).localeCompare(String(y.name));
     const cards=rows=>'<div class="product-team-grid">'+rows.map(renderCard).join("")+'</div>';
@@ -3062,6 +3155,41 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
       return '<div class="sdir"><div class="sdir-h"><span class="sdir-tag">'+esc(h.tag)+'</span><b>'+esc(h.name)+'</b><span class="sdir-nm">'+esc(h.sub)+'</span><span class="sdir-c">'+rows.length+' specialists · '+groups.length+' groups</span></div>'+body+'</div>';
     }).join("")||'<p class="lead">No matching entries.</p>';
   }
+  function renderProductTable(){
+    const box=$("ptprodTable"); if(!box||!productTeam) return;
+    const q=$("productTeamQuery").value.trim().toLowerCase().split(/\s+/).filter(Boolean), role=$("productTeamRole").value, group=$("productTeamGroup").value;
+    const byTier=$("ptprodTier").checked;
+    // merge product spellings that differ only by case/spacing (e.g. Redhat / RedHat)
+    const norm=v=>String(v||"").toLowerCase().replace(/[^a-z0-9]+/g,"");
+    const labels=new Map(), pairs=[];
+    for(const row of productTeam){
+      if(!row.name||(row.inactive&&!isMaster)||(role&&row.role!==role)||(group&&row.group!==group)) continue;
+      for(const p of row.products){ const k=norm(p); if(!k) continue; const l=labels.get(k)||new Map(); l.set(p,(l.get(p)||0)+1); labels.set(k,l); pairs.push({k,row}); }
+    }
+    const label=k=>{ const l=[...labels.get(k).entries()].sort((a,b)=>b[1]-a[1]||(/[a-z]/.test(b[0])&&/[A-Z]/.test(b[0]))-(/[a-z]/.test(a[0])&&/[A-Z]/.test(a[0]))); return l[0][0]; };
+    const tier=r=>r.role+" \u00b7 "+r.group;
+    const items=pairs.map(({k,row})=>({product:label(k),k,row,tier:tier(row)})).filter(it=>{
+      const text=[it.product,it.row.name,it.tier,it.row.level].join(" ").toLowerCase();
+      return q.every(t=>text.includes(t));
+    });
+    const seen=new Set(), uniq=items.filter(it=>{const key=it.k+"|"+it.row.id; if(seen.has(key)) return false; seen.add(key); return true;});
+    const cmp=(a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true,sensitivity:"base"});
+    const tierRank=r=>(r.role==="PS"?0:1)+"|"+r.group;
+    uniq.sort((a,b)=>byTier?(cmp(tierRank(a.row),tierRank(b.row))||cmp(a.product,b.product)||cmp(a.row.name,b.row.name)):(cmp(a.product,b.product)||cmp(tierRank(a.row),tierRank(b.row))||cmp(a.row.name,b.row.name)));
+    const prods=new Set(uniq.map(i=>i.k)).size;
+    $("ptprodCount").textContent=uniq.length?prods+" products \u00b7 "+uniq.length+" PIC assignments":"No matching entries.";
+    const pic=it=>'<div class="ptp-pic'+(it.row.inactive?' off':'')+'"><b>'+esc(it.row.name)+'</b>'+(it.row.level==="SPV"?'<span class="ptp-lv">SPV</span>':'')+(it.row.inactive?'<span class="ptp-lv bad">Inactive</span>':'')+(it.row.email?'<small>'+esc(it.row.email)+'</small>':'')+'</div>';
+    const tierChip=it=>'<span class="ptp-tier '+(it.row.role==="PS"?'ps':'tps')+'"><b>'+esc(it.row.group)+'</b>'+(String(it.row.group).startsWith(it.row.role)?'':'<i>'+esc(it.row.role)+'</i>')+'</span>';
+    let html='<table class="ptp-table"><thead><tr><th>Product</th><th>PIC</th><th>Tier</th></tr></thead><tbody>';
+    let prev="";
+    for(const it of uniq){
+      const head=byTier?tierRank(it.row):it.k;
+      const first=head!==prev; prev=head;
+      html+='<tr'+(first?' class="ptp-first"':'')+'><td class="ptp-prod">'+(first||byTier?esc(it.product):'')+'</td><td>'+pic(it)+'</td><td>'+tierChip(it)+'</td></tr>';
+    }
+    box.innerHTML=uniq.length?html+'</tbody></table>':'<p class="lead">No matching entries.</p>';
+  }
+  $("ptprodTier").addEventListener("change",renderProductTable);
   $("productTeamGrid").addEventListener("click",e=>{ const h=e.target.closest("[data-sgrp]"); if(!h) return; const g=h.closest(".sgrp"); if(!g) return; const c=g.classList.toggle("collapsed"); h.setAttribute("aria-expanded",c?"false":"true"); });
   function productTeamSpvOptions(row){
     return (productTeam||[]).filter(x=>x.level==="SPV"&&x.name&&x.role===row.role&&x.group===row.group).map(x=>x.name);
@@ -3096,6 +3224,13 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
     $("productTeamManagers").hidden=!managers.size;
     $("productTeamManagerGrid").innerHTML=[...managers.values()].map(row=>'<article class="rescard product-team-card"><header><h2>'+esc(row.manager)+'</h2><strong>'+esc(row.group)+'</strong></header>'+productTeamEmailField({id:row.managerId,email:row.managerEmail})+'</article>').join("");
   }
+  $("psProductTeam").addEventListener("click",async event=>{
+    const t=event.target.closest("[data-pt-toggle]"); if(!t||!isMaster) return;
+    const row=productTeam.find(x=>x.id===t.dataset.ptToggle); if(!row) return;
+    t.disabled=true;
+    try{ const saved=await api("saveProductTeamActive",row.id,!!row.inactive); row.inactive=!!saved.inactive; toast(row.inactive?"Product team member deactivated":"Product team member activated"); renderProductTeam(); }
+    catch(err){ t.disabled=false; toast(errMsg(err)); }
+  });
   $("psProductTeam").addEventListener("submit",async event=>{
     const form=event.target.closest("form[data-product-team-id]");
     if(!form) return;
@@ -3274,14 +3409,16 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
     const st=SITE.site||{};
     if(isViewer()&&!siteFull){renderDashboard();renderProposals();return;}
     const techs=csv(st.technologies); $("techList").innerHTML=techs.map(t=>'<span>'+esc(t)+'</span>').join(""); $("psTech").hidden=!techs.length;
-    $("teamGrid").innerHTML=SITE.members.map(member=>{
+    const teamList=SITE.members.filter(m=>isMaster||m.inactive!=="1").slice().sort((a,b)=>(a.inactive==="1")-(b.inactive==="1"));
+    $("teamGrid").innerHTML=teamList.map(member=>{
+      const off=member.inactive==="1";
       const name=esc(member.name), id=esc(member.id);
       const certCount=(SITE.skills||[]).filter(skill=>String(skill.person||"").trim().toLowerCase()===String(member.name||"").trim().toLowerCase()
         && (String(skill.cert||"").trim()||skill.certFileName||skill.certDate)).length;
       const accounts=salesFor(member.name).length, expertise=csv(member.expertise);
       const email=member.email?'<a class="mail" href="mailto:'+esc(member.email)+'" aria-label="Email '+name+'"><svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8">'+IC.mail+'</svg>Email</a>':"";
-      const actions=isMaster?'<div class="acts"><button class="link" type="button" data-iedit="member|'+id+'">Edit</button><details class="pp-more"><summary aria-label="More actions for '+name+'">&#8943;</summary><div><button class="link del" type="button" data-idel="member|'+id+'">Delete</button></div></details></div>':"";
-      return '<article class="ps-mem" data-team-member="'+name+'" tabindex="0" aria-label="Open profile for '+name+'"><div class="band"></div><div class="avatar">'+
+      const actions=isMaster?'<div class="acts"><button class="link" type="button" data-mtoggle="'+id+'">'+(off?'Activate':'Deactivate')+'</button><button class="link" type="button" data-iedit="member|'+id+'">Edit</button><details class="pp-more"><summary aria-label="More actions for '+name+'">&#8943;</summary><div><button class="link del" type="button" data-idel="member|'+id+'">Delete</button></div></details></div>':"";
+      return '<article class="ps-mem'+(off?' off':'')+'" data-team-member="'+name+'" tabindex="0" aria-label="Open profile for '+name+'">'+(off?'<span class="soff-badge">Inactive</span>':'')+'<div class="band"></div><div class="avatar">'+
         (member.photo?'<img alt="" src="'+esc(member.photo)+'">':esc(initials(member.name)))+'</div><h3>'+name+'</h3><div class="role">'+esc(member.role)+'</div>'+
         (member.region?'<div class="region">'+esc(member.region)+'</div>':"")+
         (expertise.length?'<div class="chips">'+expertise.map(item=>'<span>'+esc(item)+'</span>').join("")+'</div>':"")+
@@ -3684,9 +3821,10 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
     const sec=b.closest("section"); if(!sec) return;
     const org=b.dataset.orgview==="org";
     sec.classList.toggle("org-mode",org);
+    sec.classList.toggle("prod-mode",b.dataset.orgview==="prod");
     sec.querySelectorAll("[data-orgview]").forEach(x=>{const on=x===b; x.classList.toggle("on",on); x.setAttribute("aria-pressed",on?"true":"false");});
     const box=sec.querySelector(".otree-wrap"); if(box) box.hidden=!org;
-    if(sec.id==="psSales") renderSalesOrg(); else if(sec.id==="psProductTeam") renderProductTeamOrg();
+    if(sec.id==="psSales") renderSalesOrg(); else if(sec.id==="psProductTeam"){ renderProductTeamOrg(); renderProductTable(); }
   });
   function renderSales(){
     const el=$("salesGrid"); if(!el) return;
@@ -3733,6 +3871,9 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
   $("addSalesBtn").onclick=()=>openItem("sales");
   document.addEventListener("click",async e=>{ const t=e.target.closest("[data-stoggle]"); if(!t) return; const x=SITE.sales.find(z=>z.id===t.dataset.stoggle); if(!x) return; t.disabled=true;
     try{ await api("saveItem","sales",{...x,active:x.active==="1"?"":"1"}); toast(x.active==="1"?"Sales set inactive":"Sales set active"); siteFull=false; await loadSite(); }catch(err){ t.disabled=false; toast(errMsg(err)); } });
+
+  document.addEventListener("click",async e=>{ const t=e.target.closest("[data-mtoggle]"); if(!t) return; e.stopPropagation(); const x=SITE.members.find(z=>z.id===t.dataset.mtoggle); if(!x) return; t.disabled=true;
+    try{ await api("saveItem","member",{...x,inactive:x.inactive==="1"?"":"1"}); toast(x.inactive==="1"?"Team member activated":"Team member deactivated"); siteFull=false; await loadSite(); }catch(err){ t.disabled=false; toast(errMsg(err)); } });
 
   // ---- editor konten (master) ----
   const FIELDS={
@@ -3833,7 +3974,7 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
     // TPS records server and storage coverage under Dell in the directory.
     const tpsProductAliases={"dell isg":"dell"};
     const tpsAlias=Object.hasOwn(tpsProductAliases,key)?tpsProductAliases[key]:"";
-    const matches=key?rows.filter(row=>row.products.some(name=>{
+    const matches=key?rows.filter(row=>!row.inactive&&row.products.some(name=>{
       const product=name.trim().toLowerCase();
       return product===key||(row.role==="TPS"&&!!tpsAlias&&product===tpsAlias);
     })):[];
@@ -3911,7 +4052,9 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
     $("itemFields").querySelectorAll("[data-proposal-step]").forEach(panel=>{panel.hidden=Number(panel.dataset.proposalStep)!==index;});
     $("proposalWizardNav").querySelectorAll("button").forEach((button,i)=>{
       if(i===index) button.setAttribute("aria-current","step"); else button.removeAttribute("aria-current");
+      if(i<index) button.setAttribute("data-done",""); else button.removeAttribute("data-done");
     });
+    $("proposalWizardNav").style.setProperty("--wp",String(index/(proposalWizardSteps.length-1)));
     $("proposalWizardBack").hidden=index===0;
     $("proposalWizardNext").hidden=index===proposalWizardSteps.length-1;
     $("itemSave").hidden=!$("proposalWizardNext").hidden;
@@ -3970,7 +4113,7 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
       if(t==="hidden") return '<input id="f_'+k+'" type="hidden" value="'+esc(v)+'">';
       const checklistHeading=k==="adminDocumentsReady"
         ? '<div id="submissionChecklistHeading"><strong>Submission checklist</strong><p id="submissionChecklistNotice" role="status">Complete all three checklist items and add the Google Drive link before submitting.</p><strong>Sales checklist</strong></div>'
-        : k==="proposalUploaded" ? '<div><strong>Presales checklist</strong></div>' : "";
+        : k==="proposalUploaded" ? '<div class="chk-presales"><strong>Presales checklist</strong></div>' : "";
       if(t==="check") return checklistHeading+'<div class="field"><label class="chk"><input type="checkbox" id="f_'+k+'"'+(v?' checked':'')+'> '+l+'</label></div>';
       if(t==="readonly") return '<div class="field"><label for="f_'+k+'">'+l+'</label><input id="f_'+k+'" type="text" value="'+esc(v)+'" readonly></div>';
       if(t==="photo") return '<div class="field"><label>'+l+'</label><div class="photoedit"><div class="avatar" id="phPrev"></div><label class="btn">Choose photo<input type="file" id="phFile" accept="image/*"></label><button type="button" class="link del" id="phDel">Delete photo</button></div></div>';
@@ -3982,7 +4125,7 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
         else if(k==="status") vals=PROP_STATUS_OPTS;
         else if(k==="sales"&&kind==="proposal") vals=[...new Set((SITE.sales||[]).map(x=>String(x.name||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
         else if(k==="customer"&&kind==="proposal"){ vals=[...new Set([...(customers||[]).map(c=>String(c.name||"").trim()),...vals].filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
-        else if(k==="presales"&&kind==="proposal"){ const names=[...(SITE.org||[]).filter(o=>{const lv=o.level||"";return lv==="Manager"||lv==="Staff";}).map(o=>o.name||""),...(SITE.members||[]).map(m=>m.name||""),...(SITE.sales||[]).flatMap(x=>csv(x.presales)),...(SITE.proposals||[]).flatMap(x=>csv(x.presales))].map(n=>String(n).trim()).filter(Boolean); vals=[...new Map(names.map(n=>[n.toLocaleLowerCase(),n])).values()].sort((a,b)=>a.localeCompare(b)); }
+        else if(k==="presales"&&kind==="proposal"){ const names=[...(SITE.org||[]).filter(o=>{const lv=o.level||"";return lv==="Manager"||lv==="Staff";}).map(o=>o.name||""),...(SITE.members||[]).filter(m=>m.inactive!=="1").map(m=>m.name||""),...(SITE.sales||[]).flatMap(x=>csv(x.presales)),...(SITE.proposals||[]).flatMap(x=>csv(x.presales))].map(n=>String(n).trim()).filter(Boolean); vals=[...new Map(names.map(n=>[n.toLocaleLowerCase(),n])).values()].sort((a,b)=>a.localeCompare(b)); }
         else if(k==="level") vals=(kind==="org"?ORG_LEVEL_OPTS:SKILL_LEVELS);
         else if(k==="domain") vals=[...new Set([...SKILL_DOMAINS,...vals])];
         else if(k==="person") vals=[...new Set([...(SITE.members||[]).map(m=>String(m.name||"").trim()).filter(Boolean),...vals])].sort((a,b)=>a.localeCompare(b));
@@ -4016,7 +4159,7 @@ body.side-min .sidebar .brandbar:has(.has-me){padding-left:0!important;padding-r
     }
     if(kind==="proposal"){
       setupProposalProductFields();
-      const names=[...new Map([...(SITE.org||[]).filter(o=>{const lv=o.level||"";return lv==="Manager"||lv==="Staff";}).map(o=>o.name||""),...(SITE.members||[]).map(m=>m.name||""),...(SITE.sales||[]).flatMap(x=>csv(x.presales)),...(SITE.proposals||[]).flatMap(x=>csv(x.presales))].map(n=>String(n).trim()).filter(Boolean).map(n=>[n.toLocaleLowerCase(),n])).values()].sort((a,b)=>a.localeCompare(b));
+      const names=[...new Map([...(SITE.org||[]).filter(o=>{const lv=o.level||"";return lv==="Manager"||lv==="Staff";}).map(o=>o.name||""),...(SITE.members||[]).filter(m=>m.inactive!=="1").map(m=>m.name||""),...(SITE.sales||[]).flatMap(x=>csv(x.presales)),...(SITE.proposals||[]).flatMap(x=>csv(x.presales))].map(n=>String(n).trim()).filter(Boolean).map(n=>[n.toLocaleLowerCase(),n])).values()].sort((a,b)=>a.localeCompare(b));
       const multi=$("f_presales"), multiList=$("dl_presales");
       const notify=$("f_notifyEmails"), presalesTeamEmail="tss.solution-architect-eri@berca.co.id", autoRecipients=new Set();
       const syncAutoRecipients=()=>{
@@ -4190,26 +4333,61 @@ var key="presalesSideMode";function get(){try{return localStorage.getItem(key)!=
 function set(v){document.body.classList.toggle("side-min",v);var b=document.getElementById("sideToggle");if(b){b.setAttribute("aria-expanded",String(!v));b.title=v?"Pin sidebar open":"Auto-hide sidebar";b.setAttribute("aria-label",b.title)}try{localStorage.setItem(key,v?"auto":"pinned")}catch(e){}}
 var bar=document.querySelector(".sidebar .brandbar");
 if(bar&&!document.getElementById("sideToggle")){var b=document.createElement("button");b.type="button";b.id="sideToggle";b.className="side-toggle";b.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';b.addEventListener("click",function(){set(!document.body.classList.contains("side-min"))});bar.appendChild(b)}
-var sb=document.getElementById("sidebar"),ht=null;
+var sb=document.getElementById("sidebar"),ht=null,hov=false;
 function openS(){clearTimeout(ht);if(window.innerWidth>860)document.body.classList.add("side-open")}
-function closeS(){clearTimeout(ht);ht=setTimeout(function(){if(!sb.matches(":focus-within")||!document.activeElement||document.activeElement===document.body)document.body.classList.remove("side-open")},260)}
-if(sb){sb.addEventListener("mouseenter",openS);sb.addEventListener("mouseleave",closeS);sb.addEventListener("focusin",openS);sb.addEventListener("focusout",closeS)}
+function closeS(){clearTimeout(ht);ht=setTimeout(function(){if(hov)return;var kb=false;try{kb=!!sb.querySelector(":focus-visible")}catch(e){}if(kb)return;var a=document.activeElement;if(a&&sb.contains(a)&&a.blur)a.blur();document.body.classList.remove("side-open")},260)}
+if(sb){sb.addEventListener("mouseenter",function(){hov=true;openS()});sb.addEventListener("mouseleave",function(){hov=false;closeS()});sb.addEventListener("focusin",function(e){var t=e.target,kb=false;try{kb=!!(t&&t.matches&&t.matches(":focus-visible"))}catch(x){}if(kb)openS()});sb.addEventListener("focusout",closeS)}
 set(get());
 /* profile avatar */
 var sum=document.querySelector("#sidebarAccount summary");
 if(sum&&!document.getElementById("accAv")){var av=document.createElement("span");av.id="accAv";av.className="acc-av";var tx=document.createElement("span");tx.className="acc-txt";while(sum.firstChild)tx.appendChild(sum.firstChild);sum.appendChild(av);sum.appendChild(tx);
 }
 var last="";
-function avatar(){var av=document.getElementById("accAv"),em=document.getElementById("userEmail");if(!av||!em)return;var email=(em.hidden?"":em.textContent||"").trim().toLowerCase();var ms=(window.__members&&window.__members())||[];var m=null;if(email)for(var i=0;i<ms.length;i++){if(String(ms[i].email||"").trim().toLowerCase()===email){m=ms[i];break}}
+function avatar(){var av=document.getElementById("accAv"),em=document.getElementById("userEmail");if(!av||!em)return;var email=(em.hidden?"":em.textContent||"").trim().toLowerCase();var C=null;try{C=JSON.parse(localStorage.getItem("presalesMe")||"null")}catch(e){}if(!email&&!window.__authDone&&C){paintTop(C.name,C.role,C.photo);return}var ms=(window.__members&&window.__members())||[];var m=null;if(email)for(var i=0;i<ms.length;i++){if(String(ms[i].email||"").trim().toLowerCase()===email){m=ms[i];break}}
 if(!m&&email){var loc=email.split("@")[0].split(/[._-]/).filter(Boolean);for(var j=0;j<ms.length;j++){var n=String(ms[j].name||"").toLowerCase();if(loc.length&&loc.every(function(t){return n.indexOf(t)>-1})){m=ms[j];break}}}
-var sig=email+"|"+(m?m.name+(m.photo||"").length:"");if(sig===last)return;last=sig;av.textContent="";
+var sig=email+"|"+(m?m.name+(m.photo||"").length:"")+"|"+(window.__authDone?1:0)+"|"+((window.__people&&window.__people().sales.length)||0)+"|"+((window.__people&&window.__people().contacts.length)||0);if(sig===last)return;last=sig;av.textContent="";
 if(m&&m.photo){var im=document.createElement("img");im.alt=m.name;im.src=m.photo;av.appendChild(im);av.title=m.name}
 else{var nm=m?m.name:(email?email.split("@")[0].replace(/[._-]+/g," "):"");var p=nm.split(" ").filter(Boolean);if(p.length){av.textContent=((p[0][0]||"")+(p.length>1?p[p.length-1][0]:"")).toUpperCase()}else{av.appendChild(icon("M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"));av.firstChild.style.margin="0"}av.title=nm||"Not signed in"}
-try{var bl=document.querySelector(".sidebar .brandbar .bl");if(bl){var ta=document.getElementById("topAv");if(!ta){ta=document.createElement("span");ta.id="topAv";ta.className="top-av";bl.insertBefore(ta,bl.firstChild)}
+if(email){var who=null;if(m)who={name:m.name,role:m.role||"Presales Solution Architect",photo:m.photo||""};
+else{var pp=(window.__people&&window.__people())||{sales:[],contacts:[]};var low=function(v){return String(v||"").trim().toLowerCase()};
+for(var a=0;a<pp.sales.length&&!who;a++){if(low(pp.sales[a].email)===email)who={name:pp.sales[a].name,role:"Sales"+(pp.sales[a].team?" \u00b7 "+pp.sales[a].team:""),photo:""}}
+for(var b2=0;b2<pp.contacts.length&&!who;b2++){if(low(pp.contacts[b2].email)===email)who={name:pp.contacts[b2].name,role:pp.contacts[b2].type||"Contact",photo:""}}}
+var useC=!who&&C&&C.email===email;
+if(!who&&!useC){var nn=email.split("@")[0].replace(/[._-]+/g," ").replace(/\b[a-z]/g,function(x){return x.toUpperCase()});who={name:nn,role:"Presales ERI",photo:""}}
+if(useC)who={name:C.name,role:C.role,photo:C.photo};
+paintTop(who.name,who.role,who.photo);
+if(m||(pp&&who&&!useC&&who.role!=="Presales ERI")){try{localStorage.setItem("presalesMe",JSON.stringify({email:email,name:who.name,role:who.role,photo:who.photo||""}))}catch(e){}}}
+else{paintTop(null);if(window.__authDone){try{localStorage.removeItem("presalesMe")}catch(e){}document.documentElement.classList.remove("pre-me")}}}
+function paintTop(name,role,photo){try{var bl=document.querySelector(".sidebar .brandbar .bl");if(!bl)return;var ta=document.getElementById("topAv");if(!ta){ta=document.createElement("span");ta.id="topAv";ta.className="top-av";bl.insertBefore(ta,bl.firstChild)}
 var bb=bl.querySelector(".bt b"),bs=bl.querySelector(".bt span");if(bb&&!bb.dataset.o){bb.dataset.o=bb.textContent;bs.dataset.o=bs.textContent}
-if(email){bl.classList.add("has-me");ta.innerHTML=av.innerHTML;if(!ta.querySelector("img")&&ta.querySelector("svg"))ta.textContent=(av.textContent||"")||"";var nm2=m?m.name:email.split("@")[0].replace(/[._-]+/g," ");bb.textContent=nm2;bs.textContent=(m&&m.role)||bs.dataset.o}
-else{bl.classList.remove("has-me");bb.textContent=bb.dataset.o||bb.textContent;bs.textContent=bs.dataset.o||bs.textContent}}}catch(e){}}
-avatar();setInterval(avatar,1500);
+if(name){bl.classList.add("has-me");bl.classList.remove("anon");ta.textContent="";if(photo){var im2=document.createElement("img");im2.alt=name;im2.src=photo;ta.appendChild(im2)}else{var pp=name.split(" ").filter(Boolean);ta.textContent=(((pp[0]||"")[0]||"")+(pp.length>1?pp[pp.length-1][0]:"")).toUpperCase()}bb.textContent=name;bs.textContent=role||bs.dataset.o}
+else{bl.classList.remove("has-me");bb.textContent=bb.dataset.o||bb.textContent;bs.textContent=bs.dataset.o||bs.textContent;if(window.__authDone||window.__anonTimer)bl.classList.add("anon")}}catch(e){}}
+setTimeout(function(){window.__anonTimer=1;var bl=document.querySelector(".sidebar .brandbar .bl");if(bl&&!bl.classList.contains("has-me"))bl.classList.add("anon")},6000);
+var pvBox=null,pvBan=null;
+function pvSend(email,err){fetch("/auth/preview",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email:email}),credentials:"same-origin"}).then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})}).then(function(x){if(x.ok)location.reload();else err.textContent=(x.j&&x.j.error)||"Could not apply preview."}).catch(function(){err.textContent="Network error."})}
+function previewBar(){var me=window.__me&&window.__me();var acc=document.getElementById("sidebarAccount");
+if(!me||!me.realMaster||!acc){if(pvBox){pvBox.remove();pvBox=null}if(pvBan){pvBan.remove();pvBan=null}return}
+if(!pvBox){pvBox=document.createElement("form");pvBox.className="pv-box";pvBox.noValidate=true;
+var lb=document.createElement("label");lb.textContent="Preview as";lb.htmlFor="pvEmail";var inp=document.createElement("input");inp.type="email";inp.id="pvEmail";inp.placeholder="name@berca.co.id";inp.autocomplete="off";inp.value=me.previewAs||"";
+var row=document.createElement("div");row.className="pv-row";var ap=document.createElement("button");ap.type="submit";ap.className="pv-apply";ap.textContent="Apply";row.appendChild(ap);
+var er=document.createElement("small");
+if(me.previewAs){var rs=document.createElement("button");rs.type="button";rs.className="pv-reset";rs.title="Exit preview";rs.setAttribute("aria-label","Exit preview");rs.textContent="\u21BA";rs.onclick=function(){pvSend("",er)};row.insertBefore(rs,ap)}
+pvBox.append(lb,inp,row,er);pvBox.onsubmit=function(e){e.preventDefault();er.textContent="";var v=inp.value.trim().toLowerCase();if(!v){er.textContent="Enter an email address.";return}pvSend(v,er)};acc.appendChild(pvBox)}
+if(me.previewAs&&!pvBan){pvBan=document.createElement("div");pvBan.id="pvBanner";var t=document.createElement("span");t.innerHTML="Viewing as <b></b> \u00b7 read-only";t.querySelector("b").textContent=me.previewAs;var bt=document.createElement("button");bt.type="button";bt.textContent="Exit preview";bt.onclick=function(){pvSend("",document.createElement("small"))};pvBan.append(t,bt);document.body.appendChild(pvBan)}}
+/* copy-to-clipboard button next to every e-mail address */
+var EMRE=/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g,CPIC='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>',CPOK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>';
+function cpText(t){if(navigator.clipboard&&window.isSecureContext)return navigator.clipboard.writeText(t);return new Promise(function(res,rej){try{var ta=document.createElement("textarea");ta.value=t;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();var ok=document.execCommand("copy");ta.remove();ok?res():rej()}catch(e){rej(e)}})}
+function cpMake(list){var b=document.createElement("button");b.type="button";b.className="cp-mail";b.dataset.emails=list.join(", ");b.title=list.length>1?"Copy all emails":"Copy email";b.setAttribute("aria-label",b.title);b.innerHTML=CPIC;return b}
+document.addEventListener("click",function(e){var b=e.target.closest(".cp-mail");if(!b)return;e.preventDefault();e.stopPropagation();cpText(b.dataset.emails).then(function(){b.classList.add("ok");b.innerHTML=CPOK;var t=document.getElementById("toast");if(t){t.textContent="Copied: "+b.dataset.emails;t.hidden=false;clearTimeout(window.__cpT);window.__cpT=setTimeout(function(){t.hidden=true},1800)}setTimeout(function(){b.classList.remove("ok");b.innerHTML=CPIC},1400)}).catch(function(){var t=document.getElementById("toast");if(t){t.textContent="Could not copy";t.hidden=false}})},true);
+var CPSKIP="script,style,textarea,input,select,option,button,.cp-mail,#sidebar,.pv-box,[data-nocopy],[contenteditable]";
+function decorateEmails(){try{
+document.querySelectorAll('a[href^="mailto:"]:not([data-cp])').forEach(function(a){a.dataset.cp="1";if(a.closest("#sidebar,.pv-box,[data-nocopy]"))return;var em=decodeURIComponent((a.getAttribute("href")||"").slice(7).split("?")[0]).trim();if(!em)return;if((a.textContent.match(EMRE)||[]).length)return;a.parentNode.insertBefore(cpMake([em]),a.nextSibling)});
+var w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT,{acceptNode:function(n){if(!n.nodeValue||n.nodeValue.indexOf("@")<0)return NodeFilter.FILTER_REJECT;var p=n.parentElement;if(!p||p.closest(CPSKIP)||p.dataset.cp)return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT}}),nodes=[],n;
+while((n=w.nextNode()))nodes.push(n);
+nodes.forEach(function(n){var list=n.nodeValue.match(EMRE);if(!list||!list.length)return;list=list.filter(function(v,i){return list.indexOf(v)===i});var p=n.parentElement;if(p.dataset.cp)return;p.dataset.cp="1";if(p.tagName==="A"){p.parentNode.insertBefore(cpMake(list),p.nextSibling)}else{p.insertBefore(cpMake(list),n.nextSibling)}})}catch(e){}}
+var cpT=null;new MutationObserver(function(){clearTimeout(cpT);cpT=setTimeout(decorateEmails,250)}).observe(document.body,{childList:true,subtree:true,characterData:true});
+setTimeout(decorateEmails,600);
+avatar();previewBar();setInterval(function(){avatar();previewBar()},1500);
 })();
 </script>
 </body>
