@@ -1124,7 +1124,7 @@ button.skchip{cursor:pointer}
 #psAlur .proposal-flowchart li>button>span{min-width:30px;height:30px}
 #psAlur .proposal-flowchart button[aria-current="step"]{box-shadow:inset 3px 0 var(--accent)}
 #psAlur .flow-node-label{display:grid;gap:2px;min-width:0}
-#psAlur .flow-node-label small{color:var(--muted);font-size:11px;font-weight:500}
+#psAlur .flow-node-label small{color:var(--muted);font-size:12.5px;font-weight:500}
 #psAlur .flowchart-arrow{height:18px;margin-block:2px 5px}
 #psAlur .flowchart-decision{padding:10px;border-style:solid;border-radius:12px;background:var(--bg)}
 #psAlur .flowchart-decision>strong::before{content:"◆";color:var(--accent);margin-right:7px}
@@ -1137,22 +1137,16 @@ button.skchip{cursor:pointer}
 @media(min-width:901px){#psAlur .proposal-flow-card{position:sticky;top:20px}}
 @media(max-width:900px){#psAlur .proposal-flow-layout{grid-template-columns:1fr}}
 
-#psAlur .proposal-flow-layout{
-  padding:clamp(12px,3vw,28px);border-radius:22px;color:#eaf0ff;border:1px solid #354561;
-  background:radial-gradient(ellipse at 80% 0%,#44357955,transparent 56%),linear-gradient(#879bba17 1px,transparent 1px),linear-gradient(90deg,#879bba17 1px,transparent 1px),#101828;
-  background-size:auto,26px 26px,26px 26px,auto;
-  --accent:#79e8fc;--accent-soft:#233e55;--muted:#b8c6df;--surface:#151f33;--bg:#151f33;--line:#354561;--ok:#8df0be;--ok-soft:#183c38;--warn:#ffd28b;--warn-soft:#493924;
-}
+#psAlur .proposal-flow-layout{color:inherit}
 #psAlur .proposal-flow-layout button{color:inherit}
-#psAlur .proposal-flow-layout .primary{background:#79e8fc;color:#102431}
 #psAlur .proposal-flow-layout a{color:var(--accent)}
 #psAlur .proposal-flow-layout :is(button,a):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-#psAlur .proposal-flowchart button[aria-current="step"]{box-shadow:inset 3px 0 var(--accent),0 0 18px #79e8fc30;border-color:var(--accent)}
-#psAlur .proposal-flowchart button[aria-current="step"] .flow-node-icon{text-shadow:0 0 10px #79e8fc;box-shadow:0 0 14px #79e8fc55}
+#psAlur .proposal-flowchart button[aria-current="step"]{box-shadow:inset 3px 0 var(--accent),0 8px 20px -12px color-mix(in srgb,var(--accent) 55%,transparent);border-color:var(--accent)}
+#psAlur .proposal-flowchart button[aria-current="step"] .flow-node-icon{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
 @media(prefers-reduced-motion:no-preference){
  #psAlur .proposal-flowchart li:has(>[aria-current="step"]) .flowchart-arrow::before{
-  top:0;left:-2px;height:10px;width:6px;background:linear-gradient(transparent,#79e8fc);
-  box-shadow:0 0 9px #79e8fc;animation:proposal-arrow-travel .8s ease-out 2 both
+  top:0;left:-2px;height:10px;width:6px;background:linear-gradient(transparent,var(--accent));
+  box-shadow:0 0 6px color-mix(in srgb,var(--accent) 60%,transparent);animation:proposal-arrow-travel .8s ease-out 2 both
  }
 }
 
@@ -1279,13 +1273,13 @@ button.skchip{cursor:pointer}
 .pp-more > div { display:grid; gap:4px; padding-top:5px; }
 #psAlur .flowchart-arrow{height:14px;margin-block:2px}
 #psAlur .workflow-detail-list{display:grid;gap:4px;margin:16px 0}
-#psAlur .workflow-detail-list dt{font-weight:700;color:#a7e9f5}
-#psAlur .workflow-detail-list dd{margin:0 0 8px;color:#c6d4e8}
+#psAlur .workflow-detail-list dt{font-weight:700;color:var(--accent)}
+#psAlur .workflow-detail-list dd{margin:0 0 8px;color:var(--fg)}
 #psAlur .workflow-review-actions{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
 #psAlur [data-review-path="ready"] #workflowChartSubmit,#psAlur [data-review-path="revise"] #workflowChartRevise{outline:2px solid currentColor;outline-offset:2px}
 @media(prefers-reduced-motion:no-preference){
 #psAlur [data-review-path="ready"] [data-workflow-step="6"],#psAlur [data-review-path="revise"] [data-workflow-step="4"]{animation:workflow-branch-highlight .5s ease-out}
-@keyframes workflow-branch-highlight{from{outline:3px solid #79e8fc;outline-offset:5px}to{outline:0 solid transparent;outline-offset:0}}
+@keyframes workflow-branch-highlight{from{outline:3px solid var(--accent);outline-offset:5px}to{outline:0 solid transparent;outline-offset:0}}
 }
 @media(max-width:900px){#psAlur .proposal-flowchart .proposal-flow-card{margin:8px 0 4px;min-width:0}}
 #teamGrid .ps-mem .band{height:48px}
@@ -1422,7 +1416,7 @@ button.skchip{cursor:pointer}
   </section>
 
   <section class="ps-sec proposal-flow" id="psAlur">
-    <header class="pghead ps-head"><div><h1 class="sech">Request Workflow</h1><p class="lead">Dari permintaan Sales hingga proposal dikirim ke customer.</p></div></header>
+    <header class="pghead ps-head"><div><div class="eyebrow">Proposal process</div><h1 class="sech">Request Workflow</h1><p class="lead">Dari permintaan Sales hingga proposal dikirim ke customer.</p></div></header>
     <div class="proposal-flow-layout">
       <ol class="proposal-flow-steps proposal-flowchart" aria-label="Diagram alur proposal"><li><button type="button" data-workflow-step="0" aria-current="step"><span class="flow-node-icon" aria-hidden="true">＋</span><div class="flow-node-label"><strong>Permintaan Proposal</strong><small>Sales</small></div></button><span class="flowchart-arrow" aria-hidden="true"></span></li><li><button type="button" data-workflow-step="1"><span class="flow-node-icon" aria-hidden="true">◷</span><div class="flow-node-label"><strong>Undangan Prebid</strong><small>Sales</small></div></button><span class="flowchart-arrow" aria-hidden="true"></span></li><li><button type="button" data-workflow-step="2"><span class="flow-node-icon" aria-hidden="true">◎</span><div class="flow-node-label"><strong>Prebid</strong><small>Sales, Presales dan tim teknis</small></div></button><span class="flowchart-arrow" aria-hidden="true"></span></li><li><button type="button" data-workflow-step="3"><span class="flow-node-icon" aria-hidden="true">$</span><div class="flow-node-label"><strong>Permintaan Harga</strong><small>Sales, TPS dan PS</small></div></button><span class="flowchart-arrow" aria-hidden="true"></span></li><li><button type="button" data-workflow-step="4"><span class="flow-node-icon" aria-hidden="true">≡</span><div class="flow-node-label"><strong>Draf Proposal</strong><small>Presales</small></div></button><span class="flowchart-arrow" aria-hidden="true"></span></li><li><button type="button" data-workflow-step="5"><span class="flow-node-icon" aria-hidden="true">✓</span><div class="flow-node-label"><strong>Review Proposal</strong><small>Seluruh tim terkait</small></div></button><span class="flowchart-arrow" aria-hidden="true"></span></li><li class="flowchart-decision"><strong>Proposal siap dikirim?</strong><div class="flowchart-branches"><button type="button" id="workflowChartSubmit" class="flow-ready">Siap dikirim &#8594; Pengiriman</button><button type="button" id="workflowChartRevise">Perlu revisi &#8629; Draf</button></div></li><li><button type="button" data-workflow-step="6"><span class="flow-node-icon" aria-hidden="true">↗</span><div class="flow-node-label"><strong>Pengiriman Proposal</strong><small>Sales</small></div></button></li></ol>
       <div class="proposal-flow-card">
@@ -2957,7 +2951,7 @@ button.skchip{cursor:pointer}
     el.setAttribute("aria-busy","false");
     const all=(SITE.proposals||[]).slice(), archived=all.filter(proposalIsArchived), active=all.filter(p=>!proposalIsArchived(p));
     const tabActive=$("propViewActive"), tabArchive=$("propViewArchive");
-    if($("propCountActive")) $("propCountActive").textContent=String(active.length);
+    if($("propCountActive")) $("propCountActive").textContent=String(active.filter(proposalActive).length);
     if($("propCountArchive")) $("propCountArchive").textContent=String(archived.length);
     if(tabActive){tabActive.classList.toggle("active",proposalView==="active");tabActive.setAttribute("aria-selected",proposalView==="active"?"true":"false");}
     if(tabArchive){tabArchive.classList.toggle("active",proposalView==="archive");tabArchive.setAttribute("aria-selected",proposalView==="archive"?"true":"false");}
