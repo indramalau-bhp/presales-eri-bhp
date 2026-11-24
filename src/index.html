@@ -1726,7 +1726,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
 }
 @media(min-width:901px) and (prefers-reduced-motion:reduce){#psAlur .flow-fill,#psAlur .flow-dot{transition:none}}
 
-/* ===== Alur Permintaan Harga (animated, always open) ===== */
+/* ===== Pricing Request Flow (animated, always open) ===== */
 .proposal-flow-pricing.pf{background:#0f2b27!important;color:#fff;border:0!important;border-radius:32px!important;padding:30px 28px 26px!important;position:relative;overflow:hidden;box-shadow:0 24px 48px -24px rgba(15,43,39,.7)}
 .pf::after{content:"";position:absolute;right:-80px;top:-120px;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(155,227,200,.18),transparent 70%);pointer-events:none}
 .pf h2{margin:0 0 20px;font-size:22px;color:#fff;position:relative;z-index:1}
@@ -1787,7 +1787,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     <div id="gsiBtn"></div>
     <div class="err" id="loginErr" role="status"></div>
     <button type="button" class="link" id="loginAdminBtn">Admin sign in (password)</button>
-    <button type="button" class="link loginclose" id="loginClose" aria-label="Tutup">Back to Presales</button>
+    <button type="button" class="link loginclose" id="loginClose" aria-label="Close">Back to Presales</button>
     </div>
   </div>
 </div>
@@ -1809,7 +1809,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
 </nav>
     <nav id="inventoryCustomerNav" class="customer-switch" aria-label="Customer inventaris" hidden>
     <button type="button" class="customer-switch-item" data-customer-summary>Ringkasan Inventaris</button>
-    <input type="search" placeholder="Cari customer" aria-label="Cari customer di sidebar">
+    <input type="search" placeholder="Search customers" aria-label="Search customers in sidebar">
     <div class="customer-switch-list" data-customer-list></div>
     
     </nav>
@@ -1835,18 +1835,18 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   </section>
 
   <section class="ps-sec proposal-flow" id="psAlur">
-    <header class="pghead ps-head"><div><div class="eyebrow">Proposal process</div><h1 class="sech">Request Workflow</h1><p class="lead">Dari permintaan Sales hingga proposal dikirim ke customer.</p></div></header>
+    <header class="pghead ps-head"><div><div class="eyebrow">Proposal process</div><h1 class="sech">Request Workflow</h1><p class="lead">From the Sales request to the proposal being submitted to the customer.</p></div></header>
     <div class="proposal-flow-layout">
-      <ol class="proposal-flow-steps proposal-flowchart" aria-label="Diagram alur proposal"><li><button type="button" data-workflow-step="0" aria-current="step"><span class="flow-node-icon" aria-hidden="true">＋</span><div class="flow-node-label"><strong>Permintaan Proposal</strong><small>Sales</small></div></button><span class="flowchart-arrow" aria-hidden="true"></span></li><li><button type="button" data-workflow-step="1"><span class="flow-node-icon" aria-hidden="true">◷</span><div class="flow-node-label"><strong>Undangan Prebid</strong><small>Sales</small></div></button><span class="flowchart-arrow" aria-hidden="true"></span></li><li><button type="button" data-workflow-step="2"><span class="flow-node-icon" aria-hidden="true">◎</span><div class="flow-node-label"><strong>Prebid</strong><small>Sales, Presales dan tim teknis</small></div></button><span class="flowchart-arrow" aria-hidden="true"></span></li><li><button type="button" data-workflow-step="3"><span class="flow-node-icon" aria-hidden="true">$</span><div class="flow-node-label"><strong>Permintaan Harga</strong><small>Sales, TPS dan PS</small></div></button><span class="flowchart-arrow" aria-hidden="true"></span></li><li><button type="button" data-workflow-step="4"><span class="flow-node-icon" aria-hidden="true">≡</span><div class="flow-node-label"><strong>Draf Proposal</strong><small>Presales</small></div></button><span class="flowchart-arrow" aria-hidden="true"></span></li><li><button type="button" data-workflow-step="5"><span class="flow-node-icon" aria-hidden="true">✓</span><div class="flow-node-label"><strong>Review Proposal</strong><small>Seluruh tim terkait</small></div></button><span class="flowchart-arrow" aria-hidden="true"></span></li><li class="flowchart-decision"><strong>Proposal siap dikirim?</strong><div class="flowchart-branches"><button type="button" id="workflowChartSubmit" class="flow-ready">Siap dikirim &#8594; Pengiriman</button><button type="button" id="workflowChartRevise">Perlu revisi &#8629; Draf</button></div></li><li><button type="button" data-workflow-step="6"><span class="flow-node-icon" aria-hidden="true">↗</span><div class="flow-node-label"><strong>Pengiriman Proposal</strong><small>Sales</small></div></button></li></ol>
+      <ol class="proposal-flow-steps proposal-flowchart" aria-label="Proposal workflow diagram"><li><button type="button" data-workflow-step="0" aria-current="step"><span class="flow-node-icon" aria-hidden="true">＋</span><div class="flow-node-label"><strong>Proposal Request</strong><small>Sales</small></div></button><span class="flowchart-arrow" aria-hidden="true"></span></li><li><button type="button" data-workflow-step="1"><span class="flow-node-icon" aria-hidden="true">◷</span><div class="flow-node-label"><strong>Prebid Invitation</strong><small>Sales</small></div></button><span class="flowchart-arrow" aria-hidden="true"></span></li><li><button type="button" data-workflow-step="2"><span class="flow-node-icon" aria-hidden="true">◎</span><div class="flow-node-label"><strong>Prebid</strong><small>Sales, Presales and technical team</small></div></button><span class="flowchart-arrow" aria-hidden="true"></span></li><li><button type="button" data-workflow-step="3"><span class="flow-node-icon" aria-hidden="true">$</span><div class="flow-node-label"><strong>Pricing Request</strong><small>Sales, TPS and PS</small></div></button><span class="flowchart-arrow" aria-hidden="true"></span></li><li><button type="button" data-workflow-step="4"><span class="flow-node-icon" aria-hidden="true">≡</span><div class="flow-node-label"><strong>Proposal Draft</strong><small>Presales</small></div></button><span class="flowchart-arrow" aria-hidden="true"></span></li><li><button type="button" data-workflow-step="5"><span class="flow-node-icon" aria-hidden="true">✓</span><div class="flow-node-label"><strong>Review Proposal</strong><small>All related teams</small></div></button><span class="flowchart-arrow" aria-hidden="true"></span></li><li class="flowchart-decision"><strong>Is the proposal ready to submit?</strong><div class="flowchart-branches"><button type="button" id="workflowChartSubmit" class="flow-ready">Ready to submit &#8594; Submission</button><button type="button" id="workflowChartRevise">Needs revision &#8629; Draft</button></div></li><li><button type="button" data-workflow-step="6"><span class="flow-node-icon" aria-hidden="true">↗</span><div class="flow-node-label"><strong>Proposal Submission</strong><small>Sales</small></div></button></li></ol>
       <div class="proposal-flow-card">
         <div id="proposalFlowDetail" aria-live="polite"></div>
         <div class="proposal-flow-actions">
-          <button type="button" id="proposalFlowPrev" disabled>Sebelumnya</button>
-          <button type="button" class="primary" id="proposalFlowNext">Berikutnya</button>
+          <button type="button" id="proposalFlowPrev" disabled>Previous</button>
+          <button type="button" class="primary" id="proposalFlowNext">Next</button>
         </div>
       </div>
     </div>
-    <section class="proposal-flow-pricing pf" aria-labelledby="pfTitle" style="--T:15.0s"><h2 id="pfTitle">Alur Permintaan Harga</h2><div class="pf-stage"><div class="pf-col"><div class="pf-card " style="--d:0.00s"><div class="pf-top"><span class="pf-n">1</span><span class="pf-ic" aria-hidden="true">&#128100;</span></div><b>Customer</b><div class="pf-role">Request</div><p>Submits needs and requirements to Sales.</p></div><span class="pf-arrow" style="--d:0.00s" aria-hidden="true"></span></div><div class="pf-col"><div class="pf-card " style="--d:2.50s"><div class="pf-top"><span class="pf-n">2</span><span class="pf-ic" aria-hidden="true">&#128188;</span></div><b>Sales</b><div class="pf-role">Pricing needed</div><p>Requests <b>Hardware &amp; Software</b> pricing for the customer response.</p></div><span class="pf-arrow" style="--d:2.50s" aria-hidden="true"></span></div><div class="pf-col pf-branch"><span class="pf-brlabel">Parallel requests</span><div class="pf-card " style="--d:5.00s"><div class="pf-top"><span class="pf-n">3</span><span class="pf-ic" aria-hidden="true">&#128295;</span></div><b>TPS</b><div class="pf-full">Technical Product Specialist</div><div class="pf-role">Configuration</div><p>Builds a <b>hardware and software configuration</b> and SOW to meet requirements.</p></div><div class="pf-card " style="--d:5.00s"><div class="pf-top"><span class="pf-n">3</span><span class="pf-ic" aria-hidden="true">&#127991;</span></div><b>PS</b><div class="pf-full">Product Specialist</div><div class="pf-role">Pricing</div><p>Prepares <b>hardware and software pricing</b> for the configuration.</p></div><span class="pf-arrow" style="--d:5.00s" aria-hidden="true"></span></div><div class="pf-col"><div class="pf-card " style="--d:7.50s"><div class="pf-top"><span class="pf-n">4</span><span class="pf-ic" aria-hidden="true">&#128269;</span></div><b>Presales</b><div class="pf-role">Check &amp; price</div><ul><li>Checks the configuration and SOW</li><li>Prices <b>Services</b>, based on the SOW from TPS</li></ul></div><span class="pf-arrow" style="--d:7.50s" aria-hidden="true"></span></div><div class="pf-col"><div class="pf-card " style="--d:10.00s"><div class="pf-top"><span class="pf-n">5</span><span class="pf-ic" aria-hidden="true">&#11088;</span></div><b>Presales Manager</b><div class="pf-role">Best price</div><p>Presales requests the <b>Best Price for Services</b> from the Presales Manager.</p></div><span class="pf-arrow" style="--d:10.00s" aria-hidden="true"></span></div><div class="pf-col"><div class="pf-card pf-done" style="--d:12.50s"><div class="pf-top"><span class="pf-n">6</span><span class="pf-ic" aria-hidden="true">&#10003;</span></div><b>Price Ready</b><div class="pf-role">Quotation</div><ul><li>Create quotation</li><li>Send to customer</li></ul><div class="pf-happy">Happy selling! &#127881;</div></div></div></div><div class="fd-cc"><span class="fd-ccb">CC</span> <b>Presales</b> is included at every step to ensure technical fit, complete configurations, and proposal quality.</div></section>
+    <section class="proposal-flow-pricing pf" aria-labelledby="pfTitle" style="--T:15.0s"><h2 id="pfTitle">Pricing Request Flow</h2><div class="pf-stage"><div class="pf-col"><div class="pf-card " style="--d:0.00s"><div class="pf-top"><span class="pf-n">1</span><span class="pf-ic" aria-hidden="true">&#128100;</span></div><b>Customer</b><div class="pf-role">Request</div><p>Submits needs and requirements to Sales.</p></div><span class="pf-arrow" style="--d:0.00s" aria-hidden="true"></span></div><div class="pf-col"><div class="pf-card " style="--d:2.50s"><div class="pf-top"><span class="pf-n">2</span><span class="pf-ic" aria-hidden="true">&#128188;</span></div><b>Sales</b><div class="pf-role">Pricing needed</div><p>Requests <b>Hardware &amp; Software</b> pricing for the customer response.</p></div><span class="pf-arrow" style="--d:2.50s" aria-hidden="true"></span></div><div class="pf-col pf-branch"><span class="pf-brlabel">Parallel requests</span><div class="pf-card " style="--d:5.00s"><div class="pf-top"><span class="pf-n">3</span><span class="pf-ic" aria-hidden="true">&#128295;</span></div><b>TPS</b><div class="pf-full">Technical Product Specialist</div><div class="pf-role">Configuration</div><p>Builds a <b>hardware and software configuration</b> and SOW to meet requirements.</p></div><div class="pf-card " style="--d:5.00s"><div class="pf-top"><span class="pf-n">3</span><span class="pf-ic" aria-hidden="true">&#127991;</span></div><b>PS</b><div class="pf-full">Product Specialist</div><div class="pf-role">Pricing</div><p>Prepares <b>hardware and software pricing</b> for the configuration.</p></div><span class="pf-arrow" style="--d:5.00s" aria-hidden="true"></span></div><div class="pf-col"><div class="pf-card " style="--d:7.50s"><div class="pf-top"><span class="pf-n">4</span><span class="pf-ic" aria-hidden="true">&#128269;</span></div><b>Presales</b><div class="pf-role">Check &amp; price</div><ul><li>Checks the configuration and SOW</li><li>Prices <b>Services</b>, based on the SOW from TPS</li></ul></div><span class="pf-arrow" style="--d:7.50s" aria-hidden="true"></span></div><div class="pf-col"><div class="pf-card " style="--d:10.00s"><div class="pf-top"><span class="pf-n">5</span><span class="pf-ic" aria-hidden="true">&#11088;</span></div><b>Presales Manager</b><div class="pf-role">Best price</div><p>Presales requests the <b>Best Price for Services</b> from the Presales Manager.</p></div><span class="pf-arrow" style="--d:10.00s" aria-hidden="true"></span></div><div class="pf-col"><div class="pf-card pf-done" style="--d:12.50s"><div class="pf-top"><span class="pf-n">6</span><span class="pf-ic" aria-hidden="true">&#10003;</span></div><b>Price Ready</b><div class="pf-role">Quotation</div><ul><li>Create quotation</li><li>Send to customer</li></ul><div class="pf-happy">Happy selling! &#127881;</div></div></div></div><div class="fd-cc"><span class="fd-ccb">CC</span> <b>Presales</b> is included at every step to ensure technical fit, complete configurations, and proposal quality.</div></section>
   </section>
 
   <section class="ps-sec" id="psProposal">
@@ -1943,14 +1943,14 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   </div>
 
   <div class="pg" id="pgInventaris" hidden>
-  <button class="customer-picker-trigger" id="customerPickerTrigger" type="button" aria-haspopup="dialog">Pilih Customer</button>
+  <button class="customer-picker-trigger" id="customerPickerTrigger" type="button" aria-haspopup="dialog">Select Customer</button>
   <dialog id="customerPicker" aria-labelledby="customerPickerTitle">
-    <div class="customer-picker-head"><h2 id="customerPickerTitle">Pilih Customer</h2><button id="customerPickerClose" type="button">Tutup</button></div>
+    <div class="customer-picker-head"><h2 id="customerPickerTitle">Select Customer</h2><button id="customerPickerClose" type="button">Close</button></div>
     <nav class="customer-switch" aria-label="Customer inventaris">
     <button type="button" class="customer-switch-item" data-customer-summary>Ringkasan Inventaris</button>
-    <input type="search" placeholder="Cari customer" aria-label="Cari customer di panel">
+    <input type="search" placeholder="Search customers" aria-label="Search customers in panel">
     <div class="customer-switch-list" data-customer-list></div>
-    <button type="button" class="customer-switch-item" data-customer-add hidden>+ Tambah Customer</button>
+    <button type="button" class="customer-switch-item" data-customer-add hidden>+ Add Customer</button>
     </nav>
   </dialog>
 
@@ -1960,21 +1960,21 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
         <div class="eyebrow">Asset register · Multi-customer</div>
         <h1>Inventaris Aset</h1>
       </div></div>
-      <div class="actions"><a class="btn" id="sheetLink" target="_blank" rel="noopener" hidden>Buka Google Sheets</a><button id="reloadBtn" type="button">Muat ulang</button><button id="addCustBtn" class="primary" type="button">+ Tambah Customer</button></div>
+      <div class="actions"><a class="btn" id="sheetLink" target="_blank" rel="noopener" hidden>Open Google Sheets</a><button id="reloadBtn" type="button">Reload</button><button id="addCustBtn" class="primary" type="button">+ Add Customer</button></div>
     </header>
     <div class="dsum" id="inventoryDashboardKpis" hidden>
       <div class="stat brand" data-ic="users"><span class="n" id="dCust">0</span><span class="l">Customer</span><span class="pct" id="dCustP">&nbsp;</span></div>
-      <div class="stat brand" data-ic="server"><span class="n" id="dDev">0</span><span class="l">Total perangkat</span><span class="pct" id="dDevP">&nbsp;</span></div>
-      <div class="stat bad" data-ic="shield"><span class="n" id="dWexp">0</span><span class="l">Warranty sudah habis</span><span class="pct" id="dWexpP">&nbsp;</span></div>
-      <div class="stat warn" data-ic="clock"><span class="n" id="dWsoon">0</span><span class="l">Warranty habis ≤ 90 hari</span><span class="pct" id="dWsoonP">&nbsp;</span></div>
-      <div class="stat bad" data-ic="calx"><span class="n" id="dEosl">0</span><span class="l">EOSL lewat / ≤ 180 hari</span><span class="pct" id="dEoslP">&nbsp;</span></div>
+      <div class="stat brand" data-ic="server"><span class="n" id="dDev">0</span><span class="l">Total devices</span><span class="pct" id="dDevP">&nbsp;</span></div>
+      <div class="stat bad" data-ic="shield"><span class="n" id="dWexp">0</span><span class="l">Warranty expired</span><span class="pct" id="dWexpP">&nbsp;</span></div>
+      <div class="stat warn" data-ic="clock"><span class="n" id="dWsoon">0</span><span class="l">Warranty expires ≤ 90 days</span><span class="pct" id="dWsoonP">&nbsp;</span></div>
+      <div class="stat bad" data-ic="calx"><span class="n" id="dEosl">0</span><span class="l">EOSL passed / ≤ 180 days</span><span class="pct" id="dEoslP">&nbsp;</span></div>
     </div>
     
     <div class="dhead">
       <h2>Daftar customer</h2>
-      <div class="legend"><span><i class="sw-wexp" style="background:var(--st-bad)"></i>Warranty habis</span><span><i class="sw-wsoon" style="background:var(--st-warn)"></i>≤ 90 hari</span><span><i style="background:var(--st-ok)"></i>Aktif</span><span><i style="background:var(--st-none)"></i>Belum diisi</span></div>
+      <div class="legend"><span><i class="sw-wexp" style="background:var(--st-bad)"></i>Warranty expired</span><span><i class="sw-wsoon" style="background:var(--st-warn)"></i>≤ 90 days</span><span><i style="background:var(--st-ok)"></i>Active</span><span><i style="background:var(--st-none)"></i>Not set</span></div>
     </div>
-    <div class="toolbar"><input type="search" id="cq" placeholder="Cari nama customer, kode, atau PIC…" aria-label="Cari customer"><span class="count" id="ccount"></span></div>
+    <div class="toolbar"><input type="search" id="cq" placeholder="Search customer name, code, or PIC…" aria-label="Search customers"><span class="count" id="ccount"></span></div>
     <div class="custgrid" id="crows"></div>
       <div class="empty" id="cempty">
         <div class="empty-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg></div>
@@ -1985,11 +1985,11 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   </section>
 
   <section id="viewInv" style="display:flex;flex-direction:column;gap:20px" hidden>
-  <button class="back" id="backBtn" type="button">← Semua customer</button>
+  <button class="back" id="backBtn" type="button">← All customers</button>
   <header>
     <div class="brand"><div>
       <div class="eyebrow">Inventaris aset · Warranty &amp; EOSL</div>
-      <h1 id="invTitle">Inventaris Perangkat</h1>
+      <h1 id="invTitle">Device Inventory</h1>
       <div class="custmeta" id="invMeta"></div>
     </div></div>
     <div class="actions">
@@ -2001,41 +2001,41 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
       <button id="exportXlsxBtn" type="button">Export Excel</button>
         </div>
       </details>
-      <button id="editCustBtn" type="button">Ubah Customer</button>
-      <button id="addBtn" class="primary" type="button">+ Tambah Perangkat</button>
+      <button id="editCustBtn" type="button">Edit Customer</button>
+      <button id="addBtn" class="primary" type="button">+ Add Device</button>
     </div>
   </header>
 
-  <nav class="inventory-jumps" id="inventoryJumps" aria-label="Navigasi inventaris customer"><button type="button" data-target="inventoryDevices">Perangkat</button><button type="button" data-target="inventoryRenewal">Renewal</button><button type="button" data-target="inventoryOverview">Ringkasan</button></nav>
+  <nav class="inventory-jumps" id="inventoryJumps" aria-label="Customer inventory navigation"><button type="button" data-target="inventoryDevices">Devices</button><button type="button" data-target="inventoryRenewal">Renewal</button><button type="button" data-target="inventoryOverview">Overview</button></nav>
   
 
   
 
   <div class="summary" id="summary">
-    <button class="stat brand" data-ic="server" data-f="all" type="button"><span class="n" id="sTotal">0</span><span class="l">Total perangkat</span><span class="pct" id="sTotalP">&nbsp;</span></button>
-    <button class="stat warn" data-ic="clock" data-f="wsoon" type="button"><span class="n" id="sWsoon">0</span><span class="l">Warranty habis ≤ 90 hari</span><span class="pct" id="sWsoonP">&nbsp;</span></button>
-    <button class="stat bad" data-ic="shield" data-f="wexp" type="button"><span class="n" id="sWexp">0</span><span class="l">Warranty sudah habis</span><span class="pct" id="sWexpP">&nbsp;</span></button>
-    <button class="stat bad" data-ic="calx" data-f="eosl" type="button"><span class="n" id="sEosl">0</span><span class="l">EOSL lewat / ≤ 180 hari</span><span class="pct" id="sEoslP">&nbsp;</span></button>
+    <button class="stat brand" data-ic="server" data-f="all" type="button"><span class="n" id="sTotal">0</span><span class="l">Total devices</span><span class="pct" id="sTotalP">&nbsp;</span></button>
+    <button class="stat warn" data-ic="clock" data-f="wsoon" type="button"><span class="n" id="sWsoon">0</span><span class="l">Warranty expires ≤ 90 days</span><span class="pct" id="sWsoonP">&nbsp;</span></button>
+    <button class="stat bad" data-ic="shield" data-f="wexp" type="button"><span class="n" id="sWexp">0</span><span class="l">Warranty expired</span><span class="pct" id="sWexpP">&nbsp;</span></button>
+    <button class="stat bad" data-ic="calx" data-f="eosl" type="button"><span class="n" id="sEosl">0</span><span class="l">EOSL passed / ≤ 180 days</span><span class="pct" id="sEoslP">&nbsp;</span></button>
   </div>
 
   
   
 
   <section class="inventory-analytics"><h2 id="inventoryOverview" tabindex="-1">Ringkasan Customer &amp; Warranty</h2><section class="custprofile" id="custProfile"></section><div class="charts" id="invCharts"></div></section>
-  <h2 id="inventoryDevices" tabindex="-1">Daftar Perangkat</h2>
-  <nav class="tabs" id="tabs" role="tablist" aria-label="Lokasi"></nav>
+  <h2 id="inventoryDevices" tabindex="-1">Device List</h2>
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Location"></nav>
   <div class="toolbar">
-    <input type="search" id="q" placeholder="Cari serial number, tipe, brand, model, hostname…" aria-label="Cari">
-    <select id="fType" aria-label="Filter tipe"><option value="">Semua tipe</option></select>
-    <select id="fBrand" aria-label="Filter brand"><option value="">Semua brand</option></select>
+    <input type="search" id="q" placeholder="Search serial number, type, brand, model, hostname…" aria-label="Search">
+    <select id="fType" aria-label="Filter type"><option value="">All types</option></select>
+    <select id="fBrand" aria-label="Filter brand"><option value="">All brands</option></select>
     <select id="fStatus" aria-label="Filter status">
-      <option value="all">Semua status</option>
-      <option value="attn">Perlu perhatian</option>
-      <option value="wsoon">Warranty ≤ 90 hari</option>
+      <option value="all">All statuses</option>
+      <option value="attn">Needs attention</option>
+      <option value="wsoon">Warranty ≤ 90 days</option>
       <option value="wexp">Warranty habis</option>
-      <option value="eosl">EOSL lewat / ≤ 180 hari</option>
+      <option value="eosl">EOSL passed / ≤ 180 days</option>
       <option value="ok">Aman</option>
-      <option value="dism">Dismantle / nonaktif</option>
+      <option value="dism">Dismantled / inactive</option>
     </select>
     <span class="count" id="count"></span>
   </div>
@@ -2044,9 +2044,9 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     <table>
       <thead><tr>
         <th data-sort="sn">Serial Number <span class="arr"></span></th>
-        <th data-sort="type">Tipe Perangkat <span class="arr"></span></th>
+        <th data-sort="type">Device Type <span class="arr"></span></th>
         <th data-sort="brand">Brand / Model <span class="arr"></span></th>
-        <th data-sort="note">Keterangan / Lokasi <span class="arr"></span></th>
+        <th data-sort="note">Description / Location <span class="arr"></span></th>
         <th data-sort="warranty">Warranty s/d <span class="arr"></span></th>
         <th data-sort="eosl">EOSL <span class="arr"></span></th>
         <th data-sort="status">Status <span class="arr"></span></th>
@@ -2057,18 +2057,18 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     <div class="empty" id="empty">
       <div class="empty-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 13h7M7 16h4"/></svg></div>
       <strong id="emptyTitle">Memuat inventaris…</strong>
-      <span id="emptyText">Data perangkat akan tampil di sini: serial number, tipe, brand, tanggal warranty dan EOSL.</span>
+      <span id="emptyText">Device data will appear here: serial number, type, brand, warranty and EOSL dates.</span>
     </div>
   </div>
 
   <div class="pager" id="pager">
-    <div class="ps"><label for="pageSize">Tampilkan</label>
+    <div class="ps"><label for="pageSize">Show</label>
       <select id="pageSize"><option value="10">10</option><option value="25">25</option><option value="50">50</option></select>
-      <span>item per halSupported</span></div>
+      <span>item per page</span></div>
     <span class="info" id="pageInfo"></span>
     <div class="pn" id="pageNav"></div>
   </div>
-  <section class="inventory-analytics"><h2 id="inventoryRenewal" tabindex="-1">Renewal</h2><section class="rnwl" id="renewalBox"></section><p id="inventoryRenewalEmpty" class="lead">Belum ada perangkat yang masuk pipeline renewal.</p></section>
+  <section class="inventory-analytics"><h2 id="inventoryRenewal" tabindex="-1">Renewal</h2><section class="rnwl" id="renewalBox"></section><p id="inventoryRenewalEmpty" class="lead">No devices are in the renewal pipeline yet.</p></section>
   </section>
   </div>
   <footer class="sitefoot" id="siteFoot"></footer>
@@ -2077,45 +2077,45 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
 
 <div class="overlay" id="custOv" hidden>
   <form class="modal" id="custForm" novalidate>
-    <h2 id="custTitle">Tambah Customer</h2>
-    <div class="field"><label for="cName">Nama customer *</label><input id="cName" required autocomplete="off"></div>
+    <h2 id="custTitle">Add Customer</h2>
+    <div class="field"><label for="cName">Customer name *</label><input id="cName" required autocomplete="off"></div>
     <div class="grid2">
       <div class="field"><label for="cCode">Kode / singkatan</label><input id="cCode" autocomplete="off" placeholder="Contoh: IP"></div>
-      <div class="field"><label for="cPic">PIC customer</label><input id="cPic" autocomplete="off" placeholder="Nama PIC"></div>
+      <div class="field"><label for="cPic">Customer PIC</label><input id="cPic" autocomplete="off" placeholder="PIC name"></div>
     </div>
     <div class="grid2">
-      <div class="field"><label for="cNote">Catatan / Manager Sales</label><input id="cNote" autocomplete="off" placeholder="nama@berca.co.id"></div>
-      <div class="field"><label for="cPresales">PIC Presales (email)</label><input id="cPresales" type="text" inputmode="email" autocomplete="off" placeholder="nama@berca.co.id"></div>
+      <div class="field"><label for="cNote">Notes / Sales Manager</label><input id="cNote" autocomplete="off" placeholder="name@berca.co.id"></div>
+      <div class="field"><label for="cPresales">Presales PIC (email)</label><input id="cPresales" type="text" inputmode="email" autocomplete="off" placeholder="name@berca.co.id"></div>
     </div>
-    <div class="hint" style="font-size:12px;color:var(--muted);margin:-4px 0 8px">Notifikasi email warranty/EOSL dikirim ke email di kolom <b>Catatan / Manager Sales</b> dan <b>PIC Presales</b>. Lebih dari satu email: pisahkan dengan koma.</div>
+    <div class="hint" style="font-size:12px;color:var(--muted);margin:-4px 0 8px">Warranty/EOSL email notifications are sent to the emails in the <b>Notes / Sales Manager</b> and <b>Presales PIC</b> fields. For more than one email, separate them with commas.</div>
     <div class="err" id="custErr"></div>
     <div class="mfoot">
       <button type="button" class="danger" id="custDelBtn" hidden>Delete customer</button>
       <span style="flex:1"></span>
-      <button type="button" id="custCancel">Batal</button>
-      <button type="submit" class="primary" id="custSave">Simpan</button>
+      <button type="button" id="custCancel">Cancel</button>
+      <button type="submit" class="primary" id="custSave">Save</button>
     </div>
   </form>
 </div>
 
 <div class="overlay" id="formOv" hidden>
   <form class="modal" id="form" novalidate>
-    <h2 id="formTitle">Tambah Perangkat</h2>
+    <h2 id="formTitle">Add Device</h2>
     <div class="field"><label for="iSn">Serial Number *</label><input id="iSn" required autocomplete="off" spellcheck="false"></div>
     <div class="grid2">
-      <div class="field"><label for="iType">Tipe Perangkat *</label><input id="iType" list="typeList" required placeholder="Server, Storage, Switch…"></div>
+      <div class="field"><label for="iType">Device Type *</label><input id="iType" list="typeList" required placeholder="Server, Storage, Switch…"></div>
       <div class="field"><label for="iBrand">Brand *</label><input id="iBrand" list="brandList" required placeholder="Dell, HPE, Cisco…"></div>
       <div class="field"><label for="iModel">Model</label><input id="iModel" placeholder="DL380 Gen10, PowerEdge R750…"></div>
-      <div class="field"><label for="iNote">Keterangan</label><input id="iNote" placeholder="Hostname / lokasi"></div>
-      <div class="field"><label for="iLoc">Lokasi</label><input id="iLoc" list="locList" placeholder="DC-Gandul, DRC-Batam…"></div>
+      <div class="field"><label for="iNote">Description</label><input id="iNote" placeholder="Hostname / location"></div>
+      <div class="field"><label for="iLoc">Location</label><input id="iLoc" list="locList" placeholder="DC-Gandul, DRC-Batam…"></div>
       <div class="field"></div>
       <div class="field"><label for="iWar">Warranty berakhir</label><input id="iWar" type="date"></div>
       <div class="field"><label for="iEosl">EOSL</label><input id="iEosl" type="date"></div>
     </div>
     <div class="err" id="formErr"></div>
     <div class="mfoot">
-      <button type="button" id="cancelBtn">Batal</button>
-      <button type="submit" class="primary" id="saveBtn">Simpan</button>
+      <button type="button" id="cancelBtn">Cancel</button>
+      <button type="submit" class="primary" id="saveBtn">Save</button>
     </div>
   </form>
 </div>
@@ -2123,23 +2123,23 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
 <div class="overlay" id="admOv" hidden>
   <div class="modal" style="width:min(640px,100%)" role="dialog" aria-labelledby="admTitle">
     <h2 id="admTitle">Kelola Admin Customer</h2>
-    <p style="margin:0;color:var(--muted);font-size:13px">Admin customer bisa menambah/mengubah/menghapus perangkat, mengubah data customer, serta melihat Serial Number &amp; PIC <b>hanya</b> untuk customer yang dipilih. Login memakai akun Google @berca.co.id.</p>
+    <p style="margin:0;color:var(--muted);font-size:13px">Customer admins can add, edit, and delete devices, edit customer data, and view Serial Numbers &amp; PIC <b>only</b> for their assigned customers. Sign-in uses a Google @berca.co.id account.</p>
     <div class="admlist" id="admList"></div>
     <form id="admForm" novalidate>
-      <div class="field"><label for="admEmail">Email admin (@berca.co.id)</label><input id="admEmail" type="email" autocomplete="off" placeholder="nama@berca.co.id"></div>
-      <div class="field"><label>Customer yang boleh dikelola</label><div class="admcust" id="admCust"></div></div>
+      <div class="field"><label for="admEmail">Admin email (@berca.co.id)</label><input id="admEmail" type="email" autocomplete="off" placeholder="name@berca.co.id"></div>
+      <div class="field"><label>Customers this admin can manage</label><div class="admcust" id="admCust"></div></div>
       <div class="err" id="admErr"></div>
-      <div class="mfoot"><button type="button" id="admClose">Tutup</button><button type="submit" class="primary" id="admSave">Simpan admin</button></div>
+      <div class="mfoot"><button type="button" id="admClose">Close</button><button type="submit" class="primary" id="admSave">Save admin</button></div>
     </form>
   </div>
 </div>
 
 <div class="overlay" id="delOv" hidden>
   <div class="modal" role="alertdialog" aria-labelledby="delTitle">
-    <h2 id="delTitle">Delete perangkat?</h2>
-    <p style="margin:0;color:var(--muted)">Perangkat <span class="sn" id="delSn"></span> akan dihapus dari inventaris.</p>
+    <h2 id="delTitle">Delete device?</h2>
+    <p style="margin:0;color:var(--muted)">Device <span class="sn" id="delSn"></span> will be removed from the inventory.</p>
     <div class="mfoot">
-      <button type="button" id="delCancel">Batal</button>
+      <button type="button" id="delCancel">Cancel</button>
       <button type="button" class="danger" id="delOk">Delete</button>
     </div>
   </div>
@@ -2187,8 +2187,8 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   const inLoc=(i,l)=>!l||(l===NOLOC?!i.location:i.location===l);
   function renderTabs(){
     const locs=[...new Set(items.map(i=>i.location).filter(Boolean))].sort();
-    const tabs=[["","Semua lokasi",items.length]].concat(locs.map(l=>[l,l,items.filter(i=>i.location===l).length]));
-    const none=items.filter(i=>!i.location).length; if(none) tabs.push([NOLOC,"Tanpa lokasi",none]);
+    const tabs=[["","All locations",items.length]].concat(locs.map(l=>[l,l,items.filter(i=>i.location===l).length]));
+    const none=items.filter(i=>!i.location).length; if(none) tabs.push([NOLOC,"No location",none]);
     if(loc&&!tabs.some(t=>t[0]===loc)) loc="";
     $("tabs").innerHTML=tabs.map(t=>'<button class="tab" type="button" role="tab" data-loc="'+esc(t[0])+'" aria-selected="'+(t[0]===loc)+'">'+esc(t[1])+'<span class="c">'+t[2]+'</span></button>').join("");
   }
@@ -2196,9 +2196,9 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
   function days(iso){ if(!iso) return null; const d=new Date(iso+"T00:00:00"); if(isNaN(d)) return null; return Math.round((d-today())/864e5); }
-  function fmt(iso){ if(!iso) return "—"; const d=new Date(iso+"T00:00:00"); if(isNaN(d)) return esc(iso); return d.toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"}); }
+  function fmt(iso){ if(!iso) return "—"; const d=new Date(iso+"T00:00:00"); if(isNaN(d)) return esc(iso); return d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}); }
   function level(dd,soon){ if(dd===null) return "none"; if(dd<0) return "bad"; if(dd<=soon) return "warn"; return "ok"; }
-  function rel(dd){ if(dd===null) return ""; if(dd<0) return "lewat "+(-dd)+" hari"; if(dd===0) return "hari ini"; if(dd<=730) return dd+" hari lagi"; return Math.round(dd/365*10)/10+" tahun lagi"; }
+  function rel(dd){ if(dd===null) return ""; if(dd<0) return "passed "+(-dd)+" days ago"; if(dd===0) return "today"; if(dd<=730) return "in "+dd+" days"; return Math.round(dd/365*10)/10+" years from now"; }
   // ---- abaikan notifikasi End of Warranty (warranty sudah diperpanjang) ----
   const NOTIF_DAYS=150;
   const canEdit=cid=>isMaster||editable.has(cid);
@@ -2207,8 +2207,8 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   const isMuted=it=>!!it.muteWarranty&&it.muteWarranty===it.warranty;
   const isDism=it=>!!it.dismantled;
   function muteCell(it,dw){
-    if(isMuted(it)) return '<span class="mute on" title="Email End of Warranty untuk tanggal ini tidak dikirim">Diperpanjang \u00b7 notif off</span>'+(canEdit(it.customerId)?'<button class="link mutebtn" type="button" data-mute="'+esc(it.id)+'" data-on="0">Activate notif</button>':'');
-    if(canEdit(it.customerId)&&dw!==null&&dw>=0&&dw<=NOTIF_DAYS) return '<button class="link mutebtn" type="button" data-mute="'+esc(it.id)+'" data-on="1" title="Warranty sudah diperbarui: jangan kirim email notifikasi untuk perangkat ini">Abaikan notif</button>';
+    if(isMuted(it)) return '<span class="mute on" title="End of Warranty email for this date will not be sent">Extended \u00b7 notifications off</span>'+(canEdit(it.customerId)?'<button class="link mutebtn" type="button" data-mute="'+esc(it.id)+'" data-on="0">Enable notifications</button>':'');
+    if(canEdit(it.customerId)&&dw!==null&&dw>=0&&dw<=NOTIF_DAYS) return '<button class="link mutebtn" type="button" data-mute="'+esc(it.id)+'" data-on="1" title="Warranty has been renewed: do not send notification emails for this device">Mute notifications</button>';
     return '';
   }
   function stat(it){
@@ -2219,7 +2219,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     else if(w==="bad"){lvl="bad";label="Warranty habis";}
     else if(e==="warn"){lvl="warn";label="EOSL dekat";}
     else if(w==="warn"){lvl="warn";label="Warranty dekat";}
-    else if(w==="none"&&e==="none"){lvl="none";label="Belum diisi";}
+    else if(w==="none"&&e==="none"){lvl="none";label="Not set";}
     else {lvl="ok";label="Aman";}
     return {w,e,lvl,label,rank:rank[lvl]};
   }
@@ -2264,65 +2264,65 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   };
   function typeIcon(t){ t=String(t||"").toLowerCase(); const k=/hci|simplivity/.test(t)?"hci":/san/.test(t)?"switch":/switch|router|firewall|balancer/.test(t)?"switch":/backup|cohesity/.test(t)?"backup":/tape/.test(t)?"tape":/storage|nas|san/.test(t)?"storage":/server|blade/.test(t)?"server":"other";
     return '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+ICONS[k]+'</svg>'; }
-  const pctTxt=(v,n)=>n?Math.round(v/n*100)+"% dari total":"\u00a0";
-  const STC=[["Habis","var(--st-bad)","wexp"],["\u2264 90 hari","var(--st-warn)","wsoon"],["Aktif","var(--st-ok)","wok"],["Belum diisi","var(--st-none)","wnone"]];
+  const pctTxt=(v,n)=>n?Math.round(v/n*100)+"% of total":"\u00a0";
+  const STC=[["Expired","var(--st-bad)","wexp"],["\u2264 90 days","var(--st-warn)","wsoon"],["Active","var(--st-ok)","wok"],["Not set","var(--st-none)","wnone"]];
   function donut(st){
     const n=st.n||0, R=54, C=2*Math.PI*R; let off=0, segs="";
     const parts=STC.map(([l,c,k])=>[l,c,st[k]||0,k]).filter(x=>x[2]>0);
     const gap=parts.length>1?3:0;
-    for(const [l,c,v,k] of parts){ const len=v/n*C; const strk=k==="wexp"?'url(#dpw)':k==="wsoon"?'url(#dps)':c; segs+='<circle r="'+R+'" cx="70" cy="70" fill="none" stroke="'+strk+'" stroke-width="18" stroke-dasharray="'+Math.max(len-gap,1)+' '+(C-Math.max(len-gap,1))+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 70 70)" data-tip="'+l+': '+v+' perangkat ('+Math.round(v/n*100)+'%)"/>'; off+=len; }
+    for(const [l,c,v,k] of parts){ const len=v/n*C; const strk=k==="wexp"?'url(#dpw)':k==="wsoon"?'url(#dps)':c; segs+='<circle r="'+R+'" cx="70" cy="70" fill="none" stroke="'+strk+'" stroke-width="18" stroke-dasharray="'+Math.max(len-gap,1)+' '+(C-Math.max(len-gap,1))+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 70 70)" data-tip="'+l+': '+v+' devices ('+Math.round(v/n*100)+'%)"/>'; off+=len; }
     if(!n) segs='<circle r="'+R+'" cx="70" cy="70" fill="none" stroke="var(--st-none)" stroke-width="18"/>';
     const DEFS='<defs><pattern id="dpw" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="var(--st-bad)"/><rect width="2.2" height="5" fill="rgba(255,255,255,.55)"/></pattern><pattern id="dps" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><rect width="5" height="5" fill="var(--st-warn)"/><rect width="1.8" height="5" fill="rgba(255,255,255,.5)"/></pattern></defs>';
     const lg=STC.map(([l,c,k])=>'<div><i class="sw-'+k+'" style="background:'+c+'"></i>'+l+'<b>'+(st[k]||0)+'</b><em>'+(n?Math.round((st[k]||0)/n*100)+"%":"")+'</em></div>').join("");
-    return '<div class="card"><h3>Status warranty</h3><div class="sub">Semua perangkat dalam tampilan ini</div><div class="donut"><svg viewBox="0 0 140 140" role="img" aria-label="Status warranty">'+DEFS+segs+'<text x="70" y="70" text-anchor="middle" class="ct">'+n+'</text><text x="70" y="88" text-anchor="middle" class="cl">PERANGKAT</text></svg><div class="lg">'+lg+'</div></div></div>';
+    return '<div class="card"><h3>Warranty status</h3><div class="sub">All devices in this view</div><div class="donut"><svg viewBox="0 0 140 140" role="img" aria-label="Warranty status">'+DEFS+segs+'<text x="70" y="70" text-anchor="middle" class="ct">'+n+'</text><text x="70" y="88" text-anchor="middle" class="cl">DEVICES</text></svg><div class="lg">'+lg+'</div></div></div>';
   }
   function byGroup(list,key,title,sub){
-    const g={}; for(const i of list){ const k=i[key]||"(kosong)"; (g[k]=g[k]||[]).push(i); }
+    const g={}; for(const i of list){ const k=i[key]||"(empty)"; (g[k]=g[k]||[]).push(i); }
     const rows=Object.entries(g).map(([k,v])=>[k,stats(v)]).sort((a,b)=>b[1].n-a[1].n).slice(0,8);
     const html=rows.map(([k,s])=>'<div class="row"><span class="nm" title="'+esc(k)+'">'+esc(k)+'</span><div class="bar">'+STC.filter(x=>s[x[2]]).map(([l,c,f])=>'<span class="sg-'+f+'" style="flex:'+s[f]+';background:'+c+'" data-tip="'+esc(k)+' \u2014 '+l+': '+s[f]+'"></span>').join("")+'</div><span class="v">'+s.n+'</span></div>').join("");
-    return '<div class="card"><h3>'+title+'</h3><div class="sub">'+sub+'</div><div class="hb">'+(html||'<span class="empty-sm">Belum ada data</span>')+'</div></div>';
+    return '<div class="card"><h3>'+title+'</h3><div class="sub">'+sub+'</div><div class="hb">'+(html||'<span class="empty-sm">No data yet</span>')+'</div></div>';
   }
   function timeline(list,field,title){
-    field=field||"warranty"; title=title||"Warranty berakhir 12 bulan ke depan";
+    field=field||"warranty"; title=title||"Warranty expiring in the next 12 months";
     const now=new Date(); now.setDate(1); now.setHours(0,0,0,0);
     const months=[...Array(12)].map((_,k)=>new Date(now.getFullYear(),now.getMonth()+k,1));
     const cnt=months.map(()=>[]);
     for(const i of list){ const val=i[field]; if(!val) continue; const d=new Date(val+"T00:00:00"); if(isNaN(d)) continue; const k=(d.getFullYear()-now.getFullYear())*12+d.getMonth()-now.getMonth(); if(k>=0&&k<12) cnt[k].push(i); }
     const max=Math.max(1,...cnt.map(c=>c.length)); const mi=cnt.findIndex(c=>c.length===max&&max>0);
     const total=cnt.reduce((a,c)=>a+c.length,0);
-    const fm=d=>d.toLocaleDateString("id-ID",{month:"short"})+" "+String(d.getFullYear()).slice(2);
+    const fm=d=>d.toLocaleDateString("en-GB",{month:"short"})+" "+String(d.getFullYear()).slice(2);
     const bars=cnt.map((c,k)=>{ const ex=c.slice(0,6).map(i=>i.sn+(i.note?" ("+i.note+")":"")).join("\n")+(c.length>6?"\n+"+(c.length-6)+" lainnya":"");
-      return '<div class="c'+(c.length?'':' z')+(field==="eosl"?' e':'')+'" data-tip="'+esc(fm(months[k])+": "+c.length+" perangkat"+(c.length?"\n"+ex:""))+'">'+(k===mi?'<span class="lab">'+c.length+'</span>':'')+'<b style="height:'+(c.length/max*100)+'%"></b></div>'; }).join("");
-    return '<div class="card"><h3>'+title+'</h3><div class="sub">'+total+' perangkat \u00b7 arahkan kursor ke batang untuk detail</div><div class="tl">'+bars+'</div><div class="tlx">'+months.map((m,k)=>'<span>'+m.toLocaleDateString("id-ID",{month:"short"})+((k===0||m.getMonth()===0)?'<i>'+m.getFullYear()+'</i>':'')+'</span>').join("")+'</div></div>';
+      return '<div class="c'+(c.length?'':' z')+(field==="eosl"?' e':'')+'" data-tip="'+esc(fm(months[k])+": "+c.length+" devices"+(c.length?"\n"+ex:""))+'">'+(k===mi?'<span class="lab">'+c.length+'</span>':'')+'<b style="height:'+(c.length/max*100)+'%"></b></div>'; }).join("");
+    return '<div class="card"><h3>'+title+'</h3><div class="sub">'+total+' devices \u00b7 hover over a bar for details</div><div class="tl">'+bars+'</div><div class="tlx">'+months.map((m,k)=>'<span>'+m.toLocaleDateString("en-GB",{month:"short"})+((k===0||m.getMonth()===0)?'<i>'+m.getFullYear()+'</i>':'')+'</span>').join("")+'</div></div>';
   }
   function expiring(list,multi){
     const H=90;
     const rows=list.map(i=>({i,d:days(i.warranty)})).filter(x=>x.d!==null&&x.d<=H).sort((a,b)=>a.d-b.d);
     const body=rows.length?rows.slice(0,8).map(({i,d})=>{ const cls=d<=30?'bad':'warn'; const sub=(multi?i.customerName:i.location)||''; 
-      return '<li><div class="ex-l"><span class="ex-sn">'+esc(i.sn)+'</span><span class="ex-c">'+esc([i.type,i.brand].filter(Boolean).join(" \u00b7 "))+(sub?' \u2014 '+esc(sub):'')+'</span></div><span class="ex-d '+cls+'">'+rel(d)+'</span></li>'; }).join(""):'<li class="ex-none">Tidak ada perangkat yang warranty-nya berakhir \u2264 90 hari.</li>';
-    const more=rows.length>8?'<div class="sub">+'+(rows.length-8)+' perangkat lainnya</div>':'';
-    return '<div class="card"><h3>Segera berakhir (warranty \u2264 90 hari)</h3><div class="sub">'+rows.length+' perangkat</div><ul class="exlist">'+body+'</ul>'+more+'</div>';
+      return '<li><div class="ex-l"><span class="ex-sn">'+esc(i.sn)+'</span><span class="ex-c">'+esc([i.type,i.brand].filter(Boolean).join(" \u00b7 "))+(sub?' \u2014 '+esc(sub):'')+'</span></div><span class="ex-d '+cls+'">'+rel(d)+'</span></li>'; }).join(""):'<li class="ex-none">No devices with warranty expiring within 90 days.</li>';
+    const more=rows.length>8?'<div class="sub">+'+(rows.length-8)+' more devices</div>':'';
+    return '<div class="card"><h3>Expiring soon (warranty \u2264 90 days)</h3><div class="sub">'+rows.length+' devices</div><ul class="exlist">'+body+'</ul>'+more+'</div>';
   }
   function renderDashCharts(el,list,groupKey,groupTitle){
     el.innerHTML=donut(stats(list))
-      +byGroup(list,groupKey,groupTitle,"Jumlah perangkat & status warranty")
-      +byGroup(list,"brand","Per brand / vendor","Jumlah perangkat per vendor")
-      +timeline(list,"warranty","Warranty berakhir 12 bulan ke depan")
-      +timeline(list,"eosl","EOSL berakhir 12 bulan ke depan")
+      +byGroup(list,groupKey,groupTitle,"Device count & warranty status")
+      +byGroup(list,"brand","Per brand / vendor","Device count per vendor")
+      +timeline(list,"warranty","Warranty expiring in the next 12 months")
+      +timeline(list,"eosl","EOSL expiring in the next 12 months")
       +expiring(list,list.some(i=>i.customerName));
   }
   function renderCharts(el,list,groupKey,groupTitle){
-    el.innerHTML=donut(stats(list))+byGroup(list,groupKey,groupTitle,"Jumlah perangkat & status warranty")+timeline(list);
+    el.innerHTML=donut(stats(list))+byGroup(list,groupKey,groupTitle,"Device count & warranty status")+timeline(list);
   }
   const tipEl=document.createElement("div"); tipEl.className="tip"; tipEl.hidden=true; document.body.appendChild(tipEl);
   document.addEventListener("mouseover",e=>{ const t=e.target.closest("[data-tip]"); if(!t){ tipEl.hidden=true; return; } tipEl.textContent=t.getAttribute("data-tip"); tipEl.hidden=false; });
   document.addEventListener("mousemove",e=>{ if(tipEl.hidden) return; const w=tipEl.offsetWidth,h=tipEl.offsetHeight; tipEl.style.left=Math.min(innerWidth-w-8,e.clientX+12)+"px"; tipEl.style.top=Math.max(8,e.clientY-h-10)+"px"; });
 
   const REDUCE=window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)").matches;
-  let ANIM=!REDUCE;   // true hanya saat masuk halSupported (navTo), bukan saat auto-refresh
+  let ANIM=!REDUCE;   // true only when entering the page (navTo), not on auto-refresh
   function animNum(el,to){ to=+to||0; if(!el) return; if(!ANIM||REDUCE||to<=0){ el.textContent=to; return; } const dur=650,t0=performance.now(); (function s(t){ const k=Math.min(1,(t-t0)/dur); el.textContent=Math.round(to*(1-Math.pow(1-k,3))); if(k<1)requestAnimationFrame(s); })(t0); }
   function playAnim(view){ if(!view||!ANIM||REDUCE) return; ANIM=false; let i=0; view.querySelectorAll(".dsum .stat,.summary .stat,.charts .card,.custgrid .ccard").forEach(el=>el.style.setProperty("--i",i++)); view.classList.remove("animin"); void view.offsetWidth; view.classList.add("animin"); setTimeout(()=>view.classList.remove("animin"),1500); }
-  const RSTAT=[["","Belum ditindak","none"],["contacted","Dihubungi","warn"],["quoting","Quote terkirim","warn"],["po","Menunggu PO","warn"],["won","Menang","ok"],["lost","Batal","bad"]];
+  const RSTAT=[["","Not actioned","none"],["contacted","Contacted","warn"],["quoting","Quote sent","warn"],["po","Awaiting PO","warn"],["won","Won","ok"],["lost","Cancelled","bad"]];
   const RLABEL=Object.fromEntries(RSTAT.map(r=>[r[0],r[1]]));
   const RWIN=180;
   function renderProfile(){
@@ -2338,9 +2338,9 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     const row=(lbl,val)=>val?'<div class="pcrow"><span class="pclbl">'+lbl+'</span><span class="pcval">'+esc(val)+'</span></div>':'';
     const contacts=row("Customer PIC",c.pic)+row("Sales / Manager",c.note)+row("Presales PIC",c.presales);
     el.innerHTML='<div class="pcard">'+
-      '<div class="pcol"><div class="pc-h">Kontak &amp; PIC</div>'+(contacts||'<div class="sub">Belum ada kontak — klik “Ubah Customer” untuk mengisi.</div>')+'</div>'+
-      '<div class="pcol"><div class="pc-h">Installed base</div><div class="pc-big">'+dev.length+' <span>perangkat</span> · '+locs.size+' <span>lokasi</span></div><div class="pbchips">'+brandChips+'</div></div>'+
-      '<div class="pcol"><div class="pc-h">'+(next?'Garansi berikutnya':overdue.length?'Garansi sudah lewat':'Jatuh tempo garansi')+'</div>'+(next?'<div class="pc-near '+(next.n<=30?'warn':'')+'"><b>'+esc(next.d.sn)+'</b><span>'+fmt(next.d.warranty)+' · '+rel(next.n)+'</span></div>'+(overdue.length?'<div class="sub">'+overdue.length+' garansi sudah lewat</div>':''):(overdue.length?'<div class="pc-near bad"><b>'+esc(overdue[0].d.sn)+'</b><span>'+fmt(overdue[0].d.warranty)+' · '+rel(overdue[0].n)+'</span></div><div class="sub">'+overdue.length+' garansi sudah lewat</div>':'<div class="sub">Tidak ada jatuh tempo dalam '+RWIN+' hari ke depan.</div>'))+'</div>'+ 
+      '<div class="pcol"><div class="pc-h">Kontak &amp; PIC</div>'+(contacts||'<div class="sub">No contacts yet — click “Edit Customer” to add them.</div>')+'</div>'+
+      '<div class="pcol"><div class="pc-h">Installed base</div><div class="pc-big">'+dev.length+' <span>devices</span> · '+locs.size+' <span>locations</span></div><div class="pbchips">'+brandChips+'</div></div>'+
+      '<div class="pcol"><div class="pc-h">'+(next?'Next warranty expiry':overdue.length?'Warranty already expired':'Warranty due')+'</div>'+(next?'<div class="pc-near '+(next.n<=30?'warn':'')+'"><b>'+esc(next.d.sn)+'</b><span>'+fmt(next.d.warranty)+' · '+rel(next.n)+'</span></div>'+(overdue.length?'<div class="sub">'+overdue.length+' warranties already expired</div>':''):(overdue.length?'<div class="pc-near bad"><b>'+esc(overdue[0].d.sn)+'</b><span>'+fmt(overdue[0].d.warranty)+' · '+rel(overdue[0].n)+'</span></div><div class="sub">'+overdue.length+' warranties already expired</div>':'<div class="sub">Nothing due in the next '+RWIN+' days.</div>'))+'</div>'+ 
       '</div>';
   }
   $("inventoryJumps").addEventListener("click",event=>{
@@ -2365,48 +2365,48 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     const ordered=open.concat(done);
     const rows=ordered.slice(0,100).map(({i,d})=>{
       const st=i.renewalStatus||"";
-      const sel=ce?'<select class="rsel" data-rid="'+esc(i.id)+'">'+RSTAT.map(([k,l])=>'<option value="'+k+'"'+(k===st?' selected':'')+'>'+esc(l)+'</option>').join("")+'</select>':'<span class="chip '+(st==="won"?"ok":st==="lost"?"none":st?"warn":"bad")+'">'+esc(RLABEL[st]||"Belum ditindak")+'</span>';
+      const sel=ce?'<select class="rsel" data-rid="'+esc(i.id)+'">'+RSTAT.map(([k,l])=>'<option value="'+k+'"'+(k===st?' selected':'')+'>'+esc(l)+'</option>').join("")+'</select>':'<span class="chip '+(st==="won"?"ok":st==="lost"?"none":st?"warn":"bad")+'">'+esc(RLABEL[st]||"Not actioned")+'</span>';
       const own=ce?'<input class="rown" data-rid="'+esc(i.id)+'" value="'+esc(i.renewalOwner||"")+'" placeholder="PIC" autocomplete="off">':(i.renewalOwner?'<span class="rown-s">'+esc(i.renewalOwner)+'</span>':'');
       const cls=d<0?'bad':d<=30?'warn':'';
       return '<tr><td class="r-sn"><b>'+esc(i.sn)+'</b><span class="sub">'+esc([i.type,i.brand,i.model].filter(Boolean).join(" · "))+'</span></td><td>'+esc(i.note||i.location||"")+'</td><td class="r-w"><b>'+fmt(i.warranty)+'</b><span class="sub '+cls+'">'+rel(d)+'</span></td><td class="r-st">'+sel+'</td><td class="r-ow">'+own+'</td></tr>';
     }).join("");
-    const more=ordered.length>100?'<div class="sub">+'+(ordered.length-100)+' perangkat lagi</div>':'';
-    el.innerHTML='<div class="pghead ps-head" style="margin-bottom:2px"><div><div class="eyebrow">Action · '+RWIN+' hari</div><h2 class="sech">Pipeline renewal</h2><p class="lead">Perangkat '+esc((custById(curCust)||{}).name||"")+' yang warranty-nya sudah atau akan habis dalam '+RWIN+' hari — lacak tindak lanjut perpanjangan.</p></div></div><div class="rpills">'+pills+'</div><div class="tablebox"><table class="rtbl"><thead><tr><th>Perangkat</th><th>Keterangan / Lokasi</th><th>Warranty</th><th>Status renewal</th><th>PIC</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+more;
+    const more=ordered.length>100?'<div class="sub">+'+(ordered.length-100)+' more devices</div>':'';
+    el.innerHTML='<div class="pghead ps-head" style="margin-bottom:2px"><div><div class="eyebrow">Action · '+RWIN+' days</div><h2 class="sech">Renewal pipeline</h2><p class="lead">Devices of '+esc((custById(curCust)||{}).name||"")+' whose warranty has expired or will expire within '+RWIN+' days — track renewal follow-ups.</p></div></div><div class="rpills">'+pills+'</div><div class="tablebox"><table class="rtbl"><thead><tr><th>Device</th><th>Description / Location</th><th>Warranty</th><th>Renewal status</th><th>PIC</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+more;
   }
   function renderDash(){
     $("inventoryDashboardKpis").hidden=!custLoaded;
     $("inventoryAnalytics").hidden=!custLoaded;
     const all=stats(allItems.filter(i=>custById(i.customerId)&&!isDism(i)));
     animNum($("dCust"),customers.length); animNum($("dDev"),all.n); animNum($("dWexp"),all.wexp); animNum($("dWsoon"),all.wsoon); animNum($("dEosl"),all.eosl);
-    $("dCustP").textContent=all.locs.size+" lokasi"; $("dDevP").textContent=(all.n-all.wnone)+" punya data warranty";
+    $("dCustP").textContent=all.locs.size+" locations"; $("dDevP").textContent=(all.n-all.wnone)+" have warranty data";
     $("dWexpP").textContent=pctTxt(all.wexp,all.n); $("dWsoonP").textContent=pctTxt(all.wsoon,all.n); $("dEoslP").textContent=pctTxt(all.eosl,all.n);
     const allDev=allItems.filter(i=>custById(i.customerId)&&!isDism(i)).map(i=>({...i,customerName:custById(i.customerId).name}));
-    renderDashCharts($("dashCharts"),allDev, customers.length>1?"customerName":"location", customers.length>1?"Per customer":"Per lokasi");
+    renderDashCharts($("dashCharts"),allDev, customers.length>1?"customerName":"location", customers.length>1?"By customer":"By location");
     const q=$("cq").value.trim().toLowerCase();
     const list=customers.filter(c=>!q||[c.name,c.code,c.pic,c.note,c.presales].some(v=>String(v||"").toLowerCase().includes(q)))
       .map(c=>({c,st:stats(allItems.filter(i=>i.customerId===c.id&&!isDism(i)))}))
       .sort((a,b)=>(b.st.wexp+b.st.wsoon)-(a.st.wexp+a.st.wsoon)||String(a.c.name).localeCompare(String(b.c.name)));
-    $("ccount").textContent=list.length+" dari "+customers.length+" customer";
+    $("ccount").textContent=list.length+" of "+customers.length+" customers";
     const pct=(v,n)=>n?(v/n*100).toFixed(2)+"%":"0";
     const numCell=(v,cls,l)=>'<td class="num '+(v?cls:"zero")+'" data-l="'+l+'">'+v+'</td>';
     $("crows").innerHTML=list.map(({c,st})=>{
       const ce=canEditCustomer(c.id); const L=[...st.locs].sort();
-      const bar='<div class="sbar" title="Habis '+st.wexp+' · ≤90 hari '+st.wsoon+' · Aktif '+st.wok+' · Belum diisi '+st.wnone+'"><span class="b" style="width:'+pct(st.wexp,st.n)+'"></span><span class="w" style="width:'+pct(st.wsoon,st.n)+'"></span><span class="o" style="width:'+pct(st.wok,st.n)+'"></span><span class="n" style="width:'+pct(st.wnone,st.n)+'"></span></div>';
+      const bar='<div class="sbar" title="Expired '+st.wexp+' · ≤90 days '+st.wsoon+' · Active '+st.wok+' · Not set '+st.wnone+'"><span class="b" style="width:'+pct(st.wexp,st.n)+'"></span><span class="w" style="width:'+pct(st.wsoon,st.n)+'"></span><span class="o" style="width:'+pct(st.wok,st.n)+'"></span><span class="n" style="width:'+pct(st.wnone,st.n)+'"></span></div>';
       const locChips=L.length?L.slice(0,4).map(l=>'<span class="tag">'+esc(l)+'</span>').join("")+(L.length>4?'<span class="tag more" title="'+esc(L.slice(4).join(", "))+'">+'+(L.length-4)+'</span>':''):'';
-      return '<article class="ccard" data-open="'+esc(c.id)+'" role="button" tabindex="0" aria-label="Buka inventaris '+esc(c.name)+'">'+
-        '<div class="cc-top"><div class="cc-name"><b>'+esc(c.name)+'</b>'+(c.code?'<span class="cc-code">'+esc(c.code)+'</span>':'')+'</div>'+(ce?'<button class="link cc-edit" type="button" data-cedit="'+esc(c.id)+'">Ubah</button>':'')+'</div>'+
+      return '<article class="ccard" data-open="'+esc(c.id)+'" role="button" tabindex="0" aria-label="Open inventory '+esc(c.name)+'">'+
+        '<div class="cc-top"><div class="cc-name"><b>'+esc(c.name)+'</b>'+(c.code?'<span class="cc-code">'+esc(c.code)+'</span>':'')+'</div>'+(ce?'<button class="link cc-edit" type="button" data-cedit="'+esc(c.id)+'">Edit</button>':'')+'</div>'+
         (c.pic?'<div class="cc-pic">PIC: '+esc(c.pic)+'</div>':'')+
         '<div class="cc-bar">'+bar+'</div>'+
-        '<div class="cc-stats"><div class="cc-s"><b>'+st.n+'</b><span>perangkat</span></div><div class="cc-s'+(st.wexp?' bad':'')+'"><b>'+st.wexp+'</b><span>habis</span></div><div class="cc-s'+(st.wsoon?' warn':'')+'"><b>'+st.wsoon+'</b><span>≤90 hari</span></div><div class="cc-s'+(st.eosl?' bad':'')+'"><b>'+st.eosl+'</b><span>EOSL</span></div></div>'+
+        '<div class="cc-stats"><div class="cc-s"><b>'+st.n+'</b><span>devices</span></div><div class="cc-s'+(st.wexp?' bad':'')+'"><b>'+st.wexp+'</b><span>expired</span></div><div class="cc-s'+(st.wsoon?' warn':'')+'"><b>'+st.wsoon+'</b><span>≤90 days</span></div><div class="cc-s'+(st.eosl?' bad':'')+'"><b>'+st.eosl+'</b><span>EOSL</span></div></div>'+
         (st.next?'<div class="cc-next"><span class="cc-nl">Warranty terdekat</span><span class="cc-nv '+(st.next.d<0?'bad':st.next.d<=90?'warn':'')+'">'+fmt(st.next.iso)+' · '+rel(st.next.d)+'</span></div>':'')+
         (locChips?'<div class="cc-locs">'+locChips+'</div>':'')+
-        '<div class="cc-go">Buka inventaris <span aria-hidden="true">→</span></div>'+
+        '<div class="cc-go">Open inventory <span aria-hidden="true">→</span></div>'+
       '</article>';
     }).join("");
     const e=$("cempty");
     if(!custLoaded) e.hidden=false;
-    else if(!customers.length){ e.hidden=false; $("cemptyTitle").textContent="Belum ada customer"; $("cemptyText").textContent=canAddCustomer()?"Klik “+ Tambah Customer” untuk membuat customer pertama, lalu isi inventarisnya.":"Belum ada customer."; }
-    else if(!list.length){ e.hidden=false; $("cemptyTitle").textContent="Tidak ada yang cocok"; $("cemptyText").textContent="Ubah kata kunci pencarian."; }
+    else if(!customers.length){ e.hidden=false; $("cemptyTitle").textContent="No customers yet"; $("cemptyText").textContent=canAddCustomer()?"Click “+ Add Customer” to create the first customer, then fill in its inventory.":"No customers yet."; }
+    else if(!list.length){ e.hidden=false; $("cemptyTitle").textContent="No matches found"; $("cemptyText").textContent="Try a different search term."; }
     else e.hidden=true;
     $("addCustBtn").disabled=!canAddCustomer(); $("addCustBtn").hidden=!canAddCustomer();
     // Display inventory counts immediately after loading.
@@ -2435,7 +2435,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     const offset=list.scrollTop;
     const matches=customers.filter(customer=>customerSwitchMatches(customer,query));
     list.innerHTML=matches.map(customer=>'<button type="button" class="customer-switch-item" data-customer-id="'+esc(customer.id)+'"'+(customer.id===curCust?' aria-current="true"':'')+'>'+esc(customer.name)+'</button>').join("")
-      || '<p role="status">'+(custLoaded?(query?"Customer tidak ditemukan.":"Belum ada customer."):"Data customer belum tersedia.")+'</p>';
+      || '<p role="status">'+(custLoaded?(query?"Customer not found.":"No customers yet."):"Customer data is not available yet.")+'</p>';
     list.scrollTop=offset;
     if(focused!==null) [...list.querySelectorAll("[data-customer-id]")].find(button=>button.dataset.customerId===focused)?.focus({preventScroll:true});
     const summary=panel.querySelector("[data-customer-summary]");
@@ -2484,7 +2484,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     const sEl=row.querySelector(".rsel"), oEl=row.querySelector(".rown");
     const status=sEl?sEl.value:""; const owner=oEl?oEl.value.trim():"";
     try{ await api("setRenewal",id,status,owner); const it=allItems.find(z=>z.id===id); if(it){it.renewalStatus=status;it.renewalOwner=owner;} renderRenewal(); }
-    catch(err){ toast("Gagal menyimpan renewal: "+errMsg(err)); }
+    catch(err){ toast("Failed to save renewal: "+errMsg(err)); }
   });
   const inventoryDataMenu=$("inventoryDataMenu");
   inventoryDataMenu.addEventListener("click",event=>{
@@ -2502,7 +2502,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   $("backBtn").onclick=()=>navTo(null);
   function openCustForm(c){
     if(c?!canEditCustomer(c.id):!canAddCustomer()) return;
-    editCustId=c?c.id:null; $("custTitle").textContent=c?"Ubah Customer":"Tambah Customer";
+    editCustId=c?c.id:null; $("custTitle").textContent=c?"Edit Customer":"Add Customer";
     $("cName").value=c?.name||""; $("cCode").value=c?.code||""; $("cPic").value=c?.pic||""; $("cNote").value=c?.note||""; $("cPresales").value=c?.presales||""; $("custErr").textContent="";
     $("custDelBtn").hidden=!c||!isMaster; $("custDelBtn").dataset.confirm="";$("custDelBtn").textContent="Delete customer";
     $("custOv").hidden=false; setTimeout(()=>$("cName").focus(),0);
@@ -2515,12 +2515,12 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   $("custForm").addEventListener("submit",async e=>{
     e.preventDefault();
     const rec={name:$("cName").value.trim(),code:$("cCode").value.trim(),pic:$("cPic").value.trim(),note:$("cNote").value.trim(),presales:$("cPresales").value.trim(),updatedAt:new Date().toISOString()};
-    if(!rec.name){$("custErr").textContent="Nama customer wajib diisi.";return;}
-    if(customers.some(c=>c.name.toLowerCase()===rec.name.toLowerCase()&&c.id!==editCustId)){$("custErr").textContent="Customer "+rec.name+" sudah ada.";return;}
-    if(!ccol){$("custErr").textContent="Penyimpanan belum tersedia. Muat ulang halSupported lalu coba lagi.";return;}
+    if(!rec.name){$("custErr").textContent="Customer name is required.";return;}
+    if(customers.some(c=>c.name.toLowerCase()===rec.name.toLowerCase()&&c.id!==editCustId)){$("custErr").textContent="Customer "+rec.name+" already exists.";return;}
+    if(!ccol){$("custErr").textContent="Storage is not available yet. Reload the page and try again.";return;}
     $("custSave").disabled=true;
     try{
-      if(editCustId){ rec.id=editCustId; await api("saveCustomer",rec); await reload(); toast("Customer diperbarui"); closeCust(); }
+      if(editCustId){ rec.id=editCustId; await api("saveCustomer",rec); await reload(); toast("Customer updated"); closeCust(); }
       else { const saved=await api("saveCustomer",rec); await reload(); toast("Customer ditambahkan"); closeCust(); openCust(saved.id); }
     }catch(err){ $("custErr").textContent="Gagal menyimpan ("+(errMsg(err))+")."; }
     $("custSave").disabled=false;
@@ -2528,16 +2528,16 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   $("custDelBtn").onclick=async()=>{
     const id=editCustId; if(!id) return;
     const n=allItems.filter(i=>i.customerId===id).length;
-    if(n){ $("custErr").textContent="Customer ini masih punya "+n+" perangkat. Delete atau pindahkan perangkatnya dulu."; return; }
+    if(n){ $("custErr").textContent="This customer still has "+n+" devices. Delete or move the devices first."; return; }
     const b=$("custDelBtn");
-    if(!b.dataset.confirm){ b.dataset.confirm="1"; b.textContent="Klik lagi untuk menghapus"; return; }
-    try{ await api("deleteCustomer",id); await reload(); closeCust(); toast("Customer dihapus"); if(curCust===id) $("backBtn").click(); }catch(err){ $("custErr").textContent="Gagal menghapus ("+(errMsg(err))+")."; }
+    if(!b.dataset.confirm){ b.dataset.confirm="1"; b.textContent="Click again to delete"; return; }
+    try{ await api("deleteCustomer",id); await reload(); closeCust(); toast("Customer deleted"); if(curCust===id) $("backBtn").click(); }catch(err){ $("custErr").textContent="Failed to delete ("+(errMsg(err))+")."; }
   };
 
   function render(){
     const types=[...new Set(items.map(i=>i.type).filter(Boolean))].sort();
     const brands=[...new Set(items.map(i=>i.brand).filter(Boolean))].sort();
-    fillSelect($("fType"),types,"Semua tipe"); fillSelect($("fBrand"),brands,"Semua brand");
+    fillSelect($("fType"),types,"All types"); fillSelect($("fBrand"),brands,"All brands");
     $("typeList").innerHTML=[...new Set([...types,...DEF_TYPES])].map(v=>'<option value="'+esc(v)+'">').join("");
     $("locList").innerHTML=[...new Set(items.map(i=>i.location).filter(Boolean))].sort().map(v=>'<option value="'+esc(v)+'">').join("");
     $("brandList").innerHTML=[...new Set([...brands,...DEF_BRANDS])].map(v=>'<option value="'+esc(v)+'">').join("");
@@ -2549,8 +2549,8 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     animNum($("sWsoon"),base.filter(i=>matchStatus(i,"wsoon")).length);
     animNum($("sWexp"),base.filter(i=>matchStatus(i,"wexp")).length);
     animNum($("sEosl"),base.filter(i=>matchStatus(i,"eosl")).length);
-    { const bs=stats(base); $("sTotalP").textContent=loc?("dari "+items.length+" perangkat customer"):(bs.locs.size+" lokasi"); $("sWsoonP").textContent=pctTxt(bs.wsoon,bs.n); $("sWexpP").textContent=pctTxt(bs.wexp,bs.n); $("sEoslP").textContent=pctTxt(bs.eosl,bs.n);
-      renderCharts($("invCharts"),base, loc?"type":"location", loc?"Per tipe perangkat":"Per lokasi"); }
+    { const bs=stats(base); $("sTotalP").textContent=loc?("of "+items.length+" customer devices"):(bs.locs.size+" locations"); $("sWsoonP").textContent=pctTxt(bs.wsoon,bs.n); $("sWexpP").textContent=pctTxt(bs.wexp,bs.n); $("sEoslP").textContent=pctTxt(bs.eosl,bs.n);
+      renderCharts($("invCharts"),base, loc?"type":"location", loc?"By device type":"By location"); }
     renderProfile();
     renderRenewal();
 
@@ -2566,13 +2566,13 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     list.sort((a,b)=>{const x=key(a),y=key(b);return (x<y?-1:x>y?1:0)*sortDir;});
 
     document.querySelectorAll("th[data-sort]").forEach(th=>{th.querySelector(".arr").textContent=th.dataset.sort===sortKey?(sortDir>0?"↑":"↓"):"";});
-    $("count").textContent=list.length+" dari "+(fs==="dism"?dismN:base.length)+" perangkat"+(dismN&&fs!=="dism"?" · "+dismN+" dismantle":"");
+    $("count").textContent=list.length+" of "+(fs==="dism"?dismN:base.length)+" devices"+(dismN&&fs!=="dism"?" · "+dismN+" dismantled":"");
     const pages=Math.max(1,Math.ceil(list.length/pageSize)); if(page>pages) page=pages; if(page<1) page=1;
     const start=(page-1)*pageSize, pageList=list.slice(start,start+pageSize);
     $("pageSize").value=String(pageSize);
-    $("pageInfo").textContent=list.length?("Menampilkan "+(start+1)+"–"+(start+pageList.length)+" dari "+list.length):"";
+    $("pageInfo").textContent=list.length?("Showing "+(start+1)+"–"+(start+pageList.length)+" of "+list.length):"";
     const nums=[]; for(let p=1;p<=pages;p++){ if(p===1||p===pages||Math.abs(p-page)<=1) nums.push(p); else if(nums[nums.length-1]!=="…") nums.push("…"); }
-    $("pageNav").innerHTML=pages<=1?"":'<button type="button" data-p="'+(page-1)+'"'+(page===1?" disabled":"")+' aria-label="Sebelumnya">‹</button>'+nums.map(p=>p==="…"?'<span class="info">…</span>':'<button type="button" data-p="'+p+'"'+(p===page?' aria-current="page"':'')+'>'+p+'</button>').join("")+'<button type="button" data-p="'+(page+1)+'"'+(page===pages?" disabled":"")+' aria-label="Berikutnya">›</button>';
+    $("pageNav").innerHTML=pages<=1?"":'<button type="button" data-p="'+(page-1)+'"'+(page===1?" disabled":"")+' aria-label="Previous">‹</button>'+nums.map(p=>p==="…"?'<span class="info">…</span>':'<button type="button" data-p="'+p+'"'+(p===page?' aria-current="page"':'')+'>'+p+'</button>').join("")+'<button type="button" data-p="'+(page+1)+'"'+(page===pages?" disabled":"")+' aria-label="Next">›</button>';
 
     $("rows").innerHTML=pageList.map(it=>{
       const s=stat(it), dw=days(it.warranty), de=days(it.eosl), dm=isDism(it);
@@ -2581,10 +2581,10 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
         '<td class="c-st" data-l="Status"><span class="chip '+(dm?'dism':s.lvl)+'">'+(dm?'Dismantle':s.label)+'</span></td>'+
         '<td class="c-type" data-l="Tipe"><span class="tag">'+typeIcon(it.type)+esc(it.type)+'</span></td>'+
         '<td class="c-brand" data-l="Brand / Model">'+esc(it.brand)+(it.model?'<span class="model">'+esc(it.model)+'</span>':'')+'</td>'+
-        '<td class="c-note" data-l="Keterangan / Lokasi"><span class="note">'+(esc(it.note)||'—')+'</span>'+(it.location?'<span class="model">'+esc(it.location)+'</span>':'')+'</td>'+
+        '<td class="c-note" data-l="Description / Location"><span class="note">'+(esc(it.note)||'—')+'</span>'+(it.location?'<span class="model">'+esc(it.location)+'</span>':'')+'</td>'+
         '<td data-l="Warranty s/d"><span class="date">'+fmt(it.warranty)+'</span><span class="sub '+(s.w==="bad"?"bad":s.w==="warn"?"warn":"")+'">'+rel(dw)+'</span>'+(dm?'':muteCell(it,dw))+'</td>'+
         '<td data-l="EOSL"><span class="date">'+fmt(it.eosl)+'</span><span class="sub '+(s.e==="bad"?"bad":s.e==="warn"?"warn":"")+'">'+rel(de)+'</span></td>'+
-        '<td class="rowact">'+(canEdit(it.customerId)?'<button class="link" data-edit="'+esc(it.id)+'" type="button">Ubah</button>'+(dm?'<button class="link dismon" data-dism="'+esc(it.id)+'" data-on="0" type="button" title="Activate kembali — perangkat dipakai lagi">Activate</button>':'<button class="link dismbtn" data-dism="'+esc(it.id)+'" data-on="1" type="button" title="Tandai perangkat sudah dicabut / tidak dipakai lagi — keluar dari KPI &amp; notifikasi email, data tetap disimpan">Dismantle</button>')+'<button class="link del" data-del="'+esc(it.id)+'" type="button">Delete</button>':'')+'</td>'+
+        '<td class="rowact">'+(canEdit(it.customerId)?'<button class="link" data-edit="'+esc(it.id)+'" type="button">Edit</button>'+(dm?'<button class="link dismon" data-dism="'+esc(it.id)+'" data-on="0" type="button" title="Reactivate — the device is in use again">Activate</button>':'<button class="link dismbtn" data-dism="'+esc(it.id)+'" data-on="1" type="button" title="Mark the device as decommissioned / no longer in use — removed from KPIs &amp; email notifications, data is kept">Dismantle</button>')+'<button class="link del" data-del="'+esc(it.id)+'" type="button">Delete</button>':'')+'</td>'+
       '</tr>';
     }).join("");
     // fix desktop column order: status column is last visually on desktop
@@ -2592,8 +2592,8 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
 
     const empty=$("empty");
     if(!loaded){ empty.hidden=false; }
-    else if(!items.length){ empty.hidden=false; $("emptyTitle").textContent="Belum ada perangkat"; $("emptyText").textContent=canEdit(curCust)?"Klik “+ Tambah Perangkat” untuk mencatat perangkat pertama, atau Import CSV / Excel dari daftar yang sudah ada.":"Inventaris ini masih kosong."; }
-    else if(!list.length){ empty.hidden=false; $("emptyTitle").textContent="Tidak ada yang cocok"; $("emptyText").textContent="Ubah kata kunci atau filter untuk melihat perangkat lain."; }
+    else if(!items.length){ empty.hidden=false; $("emptyTitle").textContent="No devices yet"; $("emptyText").textContent=canEdit(curCust)?"Click “+ Add Device” to record the first device, or import CSV / Excel from an existing list.":"This inventory is still empty."; }
+    else if(!list.length){ empty.hidden=false; $("emptyTitle").textContent="No matches found"; $("emptyText").textContent="Change the search term or filters to see other devices."; }
     else empty.hidden=true;
     { const ce=!!curCust&&canEdit(curCust); $("addBtn").disabled=!ce; $("importFile").disabled=!ce; $("editCustBtn").disabled=!curCust||!canEditCustomer(curCust)||!custById(curCust);
       $("addBtn").hidden=!ce; $("editCustBtn").hidden=$("editCustBtn").disabled; const il=$("importFile").closest("label"); if(il) il.hidden=!ce; }
@@ -2613,7 +2613,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   // ---- form ----
   function openForm(it){
     editId=it?it.id:null;
-    $("formTitle").textContent=it?"Ubah Perangkat":"Tambah Perangkat";
+    $("formTitle").textContent=it?"Edit Device":"Add Device";
     $("iSn").value=it?.sn||""; $("iType").value=it?.type||""; $("iBrand").value=it?.brand||""; $("iModel").value=it?.model||""; $("iNote").value=it?.note||""; $("iLoc").value=it?.location||"";
     if(!it&&loc&&loc!==NOLOC) $("iLoc").value=loc;
     $("iWar").value=it?.warranty||""; $("iEosl").value=it?.eosl||""; $("formErr").textContent="";
@@ -2626,15 +2626,15 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   $("form").addEventListener("submit",async e=>{
     e.preventDefault();
     const rec={sn:$("iSn").value.trim(),type:$("iType").value.trim(),brand:$("iBrand").value.trim(),model:$("iModel").value.trim(),note:$("iNote").value.trim(),location:$("iLoc").value.trim(),warranty:$("iWar").value||"",eosl:$("iEosl").value||""};
-    if(!rec.sn||!rec.type||!rec.brand){$("formErr").textContent="Serial Number, Tipe Perangkat, dan Brand wajib diisi.";return;}
-    if(items.some(i=>i.sn.toLowerCase()===rec.sn.toLowerCase()&&i.id!==editId)){$("formErr").textContent="Serial Number "+rec.sn+" sudah ada di inventaris.";return;}
-    if(!col){$("formErr").textContent="Penyimpanan belum tersedia. Muat ulang halSupported lalu coba lagi.";return;}
+    if(!rec.sn||!rec.type||!rec.brand){$("formErr").textContent="Serial Number, Device Type, and Brand are required.";return;}
+    if(items.some(i=>i.sn.toLowerCase()===rec.sn.toLowerCase()&&i.id!==editId)){$("formErr").textContent="Serial Number "+rec.sn+" already exists in the inventory.";return;}
+    if(!col){$("formErr").textContent="Storage is not available yet. Reload the page and try again.";return;}
     $("saveBtn").disabled=true;
     try{
       rec.updatedAt=new Date().toISOString(); rec.customerId=curCust;
-      if(!curCust){$("formErr").textContent="Pilih customer terlebih dahulu.";$("saveBtn").disabled=false;return;}
+      if(!curCust){$("formErr").textContent="Select a customer first.";$("saveBtn").disabled=false;return;}
       if(editId) rec.id=editId;
-      await api("saveDevice",rec); await reload(); toast(editId?"Perangkat diperbarui":"Perangkat ditambahkan");
+      await api("saveDevice",rec); await reload(); toast(editId?"Device updated":"Device added");
       closeForm();
     }catch(err){ $("formErr").textContent="Gagal menyimpan ("+(errMsg(err))+"). Anda mungkin tidak punya akses ubah."; }
     $("saveBtn").disabled=false;
@@ -2644,10 +2644,10 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   $("rows").addEventListener("click",e=>{
     const mu=e.target.closest("[data-mute]");
     if(mu){ const on=mu.dataset.on==="1"; mu.disabled=true;
-      api("muteDevice",mu.dataset.mute,on).then(()=>reload()).then(()=>toast(on?"Notifikasi diabaikan untuk perangkat ini":"Notifikasi diaktifkan lagi")).catch(err=>{mu.disabled=false;toast("Gagal: "+errMsg(err));}); return; }
+      api("muteDevice",mu.dataset.mute,on).then(()=>reload()).then(()=>toast(on?"Notifications muted for this device":"Notifications enabled again")).catch(err=>{mu.disabled=false;toast("Failed: "+errMsg(err));}); return; }
     const dm=e.target.closest("[data-dism]");
     if(dm){ const on=dm.dataset.on==="1"; dm.disabled=true;
-      api("setDismantle",dm.dataset.dism,on).then(()=>reload()).then(()=>toast(on?"Perangkat ditandai dismantle":"Perangkat diaktifkan kembali")).catch(err=>{dm.disabled=false;toast("Gagal: "+errMsg(err));}); return; }
+      api("setDismantle",dm.dataset.dism,on).then(()=>reload()).then(()=>toast(on?"Device marked as dismantled":"Device reactivated")).catch(err=>{dm.disabled=false;toast("Failed: "+errMsg(err));}); return; }
     const ed=e.target.closest("[data-edit]"), dl=e.target.closest("[data-del]");
     if(ed){ openForm(items.find(i=>i.id===ed.dataset.edit)); }
     if(dl){ delId=dl.dataset.del; const it=items.find(i=>i.id===delId); $("delSn").textContent=it?.sn||""; $("delOv").hidden=false; $("delCancel").focus(); }
@@ -2655,7 +2655,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   $("delCancel").onclick=()=>{$("delOv").hidden=true;delId=null;};
   $("delOk").onclick=async()=>{
     if(!delId||!col) return; const id=delId; $("delOv").hidden=true; delId=null;
-    try{ await api("deleteDevice",id); await reload(); toast("Perangkat dihapus"); }catch(err){ toast("Gagal menghapus ("+(errMsg(err))+")"); }
+    try{ await api("deleteDevice",id); await reload(); toast("Device deleted"); }catch(err){ toast("Failed to delete ("+(errMsg(err))+")"); }
   };
   document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ if(!$("adminOv").hidden)$("adminOv").hidden=true; if(!$("custOv").hidden)closeCust(); if(!$("formOv").hidden)closeForm(); if(!$("delOv").hidden){$("delOv").hidden=true;delId=null;} }});
 
@@ -2670,16 +2670,16 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   // ---- CSV ----
   function csvCell(v){v=String(v??"");return /[",\n;]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
   $("exportBtn").onclick=async()=>{
-    const head=["serial_number","tipe","brand","model","keterangan","lokasi","warranty","eosl","status"];
+    const head=["serial_number","type","brand","model","description","location","warranty","eosl","status"];
     const lines=[head.join(",")].concat(items.map(i=>[i.sn,i.type,i.brand,i.model,i.note,i.location,i.warranty,i.eosl,stat(i).label].map(csvCell).join(",")));
     const csv="﻿"+lines.join("\r\n");
     try{ saveFile({filename:"inventaris-"+String(custById(curCust)?.code||custById(curCust)?.name||"customer").toLowerCase().replace(/[^a-z0-9]+/g,"-")+"-"+new Date().toISOString().slice(0,10)+".csv",data:new Blob([csv],{type:"text/csv"})}); }
-    catch(err){ toast("Export gagal: "+errMsg(err)); }
+    catch(err){ toast("Export failed: "+errMsg(err)); }
   };
   $("exportXlsxBtn").onclick=async()=>{
     try{
       const XLSX=await loadXLSX();
-      const head=["serial_number","tipe","brand","model","keterangan","lokasi","warranty","eosl","status"];
+      const head=["serial_number","type","brand","model","description","location","warranty","eosl","status"];
       const data=[head].concat(items.map(i=>[i.sn,i.type,i.brand,i.model,i.note,i.location,i.warranty,i.eosl,stat(i).label]));
       const ws=XLSX.utils.aoa_to_sheet(data);
       ws["!cols"]=[{wch:16},{wch:14},{wch:10},{wch:42},{wch:24},{wch:14},{wch:12},{wch:12},{wch:14}];
@@ -2708,7 +2708,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   }
   let _xlsxP=null;
   function loadXLSX(){ if(window.XLSX) return Promise.resolve(window.XLSX); if(_xlsxP) return _xlsxP;
-    _xlsxP=new Promise((res,rej)=>{ const sc=document.createElement("script"); sc.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"; sc.onload=()=>res(window.XLSX); sc.onerror=()=>rej(new Error("Gagal memuat pembaca Excel")); document.head.appendChild(sc); });
+    _xlsxP=new Promise((res,rej)=>{ const sc=document.createElement("script"); sc.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"; sc.onload=()=>res(window.XLSX); sc.onerror=()=>rej(new Error("Failed to load the Excel reader")); document.head.appendChild(sc); });
     return _xlsxP; }
   async function parseExcel(file){
     const XLSX=await loadXLSX();
@@ -2721,30 +2721,30 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     const f=e.target.files[0]; e.target.value=""; if(!f||!col||!curCust) return;
     const isXls=/\.(xlsx|xls)$/i.test(f.name);
     let rows; try{ rows=isXls?await parseExcel(f):parseCSV((await f.text()).replace(/^﻿/,"")); }
-    catch(err){ toast("Gagal membaca file: "+errMsg(err)); return; }
-    if(rows.length<2){toast(isXls?"File Excel kosong":"File CSV kosong");return;}
+    catch(err){ toast("Failed to read file: "+errMsg(err)); return; }
+    if(rows.length<2){toast(isXls?"The Excel file is empty":"The CSV file is empty");return;}
     const h=rows[0].map(x=>x.trim().toLowerCase());
     const find=(...ks)=>h.findIndex(x=>ks.some(k=>x.includes(k)));
-    const iS=find("serial","sn"), iT=find("tipe","type","jenis"), iB=find("brand","merk","vendor"), iM=find("model"), iN=find("keterangan","hostname","note"), iL=find("lokasi","location"), iW=find("warrant","garansi"), iE=find("eosl","eol","end of");
-    if(iS<0){toast("Kolom serial number tidak ditemukan");return;}
+    const iS=find("serial","sn"), iT=find("tipe","type","jenis"), iB=find("brand","merk","vendor"), iM=find("model"), iN=find("keterangan","description","hostname","note"), iL=find("lokasi","location"), iW=find("warrant","garansi"), iE=find("eosl","eol","end of");
+    if(iS<0){toast("Serial number column not found");return;}
     const existing=new Set(items.map(i=>i.sn.toLowerCase())); let added=0, skipped=0;
     const batch=[];
     for(const r of rows.slice(1)){
       const sn=(r[iS]||"").trim(); if(!sn||existing.has(sn.toLowerCase())){skipped++;continue;}
       { batch.push({customerId:curCust,sn,type:(r[iT]||"").trim()||"Lainnya",brand:(r[iB]||"").trim()||"-",model:iM<0?"":(r[iM]||"").trim(),note:iN<0?"":(r[iN]||"").trim(),location:iL<0?"":(r[iL]||"").trim(),warranty:normDate(r[iW]),eosl:normDate(r[iE]),updatedAt:new Date().toISOString()}); existing.add(sn.toLowerCase()); }
     }
-    try{ added=batch.length?await api("importDevices",batch):0; await reload(); }catch(err){ toast("Import gagal: "+errMsg(err)); return; }
-    toast(added+" perangkat diimport"+(skipped?", "+skipped+" dilewati (duplikat/kosong)":""));
+    try{ added=batch.length?await api("importDevices",batch):0; await reload(); }catch(err){ toast("Import failed: "+errMsg(err)); return; }
+    toast(added+" devices imported"+(skipped?", "+skipped+" skipped (duplicate/empty)":""));
   });
 
   // ---- store (Cloudflare Worker + D1) ----
   async function api(fn,...args){
     const signal=["getAll","getSite","getPublic"].includes(fn)&&typeof AbortSignal.timeout==="function"?AbortSignal.timeout(20000):undefined;
     let r; try{ r=await fetch("/api/"+fn,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(args),credentials:"same-origin",signal}); }
-    catch(e){ throw new Error("Koneksi gagal atau sesi login habis. Muat ulang halSupported."); }
+    catch(e){ throw new Error("Connection failed or the session has expired. Reload the page."); }
     if(r.status===401){ const jj=await r.clone().json().catch(()=>null); if(jj&&jj.login){ showLogin(); throw new Error(jj.error); } setAdmin(false); reload().catch(()=>{}); throw new Error("Sesi admin berakhir. Klik \u201cMasuk admin\u201d lagi."); }
     const j=await r.json().catch(()=>null);
-    if(!r.ok||!j||j.error) throw new Error((j&&j.error)||("Sesi login habis atau server error (HTTP "+r.status+"). Muat ulang halSupported."));
+    if(!r.ok||!j||j.error) throw new Error((j&&j.error)||("The session has expired or a server error occurred (HTTP "+r.status+"). Reload the page."));
     return j.result;
   }
   function errMsg(e){ return String(e?.message||e||"error").replace(/^Exception:\s*/,""); }
@@ -2752,7 +2752,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   let sheetUrl="";
   async function reload(){
     const d=await api("getAll");
-    customers=(d.customers||[]).map(c=>({...c,name:String(c.name||"Tanpa nama")})).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+    customers=(d.customers||[]).map(c=>({...c,name:String(c.name||"Unnamed")})).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
     allItems=(d.devices||[]).map(i=>({...i,sn:String(i.sn||"")}));
     canWrite=!!d.canWrite; isMaster=!!d.isMaster; editable=new Set(d.editable||[]); updateRole(); sheetUrl=d.sheetUrl||"";
     const sl=$("sheetLink"); if(sl&&sheetUrl){ sl.href=sheetUrl; sl.hidden=false; }
@@ -2762,15 +2762,15 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   function loadInventoryForPage(){
     if(inventoryPageRequest) return inventoryPageRequest;
     notice("Memuat data inventaris…");
-    inventoryPageRequest=reload().catch(e=>notice("Gagal memuat data: "+errMsg(e))).finally(()=>{ inventoryPageRequest=null; });
+    inventoryPageRequest=reload().catch(e=>notice("Failed to load data: "+errMsg(e))).finally(()=>{ inventoryPageRequest=null; });
     return inventoryPageRequest;
   }
-  $("reloadBtn").onclick=()=>reload().then(()=>toast("Data dimuat ulang")).catch(e=>notice("Gagal memuat data: "+errMsg(e)));
+  $("reloadBtn").onclick=()=>reload().then(()=>toast("Data reloaded")).catch(e=>notice("Failed to load data: "+errMsg(e)));
   // ---- admin login (lihat tanpa login, edit hanya admin) ----
   function updateRole(){
     const names=[...editable].map(id=>{const c=custById(id); return c?(c.code||c.name):id;});
-    $("modeLabel").textContent=isMaster?"Master admin":(names.length?"Admin: "+names.join(", "):(ME&&ME.gated&&!ME.viewer?"Pengunjung":"Mode lihat saja"));
-    $("adminBtn").textContent=(ME&&ME.gated&&!ME.viewer)?"Masuk":"Masuk admin";
+    $("modeLabel").textContent=isMaster?"Master admin":(names.length?"Admin: "+names.join(", "):(ME&&ME.gated&&!ME.viewer?"Visitor":"View-only mode"));
+    $("adminBtn").textContent=(ME&&ME.gated&&!ME.viewer)?"Sign in":"Admin sign in";
     $("userChip").classList.toggle("admin",isMaster||editable.size>0);
     $("adminBtn").hidden=isMaster||!!(ME&&ME.email); $("logoutBtn").hidden=!pwAdmin; $("manageAdmBtn").hidden=!isMaster;
   }
@@ -2781,15 +2781,15 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   $("adminOv").addEventListener("click",e=>{ if(e.target.id==="adminOv") $("adminOv").hidden=true; });
   $("adminForm").addEventListener("submit",async e=>{
     e.preventDefault();
-    const pw=$("adminPw").value; if(!pw){ $("adminErr").textContent="Isi password admin."; return; }
+    const pw=$("adminPw").value; if(!pw){ $("adminErr").textContent="Enter the admin password."; return; }
     $("adminSubmit").disabled=true; $("adminErr").textContent="Memeriksa…";
     const res=await fetch("/auth/admin",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({password:pw}),credentials:"same-origin"}).catch(()=>null);
     const j=res?await res.json().catch(()=>null):null;
     $("adminSubmit").disabled=false;
-    if(res&&res.ok&&j&&j.admin){ $("adminOv").hidden=true; $("loginOv").hidden=true; setAdmin(true); toast("Masuk sebagai admin"); afterLogin(); }
-    else { $("adminErr").textContent=(j&&j.error)||"Login gagal. Coba lagi."; }
+    if(res&&res.ok&&j&&j.admin){ $("adminOv").hidden=true; $("loginOv").hidden=true; setAdmin(true); toast("Signed in as admin"); afterLogin(); }
+    else { $("adminErr").textContent=(j&&j.error)||"Sign-in failed. Please try again."; }
   });
-  $("logoutBtn").onclick=async()=>{ await fetch("/auth/logout",{method:"POST",credentials:"same-origin"}).catch(()=>{}); setAdmin(false); toast("Keluar dari mode admin"); reload().catch(()=>{}); };
+  $("logoutBtn").onclick=async()=>{ await fetch("/auth/logout",{method:"POST",credentials:"same-origin"}).catch(()=>{}); setAdmin(false); toast("Signed out of admin mode"); reload().catch(()=>{}); };
   // ---- tema terang / gelap / otomatis (disimpan per browser) ----
   function applyTheme(t){
     if(t==="light"||t==="dark") document.documentElement.setAttribute("data-theme",t); else document.documentElement.removeAttribute("data-theme");
@@ -2799,21 +2799,21 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   applyTheme(curTheme);
   document.querySelectorAll("[data-theme-set]").forEach(b=>b.addEventListener("click",()=>{
     curTheme=b.dataset.themeSet; try{ if(curTheme==="auto") localStorage.removeItem("inv-theme"); else localStorage.setItem("inv-theme",curTheme); }catch(e){}
-    applyTheme(curTheme); toast(curTheme==="light"?"Tampilan terang":curTheme==="dark"?"Tampilan gelap":"Tampilan mengikuti perangkat");
+    applyTheme(curTheme); toast(curTheme==="light"?"Light theme":curTheme==="dark"?"Dark theme":"Theme follows the device");
   }));
 
   // ---- kelola admin per customer (master) ----
   async function openAdm(){
     $("admOv").hidden=false; $("admErr").textContent=""; $("admEmail").value="";
-    $("admCust").innerHTML=customers.map(c=>'<label><input type="checkbox" value="'+esc(c.id)+'">'+esc(c.name)+(c.code?' <span style="color:var(--muted)">('+esc(c.code)+')</span>':'')+'</label>').join("")||'<span style="color:var(--muted)">Belum ada customer</span>';
+    $("admCust").innerHTML=customers.map(c=>'<label><input type="checkbox" value="'+esc(c.id)+'">'+esc(c.name)+(c.code?' <span style="color:var(--muted)">('+esc(c.code)+')</span>':'')+'</label>').join("")||'<span style="color:var(--muted)">No customers yet</span>';
     await loadAdm();
   }
   let admRows=[];
   async function loadAdm(){
     $("admList").innerHTML='<p style="color:var(--muted)">Memuat…</p>';
-    try{ admRows=await api("listAdmins"); }catch(e){ $("admList").textContent="Gagal memuat: "+errMsg(e); return; }
+    try{ admRows=await api("listAdmins"); }catch(e){ $("admList").textContent="Failed to load: "+errMsg(e); return; }
     const nm=id=>{const c=custById(id); return c?c.name:id;};
-    $("admList").innerHTML=admRows.length?'<table><thead><tr><th>Email</th><th>Customer</th><th></th></tr></thead><tbody>'+admRows.map(a=>'<tr><td>'+esc(a.email)+'</td><td>'+a.customers.map(id=>esc(nm(id))).join("<br>")+'</td><td style="white-space:nowrap"><button class="link" type="button" data-admedit="'+esc(a.email)+'">Ubah</button><button class="link del" type="button" data-admdel="'+esc(a.email)+'">Delete</button></td></tr>').join("")+'</tbody></table>':'<p style="color:var(--muted);margin:0">Belum ada admin customer. Tambahkan di bawah.</p>';
+    $("admList").innerHTML=admRows.length?'<table><thead><tr><th>Email</th><th>Customer</th><th></th></tr></thead><tbody>'+admRows.map(a=>'<tr><td>'+esc(a.email)+'</td><td>'+a.customers.map(id=>esc(nm(id))).join("<br>")+'</td><td style="white-space:nowrap"><button class="link" type="button" data-admedit="'+esc(a.email)+'">Edit</button><button class="link del" type="button" data-admdel="'+esc(a.email)+'">Delete</button></td></tr>').join("")+'</tbody></table>':'<p style="color:var(--muted);margin:0">No customer admins yet. Add one below.</p>';
   }
   $("manageAdmBtn").onclick=()=>openAdm();
   $("admClose").onclick=()=>{ $("admOv").hidden=true; };
@@ -2821,16 +2821,16 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     if(e.target.id==="admOv"){ $("admOv").hidden=true; return; }
     const ed=e.target.closest("[data-admedit]"), dl=e.target.closest("[data-admdel]");
     if(ed){ const a=admRows.find(x=>x.email===ed.dataset.admedit); $("admEmail").value=a.email; document.querySelectorAll("#admCust input").forEach(i=>i.checked=a.customers.includes(i.value)); $("admEmail").focus(); }
-    if(dl){ if(dl.dataset.confirm!=="1"){ dl.dataset.confirm="1"; dl.textContent="Yakin hapus?"; return; }
-      try{ await api("deleteAdmin",dl.dataset.admdel); toast("Admin dihapus"); await loadAdm(); }catch(err){ $("admErr").textContent=errMsg(err); } }
+    if(dl){ if(dl.dataset.confirm!=="1"){ dl.dataset.confirm="1"; dl.textContent="Delete — are you sure?"; return; }
+      try{ await api("deleteAdmin",dl.dataset.admdel); toast("Admin deleted"); await loadAdm(); }catch(err){ $("admErr").textContent=errMsg(err); } }
   });
   $("admForm").addEventListener("submit",async e=>{
     e.preventDefault();
     const email=$("admEmail").value.trim().toLowerCase(), ids=[...document.querySelectorAll("#admCust input:checked")].map(i=>i.value);
-    if(!email){ $("admErr").textContent="Isi email admin."; return; }
-    if(!ids.length){ $("admErr").textContent="Pilih minimal satu customer."; return; }
+    if(!email){ $("admErr").textContent="Enter the admin email."; return; }
+    if(!ids.length){ $("admErr").textContent="Select at least one customer."; return; }
     $("admSave").disabled=true; $("admErr").textContent="";
-    try{ await api("saveAdmin",email,ids); toast("Admin "+email+" disimpan"); $("admEmail").value=""; document.querySelectorAll("#admCust input").forEach(i=>i.checked=false); await loadAdm(); }
+    try{ await api("saveAdmin",email,ids); toast("Admin "+email+" saved"); $("admEmail").value=""; document.querySelectorAll("#admCust input").forEach(i=>i.checked=false); await loadAdm(); }
     catch(err){ $("admErr").textContent=errMsg(err); }
     $("admSave").disabled=false;
   });
@@ -2840,7 +2840,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   function setEmail(email){ $("userEmail").textContent=email||""; $("userEmail").hidden=!email; $("signoutBtn").hidden=!email; }
   function loadGsi(){
     if(gsiReady) return gsiReady;
-    gsiReady=new Promise((res,rej)=>{ const sc=document.createElement("script"); sc.src="https://accounts.google.com/gsi/client"; sc.async=true; sc.onload=res; sc.onerror=()=>rej(new Error("Gagal memuat Google Sign-In")); document.head.appendChild(sc); });
+    gsiReady=new Promise((res,rej)=>{ const sc=document.createElement("script"); sc.src="https://accounts.google.com/gsi/client"; sc.async=true; sc.onload=res; sc.onerror=()=>rej(new Error("Failed to load Google Sign-In")); document.head.appendChild(sc); });
     return gsiReady;
   }
   async function showLogin(){
@@ -2859,8 +2859,8 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     $("loginErr").textContent="Memeriksa akun…";
     const r=await fetch("/auth/google",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({credential:resp.credential}),credentials:"same-origin"}).catch(()=>null);
     const j=r?await r.json().catch(()=>null):null;
-    if(r&&r.ok&&j&&j.ok){ $("loginErr").textContent=""; $("loginOv").hidden=true; setEmail(j.email); toast("Masuk sebagai "+j.email); afterLogin(); }
-    else { $("loginErr").textContent=(j&&j.error)||"Login gagal. Coba lagi."; try{ google.accounts.id.disableAutoSelect(); }catch(_){} }
+    if(r&&r.ok&&j&&j.ok){ $("loginErr").textContent=""; $("loginOv").hidden=true; setEmail(j.email); toast("Signed in as "+j.email); afterLogin(); }
+    else { $("loginErr").textContent=(j&&j.error)||"Sign-in failed. Please try again."; try{ google.accounts.id.disableAutoSelect(); }catch(_){} }
   }
   const loginOverlay=$("loginOv");
   if(window.matchMedia("(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)").matches){
@@ -2942,7 +2942,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   }
   function showPage(){
     let {top,sec,proposalKey,filter}=parseHash();
-    // aplikasi internal: semua halSupported wajib login @berca.co.id
+    // aplikasi internal: semua page wajib login @berca.co.id
     if(ME&&ME.gated&&!isViewer()){ showLogin(); $("pgInventaris").hidden=true; $("pgPresales").hidden=true; return; }
     if(top==="presales") sec=applyPresalesSection(sec);
     if(top==="presales"&&(proposalKey||filter)) proposalView="active";
@@ -3080,12 +3080,12 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   $("productTeamRetry").onclick=loadProductTeam;
   const pgFromHash=()=>parseHash().top;
   window.addEventListener("hashchange",()=>showPage());
-  const proposalFlowSteps=[["Permintaan Proposal","Sales","Catat ruang lingkup awal dan ajukan permintaan dukungan proposal kepada Presales."],["Undangan Prebid","Sales","Undang Presales dan tim teknis sesuai scope. Server dan Storage melibatkan Presales. VMware dan Backup juga melibatkan TPS. Network dan Security juga melibatkan tim NE."],["Prebid","Sales, Presales dan tim teknis","Klarifikasi kebutuhan customer, ruang lingkup, dan tenggat submission."],["Permintaan Harga","Sales, TPS dan PS","Ikuti alur permintaan harga yang berlaku. TPS menyiapkan konfigurasi dan PS menyiapkan harga. Gunakan panel Alur Permintaan Harga untuk melihat detailnya."],["Draf Proposal","Presales","Susun draft proposal teknis berdasarkan hasil prebid, konfigurasi, dan masukan tim terkait."],["Review Proposal","Seluruh tim terkait","Review proposal bersama. Jika ada revisi, Presales memperbarui draft bersama tim terkait, lalu proposal direview kembali."],["Pengiriman Proposal","Sales","Pastikan dokumen administrasi dan harga siap, proposal teknis final sudah diunggah, dan review selesai. Sales mengirim proposal final ke customer, lalu memperbarui status di Proposal Monitor menjadi Submitted."]];
+  const proposalFlowSteps=[["Proposal Request","Sales","Record the initial scope and submit a proposal support request to Presales."],["Prebid Invitation","Sales","Invite Presales and the technical teams according to the scope. Server and Storage involve Presales. VMware and Backup also involve TPS. Network and Security also involve the NE team."],["Prebid","Sales, Presales and technical team","Clarify the customer requirements, scope, and submission deadline."],["Pricing Request","Sales, TPS and PS","Follow the current pricing request flow. TPS prepares the configuration and PS prepares the pricing. See the Pricing Request Flow panel below for details."],["Proposal Draft","Presales","Prepare the technical proposal draft based on the prebid outcome, configuration, and input from the related teams."],["Proposal Review","All related teams","Review the proposal together. If revisions are needed, Presales updates the draft with the related teams, and the proposal is reviewed again."],["Proposal Submission","Sales","Make sure the administrative documents and pricing are ready, the final technical proposal is uploaded, and the review is complete. Sales submits the final proposal to the customer, then updates the status in Proposal Monitor to Submitted."]];
   const workflowButtons=[...$("psAlur").querySelectorAll("[data-workflow-step]")];
   const workflowLayout=$("psAlur").querySelector(".proposal-flow-layout");
   const workflowCard=workflowLayout.querySelector(".proposal-flow-card");
   const compactWorkflow=matchMedia("(max-width:900px)");
-  const workflowOutputs=["Permintaan dukungan dan ruang lingkup awal tercatat.","Undangan prebid terkirim ke tim terkait.","Kebutuhan pelanggan, ruang lingkup, dan tenggat terkonfirmasi.","Konfigurasi dan penawaran harga siap.","Draf proposal teknis siap direview.","Keputusan review tercatat.","Proposal terkirim ke pelanggan dan statusnya diperbarui di Proposal Monitor."];
+  const workflowOutputs=["Support request and initial scope are recorded.","Prebid invitation is sent to the related teams.","Customer requirements, scope, and deadline are confirmed.","Configuration and pricing are ready.","Technical proposal draft is ready for review.","Review decision is recorded.","Proposal is sent to the customer and its status is updated in Proposal Monitor."];
   let proposalFlowIndex=0;
   function placeWorkflowCard(){
     const step=workflowButtons[proposalFlowIndex];
@@ -3101,8 +3101,8 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     workflowLayout.dataset.reviewPath=branch;
     const [title,owner,description]=proposalFlowSteps[index];
     const progress=(index+1)/proposalFlowSteps.length*100;
-    $("proposalFlowDetail").innerHTML='<div class="proposal-flow-progress" aria-hidden="true"><span style="--flow-previous:'+previous+'%;--flow-progress:'+progress+'%"></span></div><div class="proposal-flow-copy"><p>Panduan tahap '+(index+1)+' dari '+proposalFlowSteps.length+'</p><h2 id="workflowDetailTitle" tabindex="-1">'+esc(title)+'</h2><dl class="workflow-detail-list"><dt>Penanggung jawab</dt><dd>'+esc(owner)+'</dd><dt>Yang perlu dilakukan</dt><dd>'+esc(description)+'</dd><dt>Hasil yang harus siap</dt><dd>'+esc(workflowOutputs[index])+'</dd></dl>'+
-      (index===5?'<div class="workflow-review-actions"><button type="button" class="primary" id="proposalFlowReady">Siap dikirim</button><button type="button" id="proposalFlowRevise">Perlu revisi</button></div>':index===6?'<a href="#/presales/proposal">Buka Proposal Monitor</a>':"")+'</div>';
+    $("proposalFlowDetail").innerHTML='<div class="proposal-flow-progress" aria-hidden="true"><span style="--flow-previous:'+previous+'%;--flow-progress:'+progress+'%"></span></div><div class="proposal-flow-copy"><p>Step '+(index+1)+' of '+proposalFlowSteps.length+'</p><h2 id="workflowDetailTitle" tabindex="-1">'+esc(title)+'</h2><dl class="workflow-detail-list"><dt>Owner</dt><dd>'+esc(owner)+'</dd><dt>What to do</dt><dd>'+esc(description)+'</dd><dt>Expected outcome</dt><dd>'+esc(workflowOutputs[index])+'</dd></dl>'+
+      (index===5?'<div class="workflow-review-actions"><button type="button" class="primary" id="proposalFlowReady">Ready to submit</button><button type="button" id="proposalFlowRevise">Needs revision</button></div>':index===6?'<a href="#/presales/proposal">Open Proposal Monitor</a>':"")+'</div>';
     workflowButtons.forEach((button,i)=>{if(i===index) button.setAttribute("aria-current","step"); else button.removeAttribute("aria-current");});
     $("proposalFlowPrev").disabled=index===0;
     $("proposalFlowNext").hidden=index===5||index===6;
@@ -3124,7 +3124,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   {
     const ol=workflowLayout.querySelector(".proposal-flowchart");
     const tr=document.createElement("span"); tr.className="flow-track"; tr.setAttribute("aria-hidden","true"); tr.innerHTML='<i class="flow-fill"></i><i class="flow-dot"></i>'; ol.prepend(tr);
-    const bar=document.createElement("div"); bar.className="flow-bar"; bar.innerHTML='<span>Alur berjalan otomatis \u00b7 klik langkah mana pun untuk melompat</span><button type="button" id="flowPlay" aria-pressed="true">\u23f8 Pause</button>'; ol.prepend(bar);
+    const bar=document.createElement("div"); bar.className="flow-bar"; bar.innerHTML='<span>Plays automatically \u00b7 click any step to jump to it</span><button type="button" id="flowPlay" aria-pressed="true">\u23f8 Pause</button>'; ol.prepend(bar);
     const reduce=matchMedia("(prefers-reduced-motion:reduce)");
     let playing=!reduce.matches, timer=null, hovering=false;
     const setBtn=()=>{const b=$("flowPlay"); b.textContent=playing?"\u23f8 Pause":"\u25b6 Auto-play"; b.setAttribute("aria-pressed",String(playing));};
@@ -3157,7 +3157,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
         renderPresalesLoadStatus();
         renderDashboard();
         renderProposals();
-        notice("Gagal memuat konten: "+errMsg(e));
+        notice("Failed to load content: "+errMsg(e));
       }finally{
         siteRequest=null;
       }

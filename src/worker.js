@@ -15,7 +15,7 @@ let schemaReady = false;
 
 class UserError extends Error {}
 const clean = v => String(v === undefined || v === null ? "" : v).trim();
-const cleanDate = v => { v = clean(v); if (v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) throw new UserError("Format tanggal harus yyyy-mm-dd: " + v); return v; };
+const cleanDate = v => { v = clean(v); if (v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) throw new UserError("Date format must be yyyy-mm-dd: " + v); return v; };
 const EMAIL_RE = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
 const maskEmails = v => String(v || "").replace(/([A-Za-z0-9._%+-])[A-Za-z0-9._%+-]*@([A-Za-z0-9.-]+\.[A-Za-z]{2,})/g, "$1***@$2");
 const SN_MASK = "**********";
@@ -49,8 +49,8 @@ function normDevice(rec, who) {
     model: clean(rec.model), note: clean(rec.note), location: clean(rec.location),
     warranty: cleanDate(rec.warranty), eosl: cleanDate(rec.eosl), updatedAt: new Date().toISOString(), updatedBy: who
   };
-  if (!d.customerId) throw new UserError("Customer belum dipilih.");
-  if (!d.sn || !d.type || !d.brand) throw new UserError("Serial Number, Tipe Perangkat, dan Brand wajib diisi.");
+  if (!d.customerId) throw new UserError("No customer selected.");
+  if (!d.sn || !d.type || !d.brand) throw new UserError("Serial Number, Device Type, and Brand are required.");
   return d;
 }
 const upsertDevice = (db, d) => db.prepare(
@@ -986,12 +986,12 @@ const API = {
   async saveSiteText(db, who, rec) {
     const cur = (await readSite(db, false)).site, next = { ...cur };
     for (const k of SITE_KEYS) if (rec && rec[k] !== undefined) next[k] = clean(rec[k]).slice(0, 600);
-    if (next.contactEmail && !EMAIL_RE.test(next.contactEmail)) throw new UserError("Email kontak tidak valid.");
+    if (next.contactEmail && !EMAIL_RE.test(next.contactEmail)) throw new UserError("Contact email is not valid.");
     await db.prepare("INSERT INTO settings (k,v) VALUES ('site',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(JSON.stringify(next)).run();
     return next;
   },
   async saveItem(db, who, kind, rec) {
-    const fields = ITEM_KINDS[kind]; if (!fields) throw new UserError("Jenis konten tidak dikenal.");
+    const fields = ITEM_KINDS[kind]; if (!fields) throw new UserError("Unknown content type.");
     rec = rec || {};
     const d = {};
     let oldSkill = null;
@@ -1007,12 +1007,12 @@ const API = {
       else if (kind === "skill" && f === "certFile") d[f] = String(rec[f] || "");
       else d[f] = clean(rec[f]).slice(0, (f === "desc" || f === "note") ? 1200 : f === "certFileName" ? 180 : 300);
     }
-    if (kind === "service" && !d.title) throw new UserError("Judul layanan wajib diisi.");
-    if (kind === "sales") { if (!d.name) throw new UserError("Nama sales wajib diisi."); if (d.email && !EMAIL_RE.test(d.email)) throw new UserError("Email sales tidak valid."); if (d.mgrEmail && !EMAIL_RE.test(d.mgrEmail)) throw new UserError("Email manager tidak valid."); d.active = d.active ? "1" : ""; }
-    if (kind === "salesContact") { if (!d.name) throw new UserError("Nama GM/Manager wajib diisi."); if (!["GM", "Manager"].includes(d.type)) throw new UserError("Jenis kontak harus GM atau Manager."); if (d.email && !EMAIL_RE.test(d.email)) throw new UserError("Format email GM/Manager tidak valid."); }
-    if ((kind === "report" || kind === "resource") && (!d.title || !/^https:\/\//.test(d.url))) throw new UserError("Judul dan link (https://) wajib diisi.");
-    if (kind === "vendor") { if (!d.brand || !d.product) throw new UserError("Vendor dan produk wajib diisi."); if (d.url && !/^https:\/\//.test(d.url)) throw new UserError("Link EoSL harus diawali https://"); }
-    if (kind === "skill" && (!d.person || !d.domain)) throw new UserError("Nama anggota dan domain wajib diisi.");
+    if (kind === "service" && !d.title) throw new UserError("Service title is required.");
+    if (kind === "sales") { if (!d.name) throw new UserError("Sales name is required."); if (d.email && !EMAIL_RE.test(d.email)) throw new UserError("Sales email is not valid."); if (d.mgrEmail && !EMAIL_RE.test(d.mgrEmail)) throw new UserError("Email manager tidak valid."); d.active = d.active ? "1" : ""; }
+    if (kind === "salesContact") { if (!d.name) throw new UserError("GM/Manager name is required."); if (!["GM", "Manager"].includes(d.type)) throw new UserError("Contact type must be GM or Manager."); if (d.email && !EMAIL_RE.test(d.email)) throw new UserError("Format email GM/Manager tidak valid."); }
+    if ((kind === "report" || kind === "resource") && (!d.title || !/^https:\/\//.test(d.url))) throw new UserError("Title and link (https://) are required.");
+    if (kind === "vendor") { if (!d.brand || !d.product) throw new UserError("Vendor and product are required."); if (d.url && !/^https:\/\//.test(d.url)) throw new UserError("EoSL link must start with https://"); }
+    if (kind === "skill" && (!d.person || !d.domain)) throw new UserError("Member name and domain are required.");
     if (kind === "skill" && d.certFile) {
       if (d.certFile.length > 700000) throw new UserError("Certificate file exceeds the 500 KB upload limit.");
       if (!/^data:(application\/pdf|image\/(jpeg|png|webp));base64,[A-Za-z0-9+/=]+$/.test(d.certFile)) throw new UserError("Use a PDF, JPEG, PNG, or WebP certificate file.");
@@ -1020,22 +1020,22 @@ const API = {
     }
     if (kind === "skill" && !d.certFile) d.certFileName = "";
     if (kind === "member") {
-      if (!d.name) throw new UserError("Nama anggota wajib diisi.");
-      if (d.email && !EMAIL_RE.test(d.email)) throw new UserError("Email anggota tidak valid.");
-      if (d.photo && !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(d.photo)) throw new UserError("Format foto tidak didukung.");
-      if (d.photo.length > 300000) throw new UserError("Ukuran foto terlalu besar.");
+      if (!d.name) throw new UserError("Member name is required.");
+      if (d.email && !EMAIL_RE.test(d.email)) throw new UserError("Member email is not valid.");
+      if (d.photo && !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(d.photo)) throw new UserError("Photo format is not supported.");
+      if (d.photo.length > 300000) throw new UserError("Photo size is too large.");
     }
     if (kind === "org") {
-      if (!d.name) throw new UserError("Nama wajib diisi.");
-      if (d.photo && !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(d.photo)) throw new UserError("Format foto tidak didukung.");
-      if (d.photo.length > 300000) throw new UserError("Ukuran foto terlalu besar.");
+      if (!d.name) throw new UserError("Name is required.");
+      if (d.photo && !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(d.photo)) throw new UserError("Photo format is not supported.");
+      if (d.photo.length > 300000) throw new UserError("Photo size is too large.");
       d.you = d.you ? "1" : "";
     }
     if (kind === "proposal") {
-      if (!d.customer && !d.title) throw new UserError("Nama customer wajib diisi.");
+      if (!d.customer && !d.title) throw new UserError("Customer name is required.");
       if (!d.status) d.status = "Prebid";
-      if (!PROP_STATUS.includes(d.status)) throw new UserError("Status proposal tidak dikenal.");
-      if (d.rksUrl && !/^https:\/\//.test(d.rksUrl)) throw new UserError("Link RKS harus diawali https://");
+      if (!PROP_STATUS.includes(d.status)) throw new UserError("Unknown proposal status.");
+      if (d.rksUrl && !/^https:\/\//.test(d.rksUrl)) throw new UserError("RKS link must start with https://");
       for (const [key] of PROPOSAL_SUBMISSION_CHECKS) d[key] = d[key] === "1" ? "1" : "";
       if (d.status === "Submitted") {
         const existing = rec.id
@@ -1091,16 +1091,16 @@ const API = {
   async saveCustomer(db, who, rec) {
     const existingId = clean(rec && rec.id);
     const c = { id: existingId || uuid(), name: clean(rec && rec.name), code: clean(rec && rec.code), pic: clean(rec && rec.pic), note: clean(rec && rec.note), presales: clean(rec && rec.presales), updatedAt: new Date().toISOString(), updatedBy: who };
-    if (!c.name) throw new UserError("Nama customer wajib diisi.");
+    if (!c.name) throw new UserError("Customer name is required.");
     const dup = await db.prepare("SELECT 1 FROM customers WHERE lower(name)=lower(?) AND id<>?").bind(c.name, c.id).first();
-    if (dup) throw new UserError("Customer " + c.name + " sudah ada.");
+    if (dup) throw new UserError("Customer " + c.name + " already exists.");
     const bad = c.presales.split(/[\s,;]+/).filter(Boolean).filter(e => !EMAIL_RE.test(e));
-    if (bad.length) throw new UserError("Email PIC Presales tidak valid: " + bad.join(", ") + ". Pisahkan beberapa email dengan koma.");
+    if (bad.length) throw new UserError("Presales PIC email is not valid: " + bad.join(", ") + ". Separate multiple emails with commas.");
     const values = [c.name, c.code, c.pic, c.note, c.presales, c.updatedAt, c.updatedBy];
     if (existingId) {
       const result = await db.prepare("UPDATE customers SET name=?,code=?,pic=?,note=?,presales=?,updatedAt=?,updatedBy=? WHERE id=?")
         .bind(...values, existingId).run();
-      if (!result.meta.changes) throw new UserError("Customer tidak ditemukan.");
+      if (!result.meta.changes) throw new UserError("Customer not found.");
     } else {
       await db.prepare("INSERT INTO customers (name,code,pic,note,presales,updatedAt,updatedBy,id,createdBy) VALUES (?,?,?,?,?,?,?,?,?)")
         .bind(...values, c.id, who).run();
@@ -1116,11 +1116,11 @@ const API = {
   },
   async saveAdmin(db, who, email, customerIds, domain) {
     email = clean(email).toLowerCase();
-    if (!EMAIL_RE.test(email) || !email.endsWith("@" + domain)) throw new UserError("Email admin harus akun @" + domain + ".");
+    if (!EMAIL_RE.test(email) || !email.endsWith("@" + domain)) throw new UserError("Admin email must be an @" + domain + " account.");
     const ids = [...new Set((Array.isArray(customerIds) ? customerIds : []).map(clean).filter(Boolean))];
     if (!ids.length) throw new UserError("Pilih minimal satu customer.");
     const known = new Set((await db.prepare("SELECT id FROM customers").all()).results.map(x => x.id));
-    const bad = ids.filter(i => !known.has(i)); if (bad.length) throw new UserError("Customer tidak ditemukan: " + bad.join(", "));
+    const bad = ids.filter(i => !known.has(i)); if (bad.length) throw new UserError("Customer not found: " + bad.join(", "));
     const now = new Date().toISOString();
     await db.batch([db.prepare("DELETE FROM customer_admins WHERE email=?").bind(email),
       ...ids.map(i => db.prepare("INSERT INTO customer_admins (email,customerId,addedBy,addedAt) VALUES (?,?,?,?)").bind(email, i, who, now))]);
@@ -1140,19 +1140,19 @@ const API = {
   // Jika tanggal warranty nanti diubah, notifikasi otomatis aktif lagi untuk tanggal yang baru.
   async muteDevice(db, who, id, on) {
     const r = await db.prepare("SELECT warranty FROM devices WHERE id=?").bind(clean(id)).first();
-    if (!r) throw new UserError("Perangkat tidak ditemukan.");
+    if (!r) throw new UserError("Device not found.");
     const v = on ? String(r.warranty || "") : "";
-    if (on && !v) throw new UserError("Perangkat ini belum punya tanggal warranty.");
+    if (on && !v) throw new UserError("This device has no warranty date yet.");
     await db.prepare("UPDATE devices SET muteWarranty=?, updatedAt=?, updatedBy=? WHERE id=?").bind(v, new Date().toISOString(), who, clean(id)).run();
     return { id: clean(id), muteWarranty: v };
   },
   // Pipeline renewal: status tindak lanjut perpanjangan warranty per perangkat.
   async setRenewal(db, who, id, status, owner) {
     const S = new Set(["", "contacted", "quoting", "po", "won", "lost"]);
-    const st = String(status || "").trim(); if (!S.has(st)) throw new UserError("Status renewal tidak dikenal.");
+    const st = String(status || "").trim(); if (!S.has(st)) throw new UserError("Unknown renewal status.");
     const ow = String(owner || "").trim().slice(0, 120);
     const r = await db.prepare("SELECT 1 FROM devices WHERE id=?").bind(clean(id)).first();
-    if (!r) throw new UserError("Perangkat tidak ditemukan.");
+    if (!r) throw new UserError("Device not found.");
     await db.prepare("UPDATE devices SET renewalStatus=?, renewalOwner=?, updatedAt=?, updatedBy=? WHERE id=?").bind(st, ow, new Date().toISOString(), who, clean(id)).run();
     return { id: clean(id), renewalStatus: st, renewalOwner: ow };
   },
@@ -1160,7 +1160,7 @@ const API = {
   // tapi dikecualikan dari KPI warranty, grafik, pipeline renewal, dan notifikasi email. Bisa diaktifkan lagi.
   async setDismantle(db, who, id, on) {
     const r = await db.prepare("SELECT 1 FROM devices WHERE id=?").bind(clean(id)).first();
-    if (!r) throw new UserError("Perangkat tidak ditemukan.");
+    if (!r) throw new UserError("Device not found.");
     const v = on ? new Date().toISOString() : "";
     await db.prepare("UPDATE devices SET dismantled=?, updatedAt=?, updatedBy=? WHERE id=?").bind(v, new Date().toISOString(), who, clean(id)).run();
     return { id: clean(id), dismantled: v };
@@ -1168,7 +1168,7 @@ const API = {
   async saveDevice(db, who, rec) {
     const d = normDevice(rec || {}, who);
     const dup = await db.prepare("SELECT 1 FROM devices WHERE customerId=? AND lower(sn)=lower(?) AND id<>?").bind(d.customerId, d.sn, d.id).first();
-    if (dup) throw new UserError("Serial Number " + d.sn + " sudah ada di inventaris customer ini.");
+    if (dup) throw new UserError("Serial Number " + d.sn + " already exists in this customer's inventory.");
     await upsertDevice(db, d).run();
     return d;
   },
@@ -1233,27 +1233,27 @@ let jwksCache = null, jwksAt = 0;
 async function googleKeys() {
   if (jwksCache && Date.now() - jwksAt < 3600e3) return jwksCache;
   const r = await fetch("https://www.googleapis.com/oauth2/v3/certs");
-  if (!r.ok) throw new UserError("Tidak bisa menghubungi Google untuk verifikasi login.");
+  if (!r.ok) throw new UserError("Unable to reach Google to verify the sign-in.");
   jwksCache = (await r.json()).keys || []; jwksAt = Date.now();
   return jwksCache;
 }
 async function verifyGoogleToken(token, clientId, domain) {
   const parts = String(token || "").split(".");
-  if (parts.length !== 3) throw new UserError("Token login tidak valid.");
+  if (parts.length !== 3) throw new UserError("Sign-in token is not valid.");
   const dec = s => JSON.parse(new TextDecoder().decode(b64uDecode(s)));
   let head, pl;
-  try { head = dec(parts[0]); pl = dec(parts[1]); b64uDecode(parts[2]); } catch (e) { throw new UserError("Token login tidak valid."); }
+  try { head = dec(parts[0]); pl = dec(parts[1]); b64uDecode(parts[2]); } catch (e) { throw new UserError("Sign-in token is not valid."); }
   let jwk = (await googleKeys()).find(k => k.kid === head.kid);
   if (!jwk) { jwksCache = null; jwk = (await googleKeys()).find(k => k.kid === head.kid); }
-  if (!jwk || head.alg !== "RS256") throw new UserError("Token login tidak dikenali.");
+  if (!jwk || head.alg !== "RS256") throw new UserError("Sign-in token is not recognized.");
   const key = await crypto.subtle.importKey("jwk", jwk, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]);
   const ok = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, b64uDecode(parts[2]), new TextEncoder().encode(parts[0] + "." + parts[1]));
-  if (!ok) throw new UserError("Tanda tangan token login tidak valid.");
-  if (pl.aud !== clientId) throw new UserError("Token login bukan untuk aplikasi ini.");
-  if (pl.iss !== "accounts.google.com" && pl.iss !== "https://accounts.google.com") throw new UserError("Penerbit token tidak valid.");
-  if (!pl.exp || pl.exp * 1000 < Date.now()) throw new UserError("Sesi Google kedaluwarsa, silakan login lagi.");
+  if (!ok) throw new UserError("Sign-in token signature is not valid.");
+  if (pl.aud !== clientId) throw new UserError("Sign-in token is not for this application.");
+  if (pl.iss !== "accounts.google.com" && pl.iss !== "https://accounts.google.com") throw new UserError("Token issuer is not valid.");
+  if (!pl.exp || pl.exp * 1000 < Date.now()) throw new UserError("Google session expired, please sign in again.");
   const email = String(pl.email || "").toLowerCase();
-  if (!pl.email_verified || pl.hd !== domain || !email.endsWith("@" + domain)) throw new UserError("Hanya akun @" + domain + " yang boleh mengakses aplikasi ini.");
+  if (!pl.email_verified || pl.hd !== domain || !email.endsWith("@" + domain)) throw new UserError("Only @" + domain + " accounts may access this application.");
   return email;
 }
 // ---------- Hak akses: master admin vs admin per customer ----------
@@ -1297,13 +1297,13 @@ function mayEditCustomer(ctx, customer) {
     : ctx.edit.has(customer.id))));
 }
 async function authorize(db, ctx, fn, args) {
-  const deny = () => { const e = new UserError("Anda tidak punya hak admin untuk customer ini."); e.status = 403; throw e; };
+  const deny = () => { const e = new UserError("You do not have admin rights for this customer."); e.status = 403; throw e; };
   if (ctx.master) return;
   if (fn === "saveItem") {
     const kind = args[0], rec = args[1] || {};
     if (kind === "proposal" && ctx.presales && !clean(rec.id)) {
       if (["Submitted", "Cancelled", "Won", "Lost", "Menang", "Kalah"].includes(clean(rec.status))) {
-        throw new UserError("Proposal baru harus dimulai dengan tahap aktif. Submit atau tandai Won/Lost setelah proposal disimpan.");
+        throw new UserError("A new proposal must start at an active stage. Submit it or mark it Won/Lost after it has been saved.");
       }
       return;
     }
@@ -1350,7 +1350,7 @@ async function safeEqual(a, b) {
 const MAX_FAILS = 10, LOCK_MIN = 15;
 async function checkThrottle(db, ip) {
   const r = await db.prepare("SELECT fails, until FROM login_attempts WHERE ip=?").bind(ip).first();
-  if (r && r.until && r.until > Date.now()) throw new UserError("Terlalu banyak percobaan. Coba lagi dalam " + Math.ceil((r.until - Date.now()) / 60000) + " menit.");
+  if (r && r.until && r.until > Date.now()) throw new UserError("Too many attempts. Try again in " + Math.ceil((r.until - Date.now()) / 60000) + " minutes.");
   return r;
 }
 async function recordFail(db, ip, prev) {
@@ -1380,18 +1380,18 @@ export default {
     if (request.method === "GET" && (p === "/" || p === "/index.html")) {
       return new Response(HTML_TEMPLATE, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-frame-options": "DENY", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://accounts.google.com; frame-src https://accounts.google.com" } });
     }
-    if (!env.DB) return json({ error: "Database D1 belum di-bind (nama binding: DB)." }, 500);
+    if (!env.DB) return json({ error: "The D1 database is not bound (binding name: DB)." }, 500);
     try {
       await ensureSchema(env.DB);
       if (p === "/auth/admin" && request.method === "POST") {
-        if (!env.ADMIN_PASSWORD) throw new UserError("Password admin belum diatur di server (wrangler secret put ADMIN_PASSWORD).");
+        if (!env.ADMIN_PASSWORD) throw new UserError("The admin password is not set on the server (wrangler secret put ADMIN_PASSWORD).");
         const ip = request.headers.get("cf-connecting-ip") || "unknown";
         const prev = await checkThrottle(env.DB, ip);
         const body = await request.json().catch(() => ({}));
         if (!(await safeEqual(String(body.password || ""), env.ADMIN_PASSWORD))) {
           await recordFail(env.DB, ip, prev);
           await new Promise(r => setTimeout(r, 800));
-          throw new UserError("Password admin salah.");
+          throw new UserError("Incorrect admin password.");
         }
         await env.DB.prepare("DELETE FROM login_attempts WHERE ip=?").bind(ip).run();
         const prevEmail = parseWho(await readSession(env.DB, request)).email;
@@ -1400,7 +1400,7 @@ export default {
       const domain = String(env.ALLOWED_DOMAIN || "berca.co.id").toLowerCase();
       const gated = !!env.GOOGLE_CLIENT_ID;   // login Google wajib untuk melihat data bila Client ID diisi
       if (p === "/auth/google" && request.method === "POST") {
-        if (!gated) throw new UserError("Login Google belum dikonfigurasi (GOOGLE_CLIENT_ID).");
+        if (!gated) throw new UserError("Google sign-in is not configured (GOOGLE_CLIENT_ID).");
         const body = await request.json().catch(() => ({}));
         const email = await verifyGoogleToken(body.credential, env.GOOGLE_CLIENT_ID, domain);
         const cur = parseWho(await readSession(env.DB, request));
@@ -1433,14 +1433,14 @@ export default {
       }
       if (p === "/api/notifyData") {
         // Dipakai script notifikasi email (Google Apps Script) — butuh kunci rahasia NOTIFY_KEY
-        if (!env.NOTIFY_KEY) return json({ error: "NOTIFY_KEY belum di-set di Cloudflare." }, 503);
-        if (!(await safeEqual(String(request.headers.get("x-notify-key") || ""), String(env.NOTIFY_KEY)))) return json({ error: "Kunci notifikasi salah." }, 401);
+        if (!env.NOTIFY_KEY) return json({ error: "NOTIFY_KEY is not set in Cloudflare." }, 503);
+        if (!(await safeEqual(String(request.headers.get("x-notify-key") || ""), String(env.NOTIFY_KEY)))) return json({ error: "Incorrect notification key." }, 401);
         return json({ result: await API.getAll(env.DB, null, true) });
       }
       if (p === "/api/proposalData") {
         // Dipakai script pengingat proposal (Apps Script) — butuh NOTIFY_KEY
-        if (!env.NOTIFY_KEY) return json({ error: "NOTIFY_KEY belum di-set di Cloudflare." }, 503);
-        if (!(await safeEqual(String(request.headers.get("x-notify-key") || ""), String(env.NOTIFY_KEY)))) return json({ error: "Kunci notifikasi salah." }, 401);
+        if (!env.NOTIFY_KEY) return json({ error: "NOTIFY_KEY is not set in Cloudflare." }, 503);
+        if (!(await safeEqual(String(request.headers.get("x-notify-key") || ""), String(env.NOTIFY_KEY)))) return json({ error: "Incorrect notification key." }, 401);
         const site = await readSite(env.DB, true);
         const productTeam = await API.getProductTeam(env.DB);
         const props = site.proposals.map(x => ({ id: x.id, title: x.title || "", customer: x.customer || "", sales: x.sales || "", presales: x.presales || "", submission: x.submission || "", status: x.status || "", notifyEmails: proposalReminderRecipients(x, site, productTeam) }));
@@ -1448,7 +1448,7 @@ export default {
       }
       const m = p.match(/^\/api\/([A-Za-z]+)$/);
       if (m && request.method === "POST" && API[m[1]]) {
-        if (!isViewer) return json({ error: "Silakan login dengan akun Google @" + domain + ".", login: true }, 401);
+        if (!isViewer) return json({ error: "Please sign in with a Google @" + domain + " account.", login: true }, 401);
         if (m[1] === "getProductTeam") return me.email || isAdmin ? json({ result: await API.getProductTeam(env.DB) }) : json({ error: "Sign in to view the directory." }, 403);
         if (m[1] === "saveProductTeamEmail") {
           if(!ctx.master) return json({error:"Master Admin access required."},403);
@@ -1470,7 +1470,7 @@ export default {
         let args = await request.json().catch(() => []); if (!Array.isArray(args)) args = [];
         const canCreateProposal = m[1] === "saveItem" && args[0] === "proposal" && ctx.presales && !clean(args[1] && args[1].id);
         const canSaveCustomer = m[1] === "saveCustomer" && ctx.presales && !!ctx.email;
-        if (!ctx.master && !ctx.edit.size && !canCreateProposal && !canSaveCustomer) return json({ error: "Anda tidak punya izin untuk tindakan ini." }, 403);
+        if (!ctx.master && !ctx.edit.size && !canCreateProposal && !canSaveCustomer) return json({ error: "You do not have permission to perform this action." }, 403);
         await authorize(env.DB, ctx, m[1], args);
         const who = me.email || "admin";
         if (m[1] === "saveAdmin") args = [args[0], args[1], domain];
