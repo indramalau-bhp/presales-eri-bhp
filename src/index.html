@@ -1457,6 +1457,10 @@ html body{
 #psDashboard .home-tender{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 #psDashboard .home-kpi.is-zero strong{color:var(--muted);opacity:.55}
 #psDashboard .home-kpi.is-zero small::before{content:"✓ ";color:var(--ok);font-weight:700}
+
+/* Workload pips: one block per active proposal */
+#psDashboard .home-workload-pips{display:flex;align-items:center;gap:3px;min-width:0}
+#psDashboard .home-workload-pips i{flex:none;width:12px;height:8px;border-radius:3px;background:linear-gradient(90deg,var(--acc1),var(--acc2))}
 </style>
 </head>
 <body>
@@ -3010,7 +3014,7 @@ html body{
     const workload={}; active.forEach(p=>{const names=[...new Set(csv(p.presales).map(n=>n.trim()).filter(Boolean))]; (names.length?names:["Unassigned"]).forEach(name=>{workload[name]=(workload[name]||0)+1;});});
     const load=Object.entries(workload).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).slice(0,5);
     const maxLoad=Math.max(1,...load.map(x=>x[1]));
-    const loadHtml=load.length?load.map(([name,n])=>'<a class="home-workload-row dashboard-filter-link" href="'+esc(name==='Unassigned'?proposalFilterLink('unassigned'):proposalFilterLink('owner',name))+'"><span class="home-workload-avatar" aria-hidden="true">'+esc(initials(name))+'</span><span class="home-workload-info">'+esc(name)+'</span><span class="home-workload-track" title="'+n+' of '+active.length+' active proposals"><i style="width:'+Math.round(n/Math.max(1,active.length)*100)+'%"></i></span><b class="home-workload-count">'+n+'</b></a>').join(""):'<p class="home-empty">No proposal assignment data yet.</p>';
+    const loadHtml=load.length?load.map(([name,n])=>'<a class="home-workload-row dashboard-filter-link" href="'+esc(name==='Unassigned'?proposalFilterLink('unassigned'):proposalFilterLink('owner',name))+'"><span class="home-workload-avatar" aria-hidden="true">'+esc(initials(name))+'</span><span class="home-workload-info">'+esc(name)+'</span><span class="home-workload-pips" title="'+n+' active proposal'+(n>1?'s':'')+'" aria-hidden="true">'+'<i></i>'.repeat(Math.min(n,6))+'</span></span><b class="home-workload-count">'+n+'</b></a>').join(""):'<p class="home-empty">No proposal assignment data yet.</p>';
     root.className='home-dash-content';
     root.innerHTML='<section class="home-deadline-banner"><div><strong>Closest deadline</strong><span>'+esc(nextDeadline?deadlineCustomer:"No submission deadline set")+'</span></div>'+(nextDeadline?'<span class="home-deadline-value">'+esc(deadlineLabel)+'</span>':"")+'</section>'+
       '<div class="home-kpis">'+kpi('active','Active proposals',active.length,'Currently open',0)+kpi('overdue','Overdue',overdue.length,'Past submission deadline',1)+kpi('due','Due in 7 days',dueSoon.length,'Today through the next 7 days',2)+kpi('unassigned','Unassigned',unassigned.length,'Needs a Presales owner',3)+'</div>'+ 
