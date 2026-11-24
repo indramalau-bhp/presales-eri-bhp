@@ -1756,6 +1756,42 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
 @media(max-width:1100px){.pf-stage{grid-template-columns:repeat(3,minmax(0,1fr));gap:34px 30px}.pf-col:nth-child(3n) .pf-arrow{display:none}}
 @media(max-width:640px){.pf-stage{grid-template-columns:1fr;gap:30px}.pf-arrow{right:50%;top:auto;bottom:-28px;margin:0 -11px 0 0;transform:rotate(90deg)}.pf-col:nth-child(3n) .pf-arrow{display:grid}.pf-col:last-child .pf-arrow{display:none}}
 @media(prefers-reduced-motion:reduce){.pf-card,.pf-arrow,.pf-happy{animation:none!important}}
+
+/* ===== Inventory refresh (matches Dashboard v2) ===== */
+:root{--font-data:"Plus Jakarta Sans","Inter",system-ui,sans-serif}
+.sn,.ex-sn,.ccode{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace!important}
+.stat,.rncard li .d,.cc-s b,.donut .ct,.lg b,.lg em,.hb .v,.tl .c .lab,.tlx,.date,.pager .pn button{font-variant-numeric:tabular-nums}
+#pgInventaris .eyebrow{font-size:12.5px;font-weight:700;letter-spacing:.14em;color:var(--accent)}
+#pgInventaris header h1,#pgInventaris .brand h1{font-size:clamp(30px,3.4vw,42px);letter-spacing:-.02em;font-weight:700}
+#pgInventaris h2{font-weight:700;letter-spacing:-.01em}
+#pgInventaris .it{font-family:"Instrument Serif",Georgia,serif;font-style:italic;font-weight:400;font-size:1.1em;color:var(--ital);letter-spacing:0}
+#pgInventaris .dsum,#pgInventaris .summary{background:transparent!important;border:0!important;gap:16px!important;box-shadow:none!important;overflow:visible!important}
+#pgInventaris .stat{background:var(--surface)!important;border:0!important;border-radius:24px!important;padding-top:18px!important;padding-bottom:18px!important;box-shadow:var(--glass-sh)}
+#pgInventaris .stat .n{font-size:32px;font-weight:800}
+#pgInventaris .stat .l{font-weight:600;color:var(--fg)}
+#pgInventaris .stat .pct{font-size:12px}
+#pgInventaris .stat.active{background:var(--grad)!important}
+#pgInventaris .stat.active .n,#pgInventaris .stat.active .l,#pgInventaris .stat.active .pct{color:#fff}
+.ccard{border:0!important;border-radius:28px!important;padding:22px!important;box-shadow:var(--glass-sh)!important}
+.ccard:hover{border:0!important}
+.cc-name b{font-size:18px;font-weight:700}
+.cc-go{font-weight:700}
+.pcard{background:transparent!important;border:0!important;gap:20px!important;overflow:visible!important;box-shadow:none!important}
+.pcard .pcol{background:var(--surface)!important;border-radius:24px;padding:20px 22px!important;box-shadow:var(--glass-sh)}
+.pc-h{font-size:12px;font-weight:700;letter-spacing:.12em;color:var(--accent)}
+.charts .card,#pgInventaris .card{border:0!important;border-radius:28px!important;padding:22px 24px!important;box-shadow:var(--glass-sh)}
+.charts .card h3,#pgInventaris .card h3{font-size:16px;font-weight:700}
+.card .sub{font-family:var(--font-ui)}
+#pgInventaris .tablebox{border:0!important;border-radius:28px!important;background:var(--surface);box-shadow:var(--glass-sh);overflow:hidden}
+#pgInventaris .toolbar{background:var(--surface);border:0;border-radius:999px;padding:8px 10px;box-shadow:var(--glass-sh)}
+#pgInventaris .toolbar input,#pgInventaris .toolbar select{border-radius:999px}
+#pgInventaris .tabs .tab,.inventory-jumps button{border-radius:999px}
+.inventory-jumps button{background:rgba(255,255,255,.75);border:0}
+.rncard,.rpill{border-radius:20px}
+.rtbl th{font-weight:700}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) #pgInventaris .toolbar,:root:not([data-theme="light"]) .inventory-jumps button{background:var(--surface)}}
+:root[data-theme="dark"] #pgInventaris .toolbar,:root[data-theme="dark"] .inventory-jumps button{background:var(--surface)}
+@media(min-width:1100px){#pgInventaris .dsum{grid-template-columns:repeat(5,minmax(0,1fr))!important}}
 </style>
 </head>
 <body>
@@ -1807,8 +1843,8 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
 
 <div class="side-group side-contact"><a href="#/presales/kontak" data-sec="kontak">Contact</a></div>
 </nav>
-    <nav id="inventoryCustomerNav" class="customer-switch" aria-label="Customer inventaris" hidden>
-    <button type="button" class="customer-switch-item" data-customer-summary>Ringkasan Inventaris</button>
+    <nav id="inventoryCustomerNav" class="customer-switch" aria-label="Customer inventory" hidden>
+    <button type="button" class="customer-switch-item" data-customer-summary>Inventory Overview</button>
     <input type="search" placeholder="Search customers" aria-label="Search customers in sidebar">
     <div class="customer-switch-list" data-customer-list></div>
     
@@ -1946,8 +1982,8 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   <button class="customer-picker-trigger" id="customerPickerTrigger" type="button" aria-haspopup="dialog">Select Customer</button>
   <dialog id="customerPicker" aria-labelledby="customerPickerTitle">
     <div class="customer-picker-head"><h2 id="customerPickerTitle">Select Customer</h2><button id="customerPickerClose" type="button">Close</button></div>
-    <nav class="customer-switch" aria-label="Customer inventaris">
-    <button type="button" class="customer-switch-item" data-customer-summary>Ringkasan Inventaris</button>
+    <nav class="customer-switch" aria-label="Customer inventory">
+    <button type="button" class="customer-switch-item" data-customer-summary>Inventory Overview</button>
     <input type="search" placeholder="Search customers" aria-label="Search customers in panel">
     <div class="customer-switch-list" data-customer-list></div>
     <button type="button" class="customer-switch-item" data-customer-add hidden>+ Add Customer</button>
@@ -1958,7 +1994,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     <header>
       <div class="brand"><div>
         <div class="eyebrow">Asset register · Multi-customer</div>
-        <h1>Inventaris Aset</h1>
+        <h1>Asset Inventory</h1>
       </div></div>
       <div class="actions"><a class="btn" id="sheetLink" target="_blank" rel="noopener" hidden>Open Google Sheets</a><button id="reloadBtn" type="button">Reload</button><button id="addCustBtn" class="primary" type="button">+ Add Customer</button></div>
     </header>
@@ -1971,24 +2007,24 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     </div>
     
     <div class="dhead">
-      <h2>Daftar customer</h2>
+      <h2>Customer list</h2>
       <div class="legend"><span><i class="sw-wexp" style="background:var(--st-bad)"></i>Warranty expired</span><span><i class="sw-wsoon" style="background:var(--st-warn)"></i>≤ 90 days</span><span><i style="background:var(--st-ok)"></i>Active</span><span><i style="background:var(--st-none)"></i>Not set</span></div>
     </div>
     <div class="toolbar"><input type="search" id="cq" placeholder="Search customer name, code, or PIC…" aria-label="Search customers"><span class="count" id="ccount"></span></div>
     <div class="custgrid" id="crows"></div>
       <div class="empty" id="cempty">
         <div class="empty-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg></div>
-        <strong id="cemptyTitle">Memuat daftar customer…</strong>
-        <span id="cemptyText">Setiap customer punya inventaris aset sendiri: serial number, tipe, brand, warranty dan EOSL.</span>
+        <strong id="cemptyTitle">Loading customer list…</strong>
+        <span id="cemptyText">Each customer has its own asset inventory: serial number, type, brand, warranty and EOSL.</span>
       </div>
-    <section class="inventory-analytics" id="inventoryAnalytics" hidden><h2>Analitik Inventaris</h2><div class="charts dashwide" id="dashCharts"></div></section>
+    <section class="inventory-analytics" id="inventoryAnalytics" hidden><h2>Inventory Analytics</h2><div class="charts dashwide" id="dashCharts"></div></section>
   </section>
 
   <section id="viewInv" style="display:flex;flex-direction:column;gap:20px" hidden>
   <button class="back" id="backBtn" type="button">← All customers</button>
   <header>
     <div class="brand"><div>
-      <div class="eyebrow">Inventaris aset · Warranty &amp; EOSL</div>
+      <div class="eyebrow">Asset inventory · Warranty &amp; EOSL</div>
       <h1 id="invTitle">Device Inventory</h1>
       <div class="custmeta" id="invMeta"></div>
     </div></div>
@@ -2021,7 +2057,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   
   
 
-  <section class="inventory-analytics"><h2 id="inventoryOverview" tabindex="-1">Ringkasan Customer &amp; Warranty</h2><section class="custprofile" id="custProfile"></section><div class="charts" id="invCharts"></div></section>
+  <section class="inventory-analytics"><h2 id="inventoryOverview" tabindex="-1">Customer &amp; Warranty Overview</h2><section class="custprofile" id="custProfile"></section><div class="charts" id="invCharts"></div></section>
   <h2 id="inventoryDevices" tabindex="-1">Device List</h2>
   <nav class="tabs" id="tabs" role="tablist" aria-label="Location"></nav>
   <div class="toolbar">
@@ -2032,9 +2068,9 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
       <option value="all">All statuses</option>
       <option value="attn">Needs attention</option>
       <option value="wsoon">Warranty ≤ 90 days</option>
-      <option value="wexp">Warranty habis</option>
+      <option value="wexp">Warranty expired</option>
       <option value="eosl">EOSL passed / ≤ 180 days</option>
-      <option value="ok">Aman</option>
+      <option value="ok">OK</option>
       <option value="dism">Dismantled / inactive</option>
     </select>
     <span class="count" id="count"></span>
@@ -2056,7 +2092,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     </table>
     <div class="empty" id="empty">
       <div class="empty-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 13h7M7 16h4"/></svg></div>
-      <strong id="emptyTitle">Memuat inventaris…</strong>
+      <strong id="emptyTitle">Loading inventory…</strong>
       <span id="emptyText">Device data will appear here: serial number, type, brand, warranty and EOSL dates.</span>
     </div>
   </div>
@@ -2064,7 +2100,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   <div class="pager" id="pager">
     <div class="ps"><label for="pageSize">Show</label>
       <select id="pageSize"><option value="10">10</option><option value="25">25</option><option value="50">50</option></select>
-      <span>item per page</span></div>
+      <span>items per page</span></div>
     <span class="info" id="pageInfo"></span>
     <div class="pn" id="pageNav"></div>
   </div>
@@ -2080,7 +2116,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     <h2 id="custTitle">Add Customer</h2>
     <div class="field"><label for="cName">Customer name *</label><input id="cName" required autocomplete="off"></div>
     <div class="grid2">
-      <div class="field"><label for="cCode">Kode / singkatan</label><input id="cCode" autocomplete="off" placeholder="Contoh: IP"></div>
+      <div class="field"><label for="cCode">Code / abbreviation</label><input id="cCode" autocomplete="off" placeholder="Example: IP"></div>
       <div class="field"><label for="cPic">Customer PIC</label><input id="cPic" autocomplete="off" placeholder="PIC name"></div>
     </div>
     <div class="grid2">
@@ -2109,7 +2145,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
       <div class="field"><label for="iNote">Description</label><input id="iNote" placeholder="Hostname / location"></div>
       <div class="field"><label for="iLoc">Location</label><input id="iLoc" list="locList" placeholder="DC-Gandul, DRC-Batam…"></div>
       <div class="field"></div>
-      <div class="field"><label for="iWar">Warranty berakhir</label><input id="iWar" type="date"></div>
+      <div class="field"><label for="iWar">Warranty expiry</label><input id="iWar" type="date"></div>
       <div class="field"><label for="iEosl">EOSL</label><input id="iEosl" type="date"></div>
     </div>
     <div class="err" id="formErr"></div>
@@ -2196,7 +2232,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
   function days(iso){ if(!iso) return null; const d=new Date(iso+"T00:00:00"); if(isNaN(d)) return null; return Math.round((d-today())/864e5); }
-  function fmt(iso){ if(!iso) return "—"; const d=new Date(iso+"T00:00:00"); if(isNaN(d)) return esc(iso); return d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}); }
+  function fmt(iso){ if(!iso) return "—"; const d=new Date(iso+"T00:00:00"); if(isNaN(d)) return esc(iso); return d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}).replace("Sept","Sep"); }
   function level(dd,soon){ if(dd===null) return "none"; if(dd<0) return "bad"; if(dd<=soon) return "warn"; return "ok"; }
   function rel(dd){ if(dd===null) return ""; if(dd<0) return "passed "+(-dd)+" days ago"; if(dd===0) return "today"; if(dd<=730) return "in "+dd+" days"; return Math.round(dd/365*10)/10+" years from now"; }
   // ---- abaikan notifikasi End of Warranty (warranty sudah diperpanjang) ----
@@ -2215,12 +2251,12 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     const w=level(days(it.warranty),90), e=level(days(it.eosl),180);
     const rank={bad:0,warn:1,ok:2,none:3};
     let lvl, label;
-    if(e==="bad"){lvl="bad";label="EOSL lewat";}
-    else if(w==="bad"){lvl="bad";label="Warranty habis";}
-    else if(e==="warn"){lvl="warn";label="EOSL dekat";}
-    else if(w==="warn"){lvl="warn";label="Warranty dekat";}
+    if(e==="bad"){lvl="bad";label="EOSL passed";}
+    else if(w==="bad"){lvl="bad";label="Warranty expired";}
+    else if(e==="warn"){lvl="warn";label="EOSL approaching";}
+    else if(w==="warn"){lvl="warn";label="Warranty approaching";}
     else if(w==="none"&&e==="none"){lvl="none";label="Not set";}
-    else {lvl="ok";label="Aman";}
+    else {lvl="ok";label="OK";}
     return {w,e,lvl,label,rank:rank[lvl]};
   }
   function matchStatus(it,f){
@@ -2293,7 +2329,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     const fm=d=>d.toLocaleDateString("en-GB",{month:"short"})+" "+String(d.getFullYear()).slice(2);
     const bars=cnt.map((c,k)=>{ const ex=c.slice(0,6).map(i=>i.sn+(i.note?" ("+i.note+")":"")).join("\n")+(c.length>6?"\n+"+(c.length-6)+" lainnya":"");
       return '<div class="c'+(c.length?'':' z')+(field==="eosl"?' e':'')+'" data-tip="'+esc(fm(months[k])+": "+c.length+" devices"+(c.length?"\n"+ex:""))+'">'+(k===mi?'<span class="lab">'+c.length+'</span>':'')+'<b style="height:'+(c.length/max*100)+'%"></b></div>'; }).join("");
-    return '<div class="card"><h3>'+title+'</h3><div class="sub">'+total+' devices \u00b7 hover over a bar for details</div><div class="tl">'+bars+'</div><div class="tlx">'+months.map((m,k)=>'<span>'+m.toLocaleDateString("en-GB",{month:"short"})+((k===0||m.getMonth()===0)?'<i>'+m.getFullYear()+'</i>':'')+'</span>').join("")+'</div></div>';
+    return '<div class="card"><h3>'+title+'</h3><div class="sub">'+total+' devices \u00b7 hover over a bar for details</div><div class="tl">'+bars+'</div><div class="tlx">'+months.map((m,k)=>'<span>'+m.toLocaleDateString("en-US",{month:"short"})+((k===0||m.getMonth()===0)?'<i>'+m.getFullYear()+'</i>':'')+'</span>').join("")+'</div></div>';
   }
   function expiring(list,multi){
     const H=90;
@@ -2338,7 +2374,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     const row=(lbl,val)=>val?'<div class="pcrow"><span class="pclbl">'+lbl+'</span><span class="pcval">'+esc(val)+'</span></div>':'';
     const contacts=row("Customer PIC",c.pic)+row("Sales / Manager",c.note)+row("Presales PIC",c.presales);
     el.innerHTML='<div class="pcard">'+
-      '<div class="pcol"><div class="pc-h">Kontak &amp; PIC</div>'+(contacts||'<div class="sub">No contacts yet — click “Edit Customer” to add them.</div>')+'</div>'+
+      '<div class="pcol"><div class="pc-h">Contacts &amp; PIC</div>'+(contacts||'<div class="sub">No contacts yet — click “Edit Customer” to add them.</div>')+'</div>'+
       '<div class="pcol"><div class="pc-h">Installed base</div><div class="pc-big">'+dev.length+' <span>devices</span> · '+locs.size+' <span>locations</span></div><div class="pbchips">'+brandChips+'</div></div>'+
       '<div class="pcol"><div class="pc-h">'+(next?'Next warranty expiry':overdue.length?'Warranty already expired':'Warranty due')+'</div>'+(next?'<div class="pc-near '+(next.n<=30?'warn':'')+'"><b>'+esc(next.d.sn)+'</b><span>'+fmt(next.d.warranty)+' · '+rel(next.n)+'</span></div>'+(overdue.length?'<div class="sub">'+overdue.length+' warranties already expired</div>':''):(overdue.length?'<div class="pc-near bad"><b>'+esc(overdue[0].d.sn)+'</b><span>'+fmt(overdue[0].d.warranty)+' · '+rel(overdue[0].n)+'</span></div><div class="sub">'+overdue.length+' warranties already expired</div>':'<div class="sub">Nothing due in the next '+RWIN+' days.</div>'))+'</div>'+ 
       '</div>';
@@ -2378,7 +2414,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     $("inventoryAnalytics").hidden=!custLoaded;
     const all=stats(allItems.filter(i=>custById(i.customerId)&&!isDism(i)));
     animNum($("dCust"),customers.length); animNum($("dDev"),all.n); animNum($("dWexp"),all.wexp); animNum($("dWsoon"),all.wsoon); animNum($("dEosl"),all.eosl);
-    $("dCustP").textContent=all.locs.size+" locations"; $("dDevP").textContent=(all.n-all.wnone)+" have warranty data";
+    $("dCustP").textContent=all.locs.size+(all.locs.size===1?" location":" locations"); $("dDevP").textContent=(all.n-all.wnone)+" have warranty data";
     $("dWexpP").textContent=pctTxt(all.wexp,all.n); $("dWsoonP").textContent=pctTxt(all.wsoon,all.n); $("dEoslP").textContent=pctTxt(all.eosl,all.n);
     const allDev=allItems.filter(i=>custById(i.customerId)&&!isDism(i)).map(i=>({...i,customerName:custById(i.customerId).name}));
     renderDashCharts($("dashCharts"),allDev, customers.length>1?"customerName":"location", customers.length>1?"By customer":"By location");
@@ -2398,7 +2434,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
         (c.pic?'<div class="cc-pic">PIC: '+esc(c.pic)+'</div>':'')+
         '<div class="cc-bar">'+bar+'</div>'+
         '<div class="cc-stats"><div class="cc-s"><b>'+st.n+'</b><span>devices</span></div><div class="cc-s'+(st.wexp?' bad':'')+'"><b>'+st.wexp+'</b><span>expired</span></div><div class="cc-s'+(st.wsoon?' warn':'')+'"><b>'+st.wsoon+'</b><span>≤90 days</span></div><div class="cc-s'+(st.eosl?' bad':'')+'"><b>'+st.eosl+'</b><span>EOSL</span></div></div>'+
-        (st.next?'<div class="cc-next"><span class="cc-nl">Warranty terdekat</span><span class="cc-nv '+(st.next.d<0?'bad':st.next.d<=90?'warn':'')+'">'+fmt(st.next.iso)+' · '+rel(st.next.d)+'</span></div>':'')+
+        (st.next?'<div class="cc-next"><span class="cc-nl">Nearest warranty expiry</span><span class="cc-nv '+(st.next.d<0?'bad':st.next.d<=90?'warn':'')+'">'+fmt(st.next.iso)+' · '+rel(st.next.d)+'</span></div>':'')+
         (locChips?'<div class="cc-locs">'+locChips+'</div>':'')+
         '<div class="cc-go">Open inventory <span aria-hidden="true">→</span></div>'+
       '</article>';
@@ -2417,7 +2453,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     if(id!==curCust){ $("inventoryDataMenu").open=false; curCust=id; loc=""; page=1; ["q","fType","fBrand"].forEach(k=>$(k).value=""); $("fStatus").value="all"; }
     scope();
     $("viewDash").hidden=!!id; $("viewInv").hidden=!id;
-    if(id){ const c=custById(id); $("invTitle").textContent=c?c.name:"Memuat customer…"; $("invMeta").textContent=c?[c.code,c.pic&&("PIC: "+c.pic)].filter(Boolean).join(" · "):""; render(); }
+    if(id){ const c=custById(id); $("invTitle").textContent=c?c.name:"Loading customers…"; $("invMeta").textContent=c?[c.code,c.pic&&("PIC: "+c.pic)].filter(Boolean).join(" · "):""; render(); }
     else renderDash();
     renderCustomerSwitchers();
   }
@@ -2549,7 +2585,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     animNum($("sWsoon"),base.filter(i=>matchStatus(i,"wsoon")).length);
     animNum($("sWexp"),base.filter(i=>matchStatus(i,"wexp")).length);
     animNum($("sEosl"),base.filter(i=>matchStatus(i,"eosl")).length);
-    { const bs=stats(base); $("sTotalP").textContent=loc?("of "+items.length+" customer devices"):(bs.locs.size+" locations"); $("sWsoonP").textContent=pctTxt(bs.wsoon,bs.n); $("sWexpP").textContent=pctTxt(bs.wexp,bs.n); $("sEoslP").textContent=pctTxt(bs.eosl,bs.n);
+    { const bs=stats(base); $("sTotalP").textContent=loc?("of "+items.length+" customer devices"):(bs.locs.size+(bs.locs.size===1?" location":" locations")); $("sWsoonP").textContent=pctTxt(bs.wsoon,bs.n); $("sWexpP").textContent=pctTxt(bs.wexp,bs.n); $("sEoslP").textContent=pctTxt(bs.eosl,bs.n);
       renderCharts($("invCharts"),base, loc?"type":"location", loc?"By device type":"By location"); }
     renderProfile();
     renderRenewal();
@@ -2673,7 +2709,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     const head=["serial_number","type","brand","model","description","location","warranty","eosl","status"];
     const lines=[head.join(",")].concat(items.map(i=>[i.sn,i.type,i.brand,i.model,i.note,i.location,i.warranty,i.eosl,stat(i).label].map(csvCell).join(",")));
     const csv="﻿"+lines.join("\r\n");
-    try{ saveFile({filename:"inventaris-"+String(custById(curCust)?.code||custById(curCust)?.name||"customer").toLowerCase().replace(/[^a-z0-9]+/g,"-")+"-"+new Date().toISOString().slice(0,10)+".csv",data:new Blob([csv],{type:"text/csv"})}); }
+    try{ saveFile({filename:"inventory-"+String(custById(curCust)?.code||custById(curCust)?.name||"customer").toLowerCase().replace(/[^a-z0-9]+/g,"-")+"-"+new Date().toISOString().slice(0,10)+".csv",data:new Blob([csv],{type:"text/csv"})}); }
     catch(err){ toast("Export failed: "+errMsg(err)); }
   };
   $("exportXlsxBtn").onclick=async()=>{
@@ -2684,10 +2720,10 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
       const ws=XLSX.utils.aoa_to_sheet(data);
       ws["!cols"]=[{wch:16},{wch:14},{wch:10},{wch:42},{wch:24},{wch:14},{wch:12},{wch:12},{wch:14}];
       ws["!autofilter"]={ref:"A1:I1"};
-      const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Inventaris");
+      const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Inventory");
       const out=XLSX.write(wb,{bookType:"xlsx",type:"array"});
       const nm=String(custById(curCust)?.code||custById(curCust)?.name||"customer").toLowerCase().replace(/[^a-z0-9]+/g,"-");
-      saveFile({filename:"inventaris-"+nm+"-"+new Date().toISOString().slice(0,10)+".xlsx",data:new Blob([out],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})});
+      saveFile({filename:"inventory-"+nm+"-"+new Date().toISOString().slice(0,10)+".xlsx",data:new Blob([out],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})});
     }catch(err){ toast("Export Excel gagal: "+errMsg(err)); }
   };
   function parseCSV(text){
@@ -2742,7 +2778,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     const signal=["getAll","getSite","getPublic"].includes(fn)&&typeof AbortSignal.timeout==="function"?AbortSignal.timeout(20000):undefined;
     let r; try{ r=await fetch("/api/"+fn,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(args),credentials:"same-origin",signal}); }
     catch(e){ throw new Error("Connection failed or the session has expired. Reload the page."); }
-    if(r.status===401){ const jj=await r.clone().json().catch(()=>null); if(jj&&jj.login){ showLogin(); throw new Error(jj.error); } setAdmin(false); reload().catch(()=>{}); throw new Error("Sesi admin berakhir. Klik \u201cMasuk admin\u201d lagi."); }
+    if(r.status===401){ const jj=await r.clone().json().catch(()=>null); if(jj&&jj.login){ showLogin(); throw new Error(jj.error); } setAdmin(false); reload().catch(()=>{}); throw new Error("Admin session expired. Click \u201cAdmin sign in\u201d again."); }
     const j=await r.json().catch(()=>null);
     if(!r.ok||!j||j.error) throw new Error((j&&j.error)||("The session has expired or a server error occurred (HTTP "+r.status+"). Reload the page."));
     return j.result;
@@ -2761,7 +2797,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   let inventoryPageRequest=null;
   function loadInventoryForPage(){
     if(inventoryPageRequest) return inventoryPageRequest;
-    notice("Memuat data inventaris…");
+    notice("Loading inventory data…");
     inventoryPageRequest=reload().catch(e=>notice("Failed to load data: "+errMsg(e))).finally(()=>{ inventoryPageRequest=null; });
     return inventoryPageRequest;
   }
@@ -2810,7 +2846,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   }
   let admRows=[];
   async function loadAdm(){
-    $("admList").innerHTML='<p style="color:var(--muted)">Memuat…</p>';
+    $("admList").innerHTML='<p style="color:var(--muted)">Loading…</p>';
     try{ admRows=await api("listAdmins"); }catch(e){ $("admList").textContent="Failed to load: "+errMsg(e); return; }
     const nm=id=>{const c=custById(id); return c?c.name:id;};
     $("admList").innerHTML=admRows.length?'<table><thead><tr><th>Email</th><th>Customer</th><th></th></tr></thead><tbody>'+admRows.map(a=>'<tr><td>'+esc(a.email)+'</td><td>'+a.customers.map(id=>esc(nm(id))).join("<br>")+'</td><td style="white-space:nowrap"><button class="link" type="button" data-admedit="'+esc(a.email)+'">Edit</button><button class="link del" type="button" data-admdel="'+esc(a.email)+'">Delete</button></td></tr>').join("")+'</tbody></table>':'<p style="color:var(--muted);margin:0">No customer admins yet. Add one below.</p>';
@@ -3342,7 +3378,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     $("psDashboard").classList.add("dv2-on");
     const kpiV2=(filter,label,n,caption,index,badge,tone)=>'<a class="home-kpi dashboard-filter-link dv2-kpi'+(n===0&&filter!=='active'?' is-zero':'')+'" href="'+esc(proposalFilterLink(filter))+'" style="--kpi-index:'+index+'"><span class="dv2-kpi-top"><span class="home-kpi-label">'+label+'</span><em class="dv2-badge '+tone+'">'+badge+'</em></span><strong>'+n+'</strong><small>'+caption+'</small></a>';
     const dayMs=864e5, t0=Date.parse(today+"T00:00:00Z");
-    const fmt=(iso,o)=>new Date(Date.parse(String(iso).slice(0,10)+"T00:00:00Z")).toLocaleDateString(o.month==="long"||o.weekday==="short"&&!o.day?"en-US":"en-GB",Object.assign({timeZone:"UTC"},o));
+    const fmt=(iso,o)=>new Date(Date.parse(String(iso).slice(0,10)+"T00:00:00Z")).toLocaleDateString(o.month==="long"||o.weekday==="short"&&!o.day?"en-US":"en-GB",Object.assign({timeZone:"UTC"},o)).replace("Sept","Sep");
     const subSet={}; active.forEach(p=>{const k=String(p.submission||"").slice(0,10); if(k) subSet[k]=(subSet[k]||0)+1;});
     const weekHtml=Array.from({length:7},(_,i)=>{const iso=new Date(t0+i*dayMs).toISOString().slice(0,10);return '<span class="dv2-day'+(i===0?' is-today':'')+'"><small>'+fmt(iso,{weekday:"short"})+'</small><b>'+Number(iso.slice(8,10))+'</b><i'+(subSet[iso]?' class="has"':'')+'></i></span>';}).join("");
     const upcoming=active.filter(p=>{const d=daysLeft(p);return d!==null&&d>=0;}).sort((x,y)=>daysLeft(x)-daysLeft(y)).slice(0,4);
@@ -4110,7 +4146,7 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
 </script>
 
 <script>
-(function(){function w(){document.querySelectorAll(".ps-head .sech,.ps-dashboard-head .sech").forEach(function(h){if(h.children.length||h.querySelector(".it"))return;var t=h.textContent.trim().split(" ");if(t.length<2)return;var l=t.pop();h.textContent=t.join(" ")+" ";var sp=document.createElement("span");sp.className="it";sp.textContent=l;h.appendChild(sp)})}
+(function(){function w(){document.querySelectorAll(".ps-head .sech,.ps-dashboard-head .sech,#pgInventaris header .brand h1").forEach(function(h){if(h.children.length||h.querySelector(".it"))return;var t=h.textContent.trim().split(" ");if(t.length<2)return;var l=t.pop();h.textContent=t.join(" ")+" ";var sp=document.createElement("span");sp.className="it";sp.textContent=l;h.appendChild(sp)})}
 w();new MutationObserver(w).observe(document.body,{childList:true,subtree:true})})();
 </script>
 <script>
