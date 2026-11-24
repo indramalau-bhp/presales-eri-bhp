@@ -1389,6 +1389,18 @@ html body{
 /* dark theme: accent text that was hard-coded to dark blue/purple becomes readable */
 :root[data-theme="dark"] :is(.fd-arrow,.fd-role,.on-role,.on-tag.dept,.on-tag.rep,.pp-an,.pp-rks,.prop-view.active,.prop-view.active b,.ps-sales .smgr-h .scontact-edit,.sk-cert-add,.sk-cert-count,.sk-cert-open,.sk-detail-open,.sk-profile-hint,.skchip.lv2,.sz-go,.vlink){color:var(--accent)}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) :is(.fd-arrow,.fd-role,.on-role,.on-tag.dept,.on-tag.rep,.pp-an,.pp-rks,.prop-view.active,.prop-view.active b,.ps-sales .smgr-h .scontact-edit,.sk-cert-add,.sk-cert-count,.sk-cert-open,.sk-detail-open,.sk-profile-hint,.skchip.lv2,.sz-go,.vlink){color:var(--accent)}}
+
+/* Product Team Directory polish */
+#psProductTeam .toolbar{display:grid;grid-template-columns:minmax(0,1fr) 220px 190px;gap:10px;align-items:center}
+#psProductTeam .toolbar>*{width:100%;min-width:0}
+@media (max-width:700px){#psProductTeam .toolbar{grid-template-columns:1fr}}
+.product-team-fold>summary,.product-team-managers>summary{list-style:none;display:flex;align-items:center;gap:8px;font-size:15px;padding:4px 6px;margin-inline:-6px;margin-top:-4px;border-radius:10px}
+.product-team-fold>summary:hover,.product-team-managers>summary:hover{background:var(--accent-soft)}
+.product-team-fold>summary::-webkit-details-marker,.product-team-managers>summary::-webkit-details-marker{display:none}
+.product-team-fold>summary::before,.product-team-managers>summary::before{content:"";flex:none;width:8px;height:8px;border-right:2px solid var(--accent);border-bottom:2px solid var(--accent);transform:rotate(-45deg);margin-right:4px;transition:transform .16s ease}
+.product-team-fold[open]>summary::before,.product-team-managers[open]>summary::before{transform:rotate(45deg)}
+.product-team-fold summary small{font-size:12.5px;margin-inline-start:2px}
+#productTeamManagerGrid{grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))}
 </style>
 </head>
 <body>
@@ -1543,7 +1555,7 @@ html body{
   </section>
 
   <section class="ps-sec" id="psProductTeam">
-    <header class="pghead ps-head"><div><h1 class="sech">Product Team Directory</h1><p class="lead">Product Management Team · H2 2026 R2</p></div></header>
+    <header class="pghead ps-head"><div><div class="eyebrow">Product management</div><h1 class="sech">Product Team Directory</h1><p class="lead">Product Management Team · H2 2026 R2</p></div></header>
     <div class="toolbar">
       <input type="search" id="productTeamQuery" placeholder="Search product, vendor, or PIC" aria-label="Search product team">
       <select id="productTeamRole" aria-label="Specialist role"><option value="">All roles</option><option value="PS">Product Specialist (PS)</option><option value="TPS">Technical Product Specialist (TPS)</option></select>
