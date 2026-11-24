@@ -1507,6 +1507,10 @@ html body{
 .otxt{display:flex;flex-direction:column;min-width:0}
 .otxt b{font-size:13.5px;line-height:1.25}
 .otxt small{font-size:12px;color:var(--muted);line-height:1.3}
+
+.product-team-spv{display:flex;flex-direction:column;gap:4px;margin-top:10px;font-size:13px;color:var(--muted)}
+.product-team-spv select{font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--fg)}
+.product-team-spv small{min-height:1em;font-size:12px}
 </style>
 </head>
 <body>
@@ -2760,7 +2764,7 @@ html body{
       return (!role||row.role===role)&&(!group||row.group===group)&&terms.every(term=>text.includes(term));
     });
     $("productTeamStatus").textContent=matches.length?matches.length+" entries":"No matching entries.";
-    const renderCard=row=>'<article class="rescard product-team-card"><header><h2>'+esc(row.name||"PIC not listed")+'</h2><strong>'+esc(row.role)+'</strong></header><p>'+esc([row.group,row.level,"Manager: "+row.manager].filter(Boolean).join(" · "))+'</p><ul>'+row.products.map(product=>'<li>'+esc(product)+'</li>').join("")+'</ul>'+productTeamEmailField(row)+'</article>';
+    const renderCard=row=>'<article class="rescard product-team-card"><header><h2>'+esc(row.name||"PIC not listed")+'</h2><strong>'+esc(row.role)+'</strong></header><p>'+esc([row.group,row.level,"Manager: "+row.manager].filter(Boolean).join(" · "))+'</p><ul>'+row.products.map(product=>'<li>'+esc(product)+'</li>').join("")+'</ul>'+productTeamSpvField(row)+productTeamEmailField(row)+'</article>';
     const sections=[["PS","Product Specialists"],["TPS","Technical Product Specialists"]];
     const filtered=terms.some(Boolean)||Boolean(role||group);
     $("productTeamGrid").innerHTML=sections.map(([key,title])=>{
@@ -2769,6 +2773,28 @@ html body{
       return '<details class="rescard product-team-fold"'+(filtered?' open':'')+'><summary><span>'+title+'</span><small>'+rows.length+' entries</small></summary><div class="product-team-grid">'+rows.map(renderCard).join("")+'</div></details>';
     }).join("");
   }
+  function productTeamSpvOptions(row){
+    return (productTeam||[]).filter(x=>x.level==="SPV"&&x.name&&x.role===row.role&&x.group===row.group).map(x=>x.name);
+  }
+  function productTeamSpvField(row){
+    if(!row.spvId) return "";
+    const opts=productTeamSpvOptions(row);
+    if(!opts.length) return "";
+    if(!isMaster) return row.spv?'<p>Reports to: '+esc(row.spv)+'</p>':"";
+    return '<label class="product-team-spv">Reports to (SPV) <select data-product-team-spv="'+esc(row.spvId)+'"><option value="">Not assigned</option>'+opts.map(n=>'<option value="'+esc(n)+'"'+(n===row.spv?' selected':'')+'>'+esc(n)+'</option>').join("")+'</select><small role="status"></small></label>';
+  }
+  $("psProductTeam").addEventListener("change",async event=>{
+    const sel=event.target.closest("select[data-product-team-spv]");
+    if(!sel||!isMaster) return;
+    const status=sel.parentElement.querySelector("small"); sel.disabled=true; status.textContent="Saving…";
+    try{
+      const saved=await api("saveProductTeamSpv",sel.dataset.productTeamSpv,sel.value);
+      const row=productTeam.find(x=>x.spvId===saved.id); if(row) row.spv=saved.spv;
+      status.textContent=saved.spv?"Saved.":"Cleared.";
+      renderProductTeamOrg();
+    }catch(error){ status.textContent=error.message||"Could not save."; }
+    finally{ sel.disabled=false; }
+  });
   function productTeamEmailField(row){
     if(!row.id) return "";
     const email=esc(row.email||"");
@@ -3303,11 +3329,25 @@ html body{
   ];
   function renderProductTeamOrg(){
     const el=$("productTeamOrg"); if(!el||el.hidden||!productTeam) return;
+    const person=r=>({name:r.name||"PIC not listed",sub:[r.level,(r.products||[]).join(", ")].filter(Boolean).join(" · ")});
+    const byName=(a,b)=>String(a.name).localeCompare(String(b.name));
     const mgrNode=(rows)=>{
       const mg=new Map();
       for(const r of rows){ const k=(r.manager||"—")+"|"+(r.group||""); if(!mg.has(k)) mg.set(k,{manager:r.manager||"—",group:r.group||"",rows:[]}); mg.get(k).rows.push(r); }
-      return [...mg.values()].sort((a,b)=>String(a.group).localeCompare(String(b.group),undefined,{numeric:true})).map(M=>({lv:2,tag:M.group||"Team",title:M.manager,count:M.rows.length+" specialists",
-        leaves:M.rows.slice().sort((a,b)=>(a.level===b.level?0:a.level==="SPV"?-1:b.level==="SPV"?1:0)||String(a.name).localeCompare(String(b.name))).map(r=>({name:r.name||"PIC not listed",sub:[r.level,(r.products||[]).join(", ")].filter(Boolean).join(" · ")}))}));
+      return [...mg.values()].sort((a,b)=>String(a.group).localeCompare(String(b.group),undefined,{numeric:true})).map(M=>{
+        const spvs=M.rows.filter(r=>r.level==="SPV"&&r.name).sort(byName);
+        const staff=M.rows.filter(r=>r.level!=="SPV").sort(byName);
+        const node={lv:2,tag:M.group||"Team",title:M.manager,count:M.rows.length+" specialists"};
+        if(!spvs.length){ node.leaves=M.rows.slice().sort(byName).map(person); return node; }
+        const names=new Set(spvs.map(x=>x.name));
+        node.kids=spvs.map(sv=>{
+          const team=staff.filter(r=>r.spv===sv.name);
+          return {lv:3,tag:"SPV",title:sv.name,sub:(sv.products||[]).join(", "),count:team.length+" team member"+(team.length===1?"":"s"),leaves:team.map(person)};
+        });
+        const loose=staff.filter(r=>!r.spv||!names.has(r.spv));
+        if(loose.length) node.kids.push({lv:3,tag:"No SPV yet",title:"Not assigned",count:loose.length+" specialists",leaves:loose.map(person)});
+        return node;
+      });
     };
     const heads=PRODUCT_TEAM_HEADS.map(h=>({lv:1,tag:h.tag,title:h.name,sub:h.sub,kids:mgrNode(productTeam.filter(r=>r.role===h.role))})).filter(h=>h.kids.length);
     el.innerHTML=orgTreeHtml({lv:0,title:"Product Management Team",sub:"H2 2026 R2",kids:heads});

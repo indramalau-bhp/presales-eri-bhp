@@ -919,6 +919,8 @@ const PRODUCT_TEAM = [
 
 const productTeamKey=row=>"product_team_email:"+JSON.stringify([row.role,row.group,row.name]);
 
+const productTeamSpvKey=row=>"product_team_spv:"+JSON.stringify([row.role,row.group,row.name]);
+
 const productTeamManagerKey=row=>"product_team_email:"+JSON.stringify(["manager",row.group,row.manager]);
 
 function proposalReminderRecipients(proposal, site, productTeam) {
@@ -947,13 +949,25 @@ function proposalReminderRecipients(proposal, site, productTeam) {
 
 const API = {
   async getProductTeam(db) {
-    const saved=await db.prepare("SELECT k,v FROM settings WHERE k LIKE 'product_team_email:%'").all();
+    const saved=await db.prepare("SELECT k,v FROM settings WHERE k LIKE 'product_team_email:%' OR k LIKE 'product_team_spv:%'").all();
     const emails=new Map(saved.results.map(row=>[row.k,row.v]));
     return PRODUCT_TEAM.map(row=>{
       const id=row.name?productTeamKey(row):"";
       const managerId=row.manager?productTeamManagerKey(row):"";
-      return {...row,id,email:emails.get(id)||"",managerId,managerEmail:emails.get(managerId)||""};
+      const spvId=row.name&&row.level!=="SPV"?productTeamSpvKey(row):"";
+      const spv=spvId?emails.get(spvId)||"":"";
+      return {...row,id,email:emails.get(id)||"",managerId,managerEmail:emails.get(managerId)||"",spvId,spv:PRODUCT_TEAM.some(x=>x.level==="SPV"&&x.name===spv&&x.role===row.role&&x.group===row.group)?spv:""};
     });
+  },
+  // Atasan langsung (SPV) untuk anggota non-SPV; hanya boleh SPV dari role+grup yang sama. Kosong = hapus.
+  async saveProductTeamSpv(db,id,value) {
+    const person=typeof id==="string"?PRODUCT_TEAM.find(row=>row.name&&row.level!=="SPV"&&productTeamSpvKey(row)===id):null;
+    if(!person||typeof value!=="string") return null;
+    const spv=value.trim();
+    if(spv&&!PRODUCT_TEAM.some(x=>x.level==="SPV"&&x.name===spv&&x.role===person.role&&x.group===person.group)) return null;
+    if(spv) await db.prepare("INSERT INTO settings (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(id,spv).run();
+    else await db.prepare("DELETE FROM settings WHERE k=?").bind(id).run();
+    return {id,spv};
   },
   async saveProductTeamEmail(db,id,value) {
     if(typeof value!=="string"||!PRODUCT_TEAM.some(row=>(row.name&&productTeamKey(row)===id)||(row.manager&&productTeamManagerKey(row)===id))) return null;
@@ -1442,6 +1456,13 @@ export default {
           if(!Array.isArray(args)) return json({error:"Invalid request."},400);
           const saved=await API.saveProductTeamEmail(env.DB,args[0],args[1]);
           return saved?json({result:saved}):json({error:"Invalid PIC or email address."},400);
+        }
+        if (m[1] === "saveProductTeamSpv") {
+          if(!ctx.master) return json({error:"Master Admin access required."},403);
+          const args=await request.json().catch(()=>null);
+          if(!Array.isArray(args)) return json({error:"Invalid request."},400);
+          const saved=await API.saveProductTeamSpv(env.DB,args[0],args[1]);
+          return saved?json({result:saved}):json({error:"Invalid person or SPV."},400);
         }
         if (m[1] === "getAll") return json({ result: await API.getAll(env.DB, ctx) });
         if (m[1] === "getSite") return json({ result: { ...proposalsVisibleTo(await API.getSite(env.DB), ctx, me.email), isMaster: ctx.master } });
