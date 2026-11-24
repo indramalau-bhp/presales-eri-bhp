@@ -1609,6 +1609,36 @@ input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea{b
 @media(max-width:900px){.sidebar{border-radius:24px!important}}
 
 .ps-dashboard-head .sech::after{display:none!important}
+
+/* ===== Sidebar minimize + profile avatar ===== */
+.side-toggle{position:absolute!important;top:16px;right:14px;width:30px;height:30px;padding:0!important;border-radius:50%!important;border:0;background:rgba(155,227,200,.14)!important;color:#9be3c8!important;display:grid;place-items:center;cursor:pointer;z-index:3}
+.side-toggle:hover{background:rgba(155,227,200,.28)!important}
+.side-toggle svg{transition:transform .2s}
+.nav-ic{width:18px;height:18px;flex:none;margin-right:10px;vertical-align:-4px;opacity:.9}
+.sidebar .topnav a,.sidebar .sidesub a{display:flex!important;align-items:center}
+.acc-av{width:34px;height:34px;border-radius:50%;flex:none;display:grid;place-items:center;background:#9be3c8;color:#0f2b27;font-weight:800;font-size:13px;overflow:hidden;box-shadow:0 0 0 2px rgba(155,227,200,.35)}
+.acc-av img{width:100%;height:100%;object-fit:cover;display:block}
+.sidebar-account summary{gap:10px!important}
+.sidebar-account summary .acc-txt{display:flex;flex-direction:column;min-width:0;flex:1;line-height:1.25}
+@media(min-width:861px){
+body.side-min .wrap{grid-template-columns:76px minmax(0,1fr)!important}
+body.side-min .sidebar{padding:16px 10px!important;align-items:center}
+body.side-min .sidebar .brandbar{align-items:center!important;border:0!important;padding:0 0 8px!important}
+body.side-min .sidebar .brandbar .bt,body.side-min .nav-lb,body.side-min .side-group-label,body.side-min #inventoryCustomerNav,body.side-min .sidebar-account .acc-txt,body.side-min .sidebar-account summary::after,body.side-min .sidebar-account .userchip{display:none!important}
+body.side-min .side-toggle{position:static!important;margin-top:2px}
+body.side-min .side-toggle svg{transform:rotate(180deg)}
+body.side-min .sidebar .brandbar .bl{justify-content:center}
+body.side-min .sidebar .brandbar img{width:40px;height:40px}
+body.side-min .sidebar .topnav a,body.side-min .sidebar .sidesub a{justify-content:center;padding:11px 0!important;width:44px}
+body.side-min .sidebar a::before,body.side-min .sidebar a::after{display:none!important}
+body.side-min .nav-ic{margin:0;width:20px;height:20px}
+body.side-min .sidebar .sidesub,body.side-min .sidebar .topnav,body.side-min .side-group{display:flex;flex-direction:column;align-items:center;gap:6px}
+body.side-min .sidebar .sidesub[hidden]{display:none!important}
+body.side-min .sidebar-account{margin-top:auto!important;border:0!important;padding:0!important}
+body.side-min .sidebar-account summary{padding:0!important;justify-content:center}
+body.side-min .sidebar .side-group{border:0!important;margin:0!important;padding:0!important}
+}
+@media(max-width:860px){.side-toggle{display:none!important}}
 </style>
 </head>
 <body>
@@ -2766,7 +2796,7 @@ input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea{b
   // ================= PORTAL: Beranda, Layanan, Tim, Inventaris, Reports, Kontak =================
   // Dua tab utama: Inventaris Aset (login) dan Presales (Beranda, Layanan, Tim*, Reports*, Kontak; *login)
   const SECT={alur:"psAlur",proposal:"psProposal",tim:"pgTim",struktur:"psOrg",skill:"psSkill","product-team":"psProductTeam",sales:"psSales",resources:"psResources",vendor:"psVendor",sizing:"psSizing",kontak:"pgKontak"};
-  let SITE={site:{},services:[],members:[],resources:[],sales:[],salesContacts:[],vendors:[],skills:[],org:[],proposals:[]}, siteFull=false, curPg="presales";
+  let SITE={site:{},services:[],members:[],resources:[],sales:[],salesContacts:[],vendors:[],skills:[],org:[],proposals:[]}, siteFull=false, curPg="presales"; window.__members=function(){return SITE.members};
   const SALES={q:"",showInactive:false};
   let proposalView="active";
   let proposalLayout="detail", selectedProposal=null, proposalRouteKey=null;
@@ -3968,6 +3998,31 @@ input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea{b
 <script>
 (function(){function w(){document.querySelectorAll(".ps-head .sech,.ps-dashboard-head .sech").forEach(function(h){if(h.children.length||h.querySelector(".it"))return;var t=h.textContent.trim().split(" ");if(t.length<2)return;var l=t.pop();h.textContent=t.join(" ")+" ";var sp=document.createElement("span");sp.className="it";sp.textContent=l;h.appendChild(sp)})}
 w();new MutationObserver(w).observe(document.body,{childList:true,subtree:true})})();
+</script>
+<script>
+(function(){
+var IC={"presales":"M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z","inventaris":"M21 8l-9-5-9 5v8l9 5 9-5zM3.3 7.5L12 12l8.7-4.5M12 12v9","beranda":"M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z","proposal":"M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 14l2 2 4-4","alur":"M6 3v12M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 9a9 9 0 0 1-9 9","tim":"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8","struktur":"M9 3h6v6H9zM3 15h6v6H3zM15 15h6v6h-6zM12 9v3M6 15v-3h12v3","skill":"M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM8.2 13.9L7 23l5-3 5 3-1.2-9.1","sales":"M3 7h18v13H3zM8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18","product-team":"M16.5 9.4l-9-5.2M21 16V8l-9-5-9 5v8l9 5zM3.3 7l8.7 5 8.7-5M12 22V12","kontak":"M3 5h18v14H3zM3 7l9 6 9-6"};
+var NS="http://www.w3.org/2000/svg";
+function icon(d){var s=document.createElementNS(NS,"svg");s.setAttribute("viewBox","0 0 24 24");s.setAttribute("class","nav-ic");s.setAttribute("fill","none");s.setAttribute("stroke","currentColor");s.setAttribute("stroke-width","1.8");s.setAttribute("stroke-linecap","round");s.setAttribute("stroke-linejoin","round");s.setAttribute("aria-hidden","true");var p=document.createElementNS(NS,"path");p.setAttribute("d",d);s.appendChild(p);return s}
+function decorate(){document.querySelectorAll("#topnav a,#sideSub a").forEach(function(a){if(a.querySelector(".nav-ic"))return;var k=a.getAttribute("data-sec")||a.getAttribute("data-pg");var d=IC[k];if(!d)return;var t=a.textContent.trim();a.setAttribute("title",t);var lb=document.createElement("span");lb.className="nav-lb";lb.textContent=t;while(a.firstChild)a.removeChild(a.firstChild);a.appendChild(icon(d));a.appendChild(lb)})}
+decorate();
+var key="presalesSideMin";function get(){try{return localStorage.getItem(key)==="1"}catch(e){return false}}
+function set(v){document.body.classList.toggle("side-min",v);var b=document.getElementById("sideToggle");if(b){b.setAttribute("aria-expanded",String(!v));b.title=v?"Expand sidebar":"Minimize sidebar";b.setAttribute("aria-label",b.title)}try{localStorage.setItem(key,v?"1":"0")}catch(e){}}
+var bar=document.querySelector(".sidebar .brandbar");
+if(bar&&!document.getElementById("sideToggle")){var b=document.createElement("button");b.type="button";b.id="sideToggle";b.className="side-toggle";b.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';b.addEventListener("click",function(){set(!document.body.classList.contains("side-min"))});bar.appendChild(b)}
+set(get());
+/* profile avatar */
+var sum=document.querySelector("#sidebarAccount summary");
+if(sum&&!document.getElementById("accAv")){var av=document.createElement("span");av.id="accAv";av.className="acc-av";var tx=document.createElement("span");tx.className="acc-txt";while(sum.firstChild)tx.appendChild(sum.firstChild);sum.appendChild(av);sum.appendChild(tx);
+sum.addEventListener("click",function(e){if(document.body.classList.contains("side-min")&&window.innerWidth>860){e.preventDefault();set(false)}})}
+var last="";
+function avatar(){var av=document.getElementById("accAv"),em=document.getElementById("userEmail");if(!av||!em)return;var email=(em.hidden?"":em.textContent||"").trim().toLowerCase();var ms=(window.__members&&window.__members())||[];var m=null;if(email)for(var i=0;i<ms.length;i++){if(String(ms[i].email||"").trim().toLowerCase()===email){m=ms[i];break}}
+if(!m&&email){var loc=email.split("@")[0].split(/[._-]/).filter(Boolean);for(var j=0;j<ms.length;j++){var n=String(ms[j].name||"").toLowerCase();if(loc.length&&loc.every(function(t){return n.indexOf(t)>-1})){m=ms[j];break}}}
+var sig=email+"|"+(m?m.name+(m.photo||"").length:"");if(sig===last)return;last=sig;av.textContent="";
+if(m&&m.photo){var im=document.createElement("img");im.alt=m.name;im.src=m.photo;av.appendChild(im);av.title=m.name}
+else{var nm=m?m.name:(email?email.split("@")[0].replace(/[._-]+/g," "):"");var p=nm.split(" ").filter(Boolean);if(p.length){av.textContent=((p[0][0]||"")+(p.length>1?p[p.length-1][0]:"")).toUpperCase()}else{av.appendChild(icon("M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"));av.firstChild.style.margin="0"}av.title=nm||"Not signed in"}}
+avatar();setInterval(avatar,1500);
+})();
 </script>
 </body>
 </html>
