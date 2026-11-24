@@ -1464,6 +1464,49 @@ html body{
 
 #psDashboard .home-workload-avatar{overflow:hidden}
 #psDashboard .home-workload-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* Org chart view */
+.viewtoggle{display:inline-flex;gap:4px;padding:4px;margin:0 0 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.viewtoggle button{border:0;background:transparent;color:var(--muted);font:600 13.5px var(--font-body);padding:7px 14px;border-radius:9px;cursor:pointer}
+.viewtoggle button.on{background:linear-gradient(135deg,var(--acc1),var(--acc2));color:#fff}
+.viewtoggle button:not(.on):hover{background:var(--accent-soft);color:var(--fg)}
+#psSales.org-mode .salesbar,#psSales.org-mode #salesGrid,
+#psProductTeam.org-mode .toolbar,#psProductTeam.org-mode #productTeamStatus,#psProductTeam.org-mode #productTeamGrid,#psProductTeam.org-mode #productTeamManagers,#psProductTeam.org-mode #productTeamRetry{display:none!important}
+.otree-wrap{overflow-x:auto;padding:6px 4px 24px}
+.otree{--oc:color-mix(in srgb,var(--accent) 45%,var(--line));min-width:max-content;text-align:center}
+.otree ul{display:flex;justify-content:center;margin:0;padding:22px 0 0;list-style:none;position:relative}
+.otree>ul{padding-top:0}
+.otree li{position:relative;display:flex;flex-direction:column;align-items:center;padding:22px 8px 0;list-style:none}
+.otree>ul>li{padding-top:0}
+.otree li::before,.otree li::after{content:"";position:absolute;top:0;width:50%;height:22px;border-top:2px solid var(--oc)}
+.otree li::before{right:50%}
+.otree li::after{left:50%;border-left:2px solid var(--oc)}
+.otree li:only-child::before,.otree li:only-child::after{display:none}
+.otree li:only-child{padding-top:0}
+.otree li:first-child::before,.otree li:last-child::after{border-top:0}
+.otree li:last-child::after{border-left:0}
+.otree li:last-child::before{border-right:2px solid var(--oc);border-radius:0 8px 0 0}
+.otree li:first-child::after{border-radius:8px 0 0 0}
+.otree>ul>li::before,.otree>ul>li::after{display:none}
+.otree ul ul::before{content:"";position:absolute;top:0;left:50%;height:22px;border-left:2px solid var(--oc)}
+.onode2{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:170px;max-width:230px;padding:11px 14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:0 6px 18px -12px rgba(30,26,70,.4)}
+.onode2.lv0{background:linear-gradient(135deg,var(--acc1),var(--acc2));color:#fff;border-color:transparent}
+.onode2.lv0 .osub{color:rgba(255,255,255,.85)}
+.onode2.lv1{border-top:3px solid var(--acc1)}
+.onode2.lv2{border-top:3px solid var(--acc2)}
+.onode2.lv3{border-top:3px solid var(--brand-green)}
+.otag{font:700 11px var(--font-data);letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.otitle{font:700 15px/1.25 var(--font-display);overflow-wrap:anywhere}
+.osub{font-size:12.5px;color:var(--muted)}
+.ocount{margin-top:3px;font-size:12px;font-weight:700;padding:2px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.oleaves{display:flex!important;flex-direction:column;align-items:stretch;gap:6px;padding:16px 0 0!important;position:relative}
+.oleaves::before{content:"";position:absolute;top:0;left:50%;height:16px;border-left:2px solid var(--oc)}
+.otree .oleaf{display:flex;flex-direction:row;align-items:center;gap:9px;text-align:left;padding:7px 11px;min-width:200px;max-width:260px;border:1px solid var(--line);border-radius:11px;background:var(--surface)}
+.otree .oleaf::before,.otree .oleaf::after{display:none}
+.oav{flex:none;width:28px;height:28px;border-radius:9px;display:grid;place-items:center;font:700 11px var(--font-body);color:#fff;background:linear-gradient(135deg,var(--acc1),var(--acc2))}
+.otxt{display:flex;flex-direction:column;min-width:0}
+.otxt b{font-size:13.5px;line-height:1.25}
+.otxt small{font-size:12px;color:var(--muted);line-height:1.3}
 </style>
 </head>
 <body>
@@ -1619,6 +1662,7 @@ html body{
 
   <section class="ps-sec" id="psProductTeam">
     <header class="pghead ps-head"><div><div class="eyebrow">Product management</div><h1 class="sech">Product Team Directory</h1><p class="lead">Product Management Team · H2 2026 R2</p></div></header>
+    <div class="viewtoggle" role="group" aria-label="View"><button type="button" class="on" data-orgview="dir" aria-pressed="true">Directory</button><button type="button" data-orgview="org" aria-pressed="false">Org chart</button></div>
     <div class="toolbar">
       <input type="search" id="productTeamQuery" placeholder="Search product, vendor, or PIC" aria-label="Search product team">
       <select id="productTeamRole" aria-label="Specialist role"><option value="">All roles</option><option value="PS">Product Specialist (PS)</option><option value="TPS">Technical Product Specialist (TPS)</option></select>
@@ -1631,15 +1675,18 @@ html body{
       <div class="product-team-grid" id="productTeamManagerGrid"></div>
     </details>
     <div class="product-team-sections" id="productTeamGrid"></div>
+    <div class="otree-wrap" id="productTeamOrg" hidden></div>
   </section>
   <section class="ps-sec" id="psSales">
     <header class="pghead ps-head"><div><div class="eyebrow">Sales directory</div><h1 class="sech">Sales &amp; Presales Directory</h1><p class="lead">Find ERI sales contacts, the customers they support, and the Presales members assigned to each account.</p></div>
       <button type="button" class="primary" id="addSalesBtn" hidden>+ Add sales contact</button></header>
+    <div class="viewtoggle" role="group" aria-label="View"><button type="button" class="on" data-orgview="dir" aria-pressed="true">Directory</button><button type="button" data-orgview="org" aria-pressed="false">Org chart</button></div>
     <div class="salesbar">
       <input type="search" id="salesQ" placeholder="Search name, email, team, or Presales…">
       <label class="mine" id="salesInactiveWrap" hidden><input type="checkbox" id="salesInactive"> Show inactive</label>
     </div>
     <div class="ps-sales" id="salesGrid"></div>
+    <div class="otree-wrap" id="salesOrg" hidden></div>
   </section>
 
   <section class="ps-sec" id="psResources">
@@ -2705,6 +2752,7 @@ html body{
   let productTeam=null, productTeamRequest=null;
   function renderProductTeam(){
     if(!productTeam) return;
+    renderProductTeamOrg();
     const terms=$("productTeamQuery").value.trim().toLowerCase().split(/\s+/);
     const role=$("productTeamRole").value, group=$("productTeamGroup").value;
     const matches=productTeam.filter(row=>{
@@ -3222,8 +3270,55 @@ html body{
       +(isMaster?'<div class="sacts"><button class="link" type="button" data-stoggle="'+esc(x.id)+'">'+(on?'Deactivate':'Activate')+'</button><button class="link" type="button" data-iedit="sales|'+esc(x.id)+'">Edit</button><button class="link del" type="button" data-idel="sales|'+esc(x.id)+'">Delete</button></div>':'')
       +'</article>';
   }
+  function orgNodeHtml(n){
+    const kids=(n.kids||[]).map(orgNodeHtml).join("");
+    const leaves=(n.leaves||[]).map(l=>'<li class="oleaf"><span class="oav" aria-hidden="true">'+esc(initials(l.name))+'</span><span class="otxt"><b>'+esc(l.name)+'</b>'+(l.sub?'<small>'+esc(l.sub)+'</small>':'')+'</span></li>').join("");
+    return '<li><div class="onode2 lv'+(n.lv||0)+'">'+(n.tag?'<span class="otag">'+esc(n.tag)+'</span>':'')+'<b class="otitle">'+esc(n.title)+'</b>'+(n.sub?'<span class="osub">'+esc(n.sub)+'</span>':'')+(n.count?'<span class="ocount">'+esc(n.count)+'</span>':'')+'</div>'+(leaves?'<ul class="oleaves">'+leaves+'</ul>':'')+(kids?'<ul>'+kids+'</ul>':'')+'</li>';
+  }
+  function orgTreeHtml(root){ return '<div class="otree"><ul>'+orgNodeHtml(root)+'</ul></div>'; }
+  function renderSalesOrg(){
+    const el=$("salesOrg"); if(!el||el.hidden) return;
+    const list=SITE.sales.filter(x=>x.active==="1");
+    const dirs=new Map();
+    for(const x of list){
+      const dk=x.director||x.directorName||"Lainnya"; if(!dirs.has(dk)) dirs.set(dk,{name:"",gms:new Map()});
+      const D=dirs.get(dk); if(x.directorName&&!D.name) D.name=x.directorName;
+      const gk=x.gm||"Lainnya"; if(!D.gms.has(gk)) D.gms.set(gk,{name:"",mgrs:new Map()});
+      const G=D.gms.get(gk); if(x.gmName&&!G.name) G.name=x.gmName;
+      const mk=(x.mgr||"")+"|"+(x.team||""); if(!G.mgrs.has(mk)) G.mgrs.set(mk,{mgr:x.mgr||"",team:x.team||"",arr:[]});
+      G.mgrs.get(mk).arr.push(x);
+    }
+    if(!dirs.size){ el.innerHTML='<p class="lead">No sales contacts have been added yet.</p>'; return; }
+    const byName=(a,b)=>String(a).localeCompare(String(b));
+    const dirNodes=[...dirs.entries()].sort((a,b)=>byName(a[0],b[0])).map(([dk,D])=>({lv:1,tag:"Director",title:dk,sub:D.name,
+      kids:[...D.gms.entries()].sort((a,b)=>byName(a[0],b[0])).map(([gk,G])=>({lv:2,tag:"GM",title:gk,sub:G.name,
+        kids:[...G.mgrs.values()].sort((a,b)=>byName(a.team||a.mgr,b.team||b.mgr)).map(M=>({lv:3,tag:M.team||"Manager",title:M.mgr||M.team||"—",count:M.arr.length+" sales",
+          leaves:M.arr.slice().sort((a,b)=>((+a.sort||0)-(+b.sort||0))||byName(a.name,b.name)).map(x=>({name:x.name||"—",sub:x.presales?"Presales: "+x.presales:""}))}))}))}));
+    el.innerHTML=orgTreeHtml({lv:0,title:"Sales organization",sub:"Directors · GMs · Managers · Sales",kids:dirNodes});
+  }
+  function renderProductTeamOrg(){
+    const el=$("productTeamOrg"); if(!el||el.hidden||!productTeam) return;
+    const mg=new Map();
+    for(const r of productTeam){
+      const k=(r.manager||"—")+"|"+(r.group||""); if(!mg.has(k)) mg.set(k,{manager:r.manager||"—",group:r.group||"",rows:[]});
+      mg.get(k).rows.push(r);
+    }
+    const kids=[...mg.values()].sort((a,b)=>String(a.group).localeCompare(String(b.group),undefined,{numeric:true})).map(M=>({lv:1,tag:M.group||"Team",title:M.manager,count:M.rows.length+" specialists",
+      leaves:M.rows.slice().sort((a,b)=>(a.role===b.role?0:a.role==="PS"?-1:1)||String(a.name).localeCompare(String(b.name))).map(r=>({name:r.name||"PIC not listed",sub:[r.role,(r.products||[]).join(", ")].filter(Boolean).join(" · ")}))}));
+    el.innerHTML=orgTreeHtml({lv:0,title:"Product Management",sub:"Managers · Product Specialists (PS) · Technical Product Specialists (TPS)",kids});
+  }
+  document.addEventListener("click",e=>{
+    const b=e.target.closest("[data-orgview]"); if(!b) return;
+    const sec=b.closest("section"); if(!sec) return;
+    const org=b.dataset.orgview==="org";
+    sec.classList.toggle("org-mode",org);
+    sec.querySelectorAll("[data-orgview]").forEach(x=>{const on=x===b; x.classList.toggle("on",on); x.setAttribute("aria-pressed",on?"true":"false");});
+    const box=sec.querySelector(".otree-wrap"); if(box) box.hidden=!org;
+    if(sec.id==="psSales") renderSalesOrg(); else if(sec.id==="psProductTeam") renderProductTeamOrg();
+  });
   function renderSales(){
     const el=$("salesGrid"); if(!el) return;
+    renderSalesOrg();
     const q=SALES.q.toLowerCase(); const activeOnly=!(isMaster&&SALES.showInactive);
     const list=SITE.sales.filter(x=>(!activeOnly||x.active==="1")&&(!q||[x.name,x.email,x.team,x.gm,x.gmName,x.mgr,x.director,x.directorName,x.presales].some(v=>String(v||"").toLowerCase().includes(q))));
     // Kelompokkan bertingkat: Director -> GM -> Manager -> Sales
