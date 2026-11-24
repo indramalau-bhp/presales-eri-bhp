@@ -3296,16 +3296,21 @@ html body{
           leaves:M.arr.slice().sort((a,b)=>((+a.sort||0)-(+b.sort||0))||byName(a.name,b.name)).map(x=>({name:x.name||"—",sub:x.presales?"Presales: "+x.presales:""}))}))}))}));
     el.innerHTML=orgTreeHtml({lv:0,title:"Sales organization",sub:"Directors · GMs · Managers · Sales",kids:dirNodes});
   }
+  // Struktur pelaporan Product Team: PM 1–4 → Ibrahim Asyari, TPS 1–3 → Natanael
+  const PRODUCT_TEAM_HEADS=[
+    {role:"PS",name:"Ibrahim Asyari",tag:"Product Specialists",sub:"PM 1–4"},
+    {role:"TPS",name:"Natanael",tag:"Technical Product Specialists",sub:"TPS 1–3"}
+  ];
   function renderProductTeamOrg(){
     const el=$("productTeamOrg"); if(!el||el.hidden||!productTeam) return;
-    const mg=new Map();
-    for(const r of productTeam){
-      const k=(r.manager||"—")+"|"+(r.group||""); if(!mg.has(k)) mg.set(k,{manager:r.manager||"—",group:r.group||"",rows:[]});
-      mg.get(k).rows.push(r);
-    }
-    const kids=[...mg.values()].sort((a,b)=>String(a.group).localeCompare(String(b.group),undefined,{numeric:true})).map(M=>({lv:1,tag:M.group||"Team",title:M.manager,count:M.rows.length+" specialists",
-      leaves:M.rows.slice().sort((a,b)=>(a.role===b.role?0:a.role==="PS"?-1:1)||String(a.name).localeCompare(String(b.name))).map(r=>({name:r.name||"PIC not listed",sub:[r.role,(r.products||[]).join(", ")].filter(Boolean).join(" · ")}))}));
-    el.innerHTML=orgTreeHtml({lv:0,title:"Product Management",sub:"Managers · Product Specialists (PS) · Technical Product Specialists (TPS)",kids});
+    const mgrNode=(rows)=>{
+      const mg=new Map();
+      for(const r of rows){ const k=(r.manager||"—")+"|"+(r.group||""); if(!mg.has(k)) mg.set(k,{manager:r.manager||"—",group:r.group||"",rows:[]}); mg.get(k).rows.push(r); }
+      return [...mg.values()].sort((a,b)=>String(a.group).localeCompare(String(b.group),undefined,{numeric:true})).map(M=>({lv:2,tag:M.group||"Team",title:M.manager,count:M.rows.length+" specialists",
+        leaves:M.rows.slice().sort((a,b)=>(a.level===b.level?0:a.level==="SPV"?-1:b.level==="SPV"?1:0)||String(a.name).localeCompare(String(b.name))).map(r=>({name:r.name||"PIC not listed",sub:[r.level,(r.products||[]).join(", ")].filter(Boolean).join(" · ")}))}));
+    };
+    const heads=PRODUCT_TEAM_HEADS.map(h=>({lv:1,tag:h.tag,title:h.name,sub:h.sub,kids:mgrNode(productTeam.filter(r=>r.role===h.role))})).filter(h=>h.kids.length);
+    el.innerHTML=orgTreeHtml({lv:0,title:"Product Management Team",sub:"H2 2026 R2",kids:heads});
   }
   document.addEventListener("click",e=>{
     const b=e.target.closest("[data-orgview]"); if(!b) return;
