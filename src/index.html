@@ -1332,6 +1332,17 @@ button.skchip{cursor:pointer}
 .proposal-readiness .ready{color:var(--ok)}
 .proposal-readiness .pending{color:var(--warn)}
 @media(max-width:780px){#propGrid.proposal-detail-layout{grid-template-columns:minmax(0,1fr)}.proposal-list .ppcard{margin:0 0 6px}}
+
+/* Dashboard readability: larger small text + stronger muted colour (works in light and dark) */
+#psDashboard .home-kpi small{font-size:12.5px;color:color-mix(in srgb,var(--muted) 75%,var(--fg))}
+#psDashboard .home-kpi-label{font-size:13px}
+#psDashboard .home-panel-note{font-size:12.5px;color:color-mix(in srgb,var(--muted) 75%,var(--fg))}
+#psDashboard .home-panel-badge,#psDashboard .home-chip{font-size:12px}
+#psDashboard .home-bar,#psDashboard .home-bar b{font-size:13px}
+#psDashboard .home-workload-info,#psDashboard .home-workload-count{font-size:13px}
+#psDashboard .home-workload-avatar{font-size:12px}
+#psDashboard .home-panel-link{font-size:13px}
+.sitefoot{font-size:13px;color:color-mix(in srgb,var(--muted) 75%,var(--fg))}
 </style>
 </head>
 <body>
