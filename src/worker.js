@@ -1269,6 +1269,8 @@ async function accessCtx(env, me) {
   }
   const edit = new Set();
   if (!master && me.email) (await env.DB.prepare("SELECT customerId FROM customer_admins WHERE email=?").bind(me.email).all()).results.forEach(r => edit.add(r.customerId));
+  // Presales who created a customer can manage that customer's devices automatically
+  if (!master && presales && me.email) (await env.DB.prepare("SELECT id FROM customers WHERE lower(createdBy)=?").bind(me.email).all()).results.forEach(r => edit.add(r.id));
   return { master, presales, edit, email: me.email };
 }
 function proposalsVisibleTo(data, ctx, email) {
