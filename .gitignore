@@ -1,0 +1,24 @@
+# dependencies & tooling
+node_modules/
+.wrangler/
+deploy-logs/
+.dev.vars
+.env
+.env.*
+
+# backups & working copies
+*.bak
+*.orig
+src/index.html.before-*
+src/index.html.ui-backup.*
+src/index.html.*.bak
+src/index.html.fontfix-backup
+
+# database dumps (data customer, jangan masuk repo)
+*.sql
+backups/
+
+# OS / editor
+Thumbs.db
+.DS_Store
+.vscode/

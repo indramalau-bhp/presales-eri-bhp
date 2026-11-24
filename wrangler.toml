@@ -1,0 +1,27 @@
+name = "presales"
+# (dulu bernama "inventory-aset")
+main = "src/worker.js"
+compatibility_date = "2024-11-01"
+workers_dev = true
+# Akun Cloudflare indra.malau@berca.co.id
+account_id = "190caf983ef384fa72f7285d6aee157a"
+
+# File HTML ikut dibundel sebagai teks
+rules = [{ type = "Text", globs = ["**/*.html"], fallthrough = true }]
+
+# Password admin disimpan sebagai secret (bukan di file ini):
+#   npx.cmd wrangler secret put ADMIN_PASSWORD
+# Database D1 ditambahkan otomatis oleh setup.ps1
+
+# Login Google: hanya akun @berca.co.id yang bisa melihat data
+[vars]
+ALLOWED_DOMAIN = "berca.co.id"
+# Master admin (akses semua customer + menu Kelola Admin). Pisahkan dengan koma bila lebih dari satu.
+MASTER_EMAILS = "indra.malau@berca.co.id"
+GOOGLE_CLIENT_ID = "343472001568-0rumo10bpb4tc5rdjogb5uu95hvdd1n7.apps.googleusercontent.com"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "inventory-aset"
+database_id = "9955cadb-8c78-47e2-92b8-ae6c1e766d74"
+

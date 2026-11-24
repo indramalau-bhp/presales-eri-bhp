@@ -1,0 +1,10 @@
+{
+  "name": "inventory-aset",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "backup": "bash scripts/backup.sh",
+    "health": "curl -s https://presales.bhp-eri.workers.dev/health"
+  },
+  "devDependencies": { "wrangler": "^4.156.0" }
+}
