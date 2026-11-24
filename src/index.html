@@ -1621,25 +1621,27 @@ input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea{b
 .sidebar-account summary{gap:10px!important}
 .sidebar-account summary .acc-txt{display:flex;flex-direction:column;min-width:0;flex:1;line-height:1.25}
 @media(min-width:861px){
-body.side-min .sidebar{width:100%;transition:width .22s ease,box-shadow .22s ease}
-body.side-min.side-open .sidebar{width:258px;position:sticky;z-index:60;box-shadow:0 30px 60px -20px rgba(0,0,0,.55)!important}
-body.side-min:not(.side-open) .sidebar-account .acc-av{margin:0}
 body.side-min .wrap{grid-template-columns:76px minmax(0,1fr)!important}
-body.side-min:not(.side-open) .sidebar{padding:16px 10px!important;align-items:center}
-body.side-min:not(.side-open) .sidebar .brandbar{align-items:center!important;border:0!important;padding:0 0 8px!important}
-body.side-min:not(.side-open) .sidebar .brandbar .bt,body.side-min:not(.side-open) .nav-lb,body.side-min:not(.side-open) .side-group-label,body.side-min:not(.side-open) #inventoryCustomerNav,body.side-min:not(.side-open) .sidebar-account .acc-txt,body.side-min:not(.side-open) .sidebar-account summary::after,body.side-min:not(.side-open) .sidebar-account .userchip{display:none!important}
-body.side-min:not(.side-open) .side-toggle{position:static!important;margin-top:2px}
+body.side-min .sidebar{width:100%;padding:16px 10px!important;overflow:hidden;transition:width .3s cubic-bezier(.4,0,.2,1),box-shadow .3s ease;will-change:width}
+body.side-min.side-open .sidebar{width:258px;position:sticky;z-index:60;box-shadow:0 30px 60px -20px rgba(0,0,0,.55)!important}
+body.side-min .sidebar .topnav a,body.side-min .sidebar .sidesub a{justify-content:flex-start!important;padding:11px 18px!important;width:auto!important;white-space:nowrap;overflow:hidden}
+body.side-min .sidebar a::before,body.side-min .sidebar a::after{display:none!important}
+body.side-min .nav-ic{margin:0 12px 0 0;width:20px;height:20px}
+body.side-min .nav-lb,body.side-min .side-group-label,body.side-min .sidebar .brandbar .bt,body.side-min .sidebar-account .acc-txt,body.side-min .sidebar-account summary::after,body.side-min .side-toggle{transition:opacity .2s ease .08s;white-space:nowrap}
+body.side-min:not(.side-open) .nav-lb,body.side-min:not(.side-open) .side-group-label,body.side-min:not(.side-open) .sidebar .brandbar .bt,body.side-min:not(.side-open) .sidebar-account .acc-txt,body.side-min:not(.side-open) .sidebar-account summary::after,body.side-min:not(.side-open) .side-toggle{opacity:0;pointer-events:none;transition-delay:0s}
+body.side-min:not(.side-open) #inventoryCustomerNav,body.side-min:not(.side-open) .sidebar-account .userchip{display:none!important}
+body.side-min .sidebar .brandbar{flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:flex-start!important;border:0!important;padding:0 8px 8px!important;overflow:hidden}
+body.side-min .sidebar .brandbar .bl{justify-content:flex-start;flex:none}
+body.side-min .sidebar .brandbar img{width:40px;height:40px}
+body.side-min .sidebar .brandbar .bt{width:112px;flex:none;overflow:hidden;text-overflow:ellipsis}
+body.side-min .side-toggle{position:absolute!important;top:16px;right:14px;margin:0}
 body.side-min .side-toggle svg{transform:rotate(180deg)}
-body.side-min:not(.side-open) .sidebar .brandbar .bl{justify-content:center}
-body.side-min:not(.side-open) .sidebar .brandbar img{width:40px;height:40px}
-body.side-min:not(.side-open) .sidebar .topnav a,body.side-min:not(.side-open) .sidebar .sidesub a{justify-content:center;padding:11px 0!important;width:44px}
-body.side-min:not(.side-open) .sidebar a::before,body.side-min:not(.side-open) .sidebar a::after{display:none!important}
-body.side-min:not(.side-open) .nav-ic{margin:0;width:20px;height:20px}
-body.side-min:not(.side-open) .sidebar .sidesub,body.side-min:not(.side-open) .sidebar .topnav,body.side-min:not(.side-open) .side-group{display:flex;flex-direction:column;align-items:center;gap:6px}
-body.side-min:not(.side-open) .sidebar .sidesub[hidden]{display:none!important}
-body.side-min:not(.side-open) .sidebar-account{margin-top:auto!important;border:0!important;padding:0!important}
-body.side-min:not(.side-open) .sidebar-account summary{padding:0!important;justify-content:center}
-body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!important;padding:0!important}
+body.side-min .sidebar .sidesub,body.side-min .sidebar .topnav,body.side-min .side-group{display:flex;flex-direction:column;align-items:stretch;gap:6px}
+body.side-min .sidebar .sidesub[hidden]{display:none!important}
+body.side-min .sidebar-account{margin-top:auto!important;border:0!important;padding:0!important;overflow:hidden}
+body.side-min .sidebar-account summary{padding:8px 11px!important;justify-content:flex-start;white-space:nowrap;overflow:hidden}
+body.side-min .sidebar .side-group{border:0!important;margin:0!important;padding:0!important}
+@media(prefers-reduced-motion:reduce){body.side-min .sidebar,body.side-min .nav-lb,body.side-min .side-group-label,body.side-min .sidebar .brandbar .bt{transition:none!important}}
 }
 @media(max-width:860px){.side-toggle{display:none!important}}
 
