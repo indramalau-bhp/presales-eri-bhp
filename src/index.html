@@ -1646,6 +1646,54 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
 .teamtoggle a{display:inline-flex;align-items:center;padding:8px 18px;border-radius:999px;font-weight:600;font-size:14px;text-decoration:none;color:var(--fg)}
 .teamtoggle a.on{background:var(--tab-on);color:var(--tab-on-ink)}
 .teamtoggle{display:inline-flex;gap:4px;padding:5px;margin:0 0 16px;border:0}
+
+/* ===== Dashboard v2 (mockup layout) ===== */
+#psDashboard.dv2-on>.ps-dashboard-head{display:none!important}
+.dv2{display:grid;grid-template-columns:minmax(0,2fr) minmax(300px,1fr);gap:20px;align-items:stretch}
+.dv2>*{min-width:0}
+.dv2-hero{position:relative;overflow:hidden;background:#0f2b27;color:#fff;border-radius:32px;padding:38px 40px;display:flex;justify-content:space-between;align-items:flex-end;gap:20px;box-shadow:0 24px 48px -24px rgba(15,43,39,.7)}
+.dv2-hero::after{content:"";position:absolute;right:-90px;top:-120px;width:380px;height:380px;border-radius:50%;background:radial-gradient(circle,rgba(155,227,200,.26),transparent 70%);pointer-events:none}
+.dv2-hero-in{position:relative;z-index:1;max-width:560px}
+.dv2-eyebrow{font-size:12.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#9be3c8}
+.dv2-title{margin:14px 0 10px;font-size:clamp(30px,3.6vw,46px);line-height:1.08;font-weight:700;letter-spacing:-.025em;color:#fff}
+.dv2-title .it{font-family:"Instrument Serif",Georgia,serif;font-style:italic;font-weight:400;font-size:1.08em;color:#f3c19b;letter-spacing:0}
+.dv2-hero p{margin:0 0 22px;color:#c7ddd6;font-size:15px;line-height:1.55;max-width:430px}
+.dv2-actions{display:flex;gap:10px;flex-wrap:wrap}
+.dv2-actions .btn{background:transparent!important;border:1px solid rgba(255,255,255,.4)!important;color:#fff!important}
+.dv2-avs{position:relative;z-index:1;display:flex}
+.dv2-av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800;color:#0f2b27;background:#9be3c8;margin-left:-5px;box-shadow:0 0 0 3px #0f2b27;overflow:hidden}
+.dv2-av:nth-child(2){background:#f6c9ad}.dv2-av:nth-child(3){background:#cfe3f5}
+.dv2-av img{width:100%;height:100%;object-fit:cover}
+.dv2-card{background:var(--surface);border-radius:28px;padding:22px 24px;box-shadow:var(--glass-sh)}
+.dv2-cal header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
+.dv2-cal h3{margin:0;font-size:19px}.dv2-cal header span{font-size:12.5px;color:var(--muted);font-weight:600}
+.dv2-week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:16px}
+.dv2-day{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 7px;border-radius:14px;background:var(--accent-soft)}
+.dv2-day small{font-size:11px;color:var(--muted);font-weight:600}.dv2-day b{font-size:16px;font-weight:800}
+.dv2-day i{width:5px;height:5px;border-radius:50%;background:transparent}.dv2-day i.has{background:#e07a45}
+.dv2-day.is-today{background:var(--tab-on);color:var(--tab-on-ink)}.dv2-day.is-today small{color:inherit;opacity:.8}
+.dv2-uplist{display:flex;flex-direction:column;gap:8px}
+.dv2-up{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:16px;background:var(--accent-soft);text-decoration:none;color:var(--fg)}
+.dv2-up:hover{filter:brightness(.97)}
+.dv2-h{min-width:44px;text-align:center;font-size:12px;font-weight:800;padding:5px 8px;border-radius:999px;background:#e9e4c8;color:#6b5a00}
+.dv2-h.crit{background:#fcdcd6;color:#b3261e}.dv2-h.soon{background:#fde7cf;color:#8a5200}
+.dv2-up-t{display:flex;flex-direction:column;min-width:0}.dv2-up-t b{font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dv2-up-t small{font-size:12px;color:var(--muted)}
+.dv2-kpis{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
+.dv2-kpi{border-radius:24px!important;padding:20px 22px!important;border:0!important;min-height:0!important}
+.home-kpi .dv2-kpi-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.dv2-kpi::after,.dv2-kpi::before{display:none!important}
+.dv2-av:first-child{margin-left:0}
+.home-kpi .dv2-badge{display:inline-block;font-style:normal;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.dv2-badge.warn{background:#fde7cf;color:#8a5200}.dv2-badge.bad{background:#fcdcd6;color:#b3261e}
+.dv2-follow{grid-column:1;border-radius:28px!important;padding:24px!important;border-top:0!important}
+.dv2-side{grid-column:2;display:flex;flex-direction:column;gap:20px;min-width:0}
+.dv2-side .home-panel{border-radius:28px!important;border-top:0!important}
+.dv2-closest{display:flex;align-items:center;gap:18px;padding:22px 24px;border-radius:28px;background:#0f2b27;color:#fff;text-decoration:none;box-shadow:0 24px 48px -26px rgba(15,43,39,.7)}
+.dv2-ring{width:64px;height:64px;border-radius:50%;border:4px solid #9be3c8;display:grid;place-items:center;font-weight:800;font-size:15px;flex:none}
+.dv2-closest small{display:block;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9be3c8}
+.dv2-closest b{display:block;font-size:20px;margin:3px 0 2px}.dv2-closest em{font-style:normal;font-size:12.5px;color:#c7ddd6}
+@media(max-width:1100px){.dv2{grid-template-columns:1fr}.dv2-follow,.dv2-side{grid-column:1}.dv2-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.dv2-hero{padding:26px 22px;flex-direction:column;align-items:flex-start}.dv2-kpis{gap:12px}}
 </style>
 </head>
 <body>
@@ -3191,8 +3239,9 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
   }
   function renderDashboard(){
     const root=$("homeDashContent"); if(!root) return;
-    if(!isViewer()){ root.innerHTML='<p class="home-empty">Sign in with an authorized account to view the proposal overview.</p>'; return; }
-    if(!siteFull){ renderProposalLoading(root); return; }
+    $("psDashboard").classList.remove("dv2-on");
+    if(!isViewer()){ root.className=""; root.innerHTML='<p class="home-empty">Sign in with an authorized account to view the proposal overview.</p>'; return; }
+    if(!siteFull){ root.className=""; renderProposalLoading(root); return; }
     root.setAttribute("aria-busy","false");
     const proposals=SITE.proposals||[];
     const today=proposalTodayIso();
@@ -3246,12 +3295,27 @@ body.side-min:not(.side-open) .sidebar .side-group{border:0!important;margin:0!i
     const load=Object.entries(workload).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).slice(0,5);
     const maxLoad=Math.max(1,...load.map(x=>x[1]));
     const loadHtml=load.length?load.map(([name,n])=>'<a class="home-workload-row dashboard-filter-link" href="'+esc(name==='Unassigned'?proposalFilterLink('unassigned'):proposalFilterLink('owner',name))+'"><span class="home-workload-avatar" aria-hidden="true">'+(memberPhoto(name)?'<img alt="" src="'+esc(memberPhoto(name))+'">':esc(initials(name)))+'</span><span class="home-workload-info">'+esc(name)+'</span><span class="home-workload-pips" title="'+n+' active proposal'+(n>1?'s':'')+'" aria-hidden="true">'+'<i></i>'.repeat(Math.min(n,6))+'</span><b class="home-workload-count">'+n+'</b></a>').join(""):'<p class="home-empty">No proposal assignment data yet.</p>';
-    root.className='home-dash-content';
-    root.innerHTML='<section class="home-deadline-banner"><div><strong>Closest deadline</strong><span>'+esc(nextDeadline?deadlineCustomer:"No submission deadline set")+'</span></div>'+(nextDeadline?'<span class="home-deadline-value">'+esc(deadlineLabel)+'</span>':"")+'</section>'+
-      '<div class="home-kpis">'+kpi('active','Active proposals',active.length,'Currently open',0)+kpi('overdue','Overdue',overdue.length,'Past submission deadline',1)+kpi('due','Due in 7 days',dueSoon.length,'Today through the next 7 days',2)+kpi('unassigned','Unassigned',unassigned.length,'Needs a Presales owner',3)+'</div>'+ 
-      '<div class="home-dash-grid"><section class="home-panel"><header class="home-panel-head"><div><h3>Follow-up priorities</h3><div class="home-panel-note">The next items to move forward</div></div><span class="home-panel-badge">'+priority.length+' items</span></header><div class="home-priority-list">'+priorityHtml+'</div><a class="home-panel-link" href="#/presales/proposal">Open Proposal Monitor →</a></section>'+
-      '<div class="home-dash-secondary"><section class="home-panel"><header class="home-panel-head"><div><h3>Proposal pipeline</h3><div class="home-panel-note">'+active.length+' '+(active.length===1?'active proposal':'active proposals')+'</div></div></header><div class="home-bars">'+pipeline+'</div>'+outcomes+'</section>'+
-      '<section class="home-panel"><header class="home-panel-head"><div><h3>Presales workload</h3><div class="home-panel-note">Active proposal assignments</div></div><span class="home-panel-badge">'+load.length+' members</span></header><div class="home-load">'+loadHtml+'</div></section></div></div>';
+    root.className='home-dash-content dv2';
+    $("psDashboard").classList.add("dv2-on");
+    const kpiV2=(filter,label,n,caption,index,badge,tone)=>'<a class="home-kpi dashboard-filter-link dv2-kpi'+(n===0&&filter!=='active'?' is-zero':'')+'" href="'+esc(proposalFilterLink(filter))+'" style="--kpi-index:'+index+'"><span class="dv2-kpi-top"><span class="home-kpi-label">'+label+'</span><em class="dv2-badge '+tone+'">'+badge+'</em></span><strong>'+n+'</strong><small>'+caption+'</small></a>';
+    const dayMs=864e5, t0=Date.parse(today+"T00:00:00Z");
+    const fmt=(iso,o)=>new Date(Date.parse(String(iso).slice(0,10)+"T00:00:00Z")).toLocaleDateString(o.month==="long"||o.weekday==="short"&&!o.day?"en-US":"en-GB",Object.assign({timeZone:"UTC"},o));
+    const subSet={}; active.forEach(p=>{const k=String(p.submission||"").slice(0,10); if(k) subSet[k]=(subSet[k]||0)+1;});
+    const weekHtml=Array.from({length:7},(_,i)=>{const iso=new Date(t0+i*dayMs).toISOString().slice(0,10);return '<span class="dv2-day'+(i===0?' is-today':'')+'"><small>'+fmt(iso,{weekday:"short"})+'</small><b>'+Number(iso.slice(8,10))+'</b><i'+(subSet[iso]?' class="has"':'')+'></i></span>';}).join("");
+    const upcoming=active.filter(p=>{const d=daysLeft(p);return d!==null&&d>=0;}).sort((x,y)=>daysLeft(x)-daysLeft(y)).slice(0,4);
+    const upHtml=upcoming.length?upcoming.map(p=>{const d=daysLeft(p);const tone=d<=3?"crit":d<=7?"soon":"";return '<a class="dv2-up" href="#/presales/proposal/'+encodeURIComponent(p.id)+'"><span class="dv2-h '+tone+'">'+(d===0?'Today':'H−'+d)+'</span><span class="dv2-up-t"><b>'+esc(p.customer||p.title||"Untitled proposal")+'</b><small>'+esc(fmt(p.submission,{weekday:"short",day:"numeric",month:"short",year:"numeric"}))+'</small></span></a>';}).join(""):'<p class="home-empty">No upcoming deadlines.</p>';
+    const calHtml='<aside class="dv2-card dv2-cal"><header><h3>'+esc(fmt(today,{month:"long",year:"numeric"}))+'</h3><span>Next 7 days</span></header><div class="dv2-week">'+weekHtml+'</div><div class="dv2-uplist">'+upHtml+'</div></aside>';
+    const heroTxt=active.length?(active.length+' '+(active.length===1?'proposal is':'proposals are')+' open.'+(nextDeadline?' The closest submission is '+esc(deadlineCustomer)+(nextDays===0?' today.':nextDays<0?' and it is '+Math.abs(nextDays)+' days overdue.':' in '+nextDays+(nextDays===1?' day.':' days.')):'')):'No proposals are open right now.';
+    const avs=load.filter(([n])=>n!=="Unassigned").slice(0,3).map(([n])=>'<span class="dv2-av" title="'+esc(n)+'">'+(memberPhoto(n)?'<img alt="" src="'+esc(memberPhoto(n))+'">':esc(initials(n)))+'</span>').join("");
+    const heroHtml='<section class="dv2-hero"><div class="dv2-hero-in"><div class="dv2-eyebrow">Presales workspace · Live overview</div><h1 class="dv2-title" id="homeDashTitle2">Deadlines, always <span class="it">under control</span></h1><p>'+heroTxt+'</p><div class="dv2-actions">'+(canAddProposal()?'<button type="button" class="primary" id="homeAddPropBtn2">+ New proposal</button>':'')+'<a class="btn" href="#/presales/proposal">View proposals</a></div></div>'+(avs?'<div class="dv2-avs">'+avs+'</div>':'')+'</section>';
+    const closestHtml='<a class="dv2-closest" href="'+(nextDeadline?'#/presales/proposal/'+encodeURIComponent(nextDeadline.id):'#/presales/proposal')+'"><span class="dv2-ring">'+esc(nextDeadline?deadlineLabel.replace("-","−"):"—")+'</span><span><small>Closest deadline</small><b>'+esc(nextDeadline?deadlineCustomer:"No submission deadline set")+'</b>'+(nextDeadline?'<em>Submission '+esc(fmt(nextDeadline.submission,{day:"numeric",month:"short",year:"numeric"}))+'</em>':'')+'</span></a>';
+    const pipeV2=Object.entries(stages).map(([stage,count])=>{const percent=active.length?Math.round(count/active.length*100):0;return '<a class="home-bar dashboard-filter-link" href="'+esc(proposalFilterLink('stage',stage))+'"><span class="home-bar-label">'+stage+'</span><span class="home-track" aria-hidden="true"><i style="width:'+percent+'%"></i></span><b>'+count+'</b></a>';}).join("");
+    root.innerHTML=heroHtml+calHtml+
+      '<div class="home-kpis dv2-kpis">'+kpiV2('active','Active proposals',active.length,'Currently open',0,'Open','ok')+kpiV2('overdue','Overdue',overdue.length,'Past submission deadline',1,overdue.length?'Late':'All clear',overdue.length?'bad':'ok')+kpiV2('due','Due in 7 days',dueSoon.length,'Today through the next 7 days',2,dueSoon.length?'Watch':'All clear',dueSoon.length?'warn':'ok')+kpiV2('unassigned','Unassigned',unassigned.length,'Needs a Presales owner',3,unassigned.length?'Action':'All clear',unassigned.length?'warn':'ok')+'</div>'+
+      '<section class="home-panel dv2-follow"><header class="home-panel-head"><div><h3>Follow-up priorities</h3></div><span class="home-panel-badge">'+priority.length+' items</span></header><div class="home-priority-list">'+priorityHtml+'</div><a class="home-panel-link" href="#/presales/proposal">Open Proposal Monitor →</a></section>'+
+      '<div class="dv2-side">'+closestHtml+'<section class="home-panel"><header class="home-panel-head"><div><h3>Proposal pipeline</h3></div></header><div class="home-bars">'+pipeV2+'</div>'+outcomes+'</section>'+
+      '<section class="home-panel"><header class="home-panel-head"><div><h3>Presales workload</h3></div><span class="home-panel-note">proposals in progress</span></header><div class="home-load">'+loadHtml+'</div></section></div>';
+    const add2=$("homeAddPropBtn2"); if(add2) add2.onclick=()=>openItem("proposal");
   }
   $("homeDashContent").addEventListener("click",event=>{
     const button=event.target.closest("button[data-follow-up]");
