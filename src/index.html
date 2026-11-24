@@ -1451,6 +1451,12 @@ html body{
 .pr-ic{flex:none;width:18px;height:18px;border-radius:50%;border:2px solid var(--warn);display:inline-grid;place-items:center;font:700 11px/1 var(--font-body);font-style:normal;color:#fff}
 .proposal-readiness li:has(.ready) .pr-ic{background:var(--ok);border-color:var(--ok)}
 .proposal-readiness li b{font-size:13px}
+
+/* Dashboard polish */
+#psDashboard .home-missing{color:var(--warn);font-weight:600}
+#psDashboard .home-tender{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#psDashboard .home-kpi.is-zero strong{color:var(--muted);opacity:.55}
+#psDashboard .home-kpi.is-zero small::before{content:"✓ ";color:var(--ok);font-weight:700}
 </style>
 </head>
 <body>
@@ -2972,14 +2978,14 @@ html body{
     const nextDays=nextDeadline?daysLeft(nextDeadline):null;
     const deadlineLabel=nextDays===null?'—':nextDays<0?Math.abs(nextDays)+'d late':nextDays===0?'Today':'H-'+nextDays;
     const deadlineCustomer=nextDeadline?String(nextDeadline.customer||nextDeadline.title||'Proposal'):'No deadline set';
-    const kpi=(filter,label,n,caption,index)=>'<a class="home-kpi dashboard-filter-link" href="'+esc(proposalFilterLink(filter))+'" style="--kpi-index:'+index+'"><span class="home-kpi-label">'+label+'</span><strong>'+n+'</strong><small>'+caption+'</small></a>';
+    const kpi=(filter,label,n,caption,index)=>'<a class="home-kpi dashboard-filter-link'+(n===0&&filter!=='active'?' is-zero':'')+'" href="'+esc(proposalFilterLink(filter))+'" style="--kpi-index:'+index+'"><span class="home-kpi-label">'+label+'</span><strong>'+n+'</strong><small>'+caption+'</small></a>';
     const priorityHtml=priority.length?priority.map(p=>{
       const d=daysLeft(p);
       const deadline=d===null?"":d<0?Math.abs(d)+"d overdue":d===0?"Due today":d===1?"Due tomorrow":"Due in "+d+" days";
-      const urgency=d===null?"":d<=0?"due-critical":d<=3?"due-soon":"";
+      const urgency=d===null?"":d<=3?"due-critical":d<=7?"due-soon":"";
       const reasons=missing(p);
-      const details=[deadline?'<strong class="'+urgency+'">'+esc(deadline)+'</strong>':"",...reasons.map(reason=>esc(reason))].filter(Boolean).join(" &middot; ");
-      const tender=p.customer&&p.title?'<p>'+esc(p.title)+'</p>':"";
+      const details=[deadline?'<strong class="'+urgency+'">'+esc(deadline)+'</strong>':"",...reasons.map(reason=>'<span class="home-missing">'+esc(reason)+'</span>')].filter(Boolean).join(" &middot; ");
+      const tender=p.customer&&p.title?'<p class="home-tender">'+esc(p.title)+'</p>':"";
       const link='#/presales/proposal/'+encodeURIComponent(p.id);
       const target=!proposalOwners(p).length?"f_presales":!p.rksUrl?"f_rksUrl":submissionChecklistTarget(p);
       const action=target==="f_presales"?"Assign Presales":target==="f_rksUrl"?"Add document link":"Review checklist";
@@ -3000,11 +3006,11 @@ html body{
     const archived=proposals.filter(proposalIsArchived);
     const won=archived.filter(p=>["Won","Menang"].includes(p.status)).length;
     const lost=archived.filter(p=>["Lost","Kalah"].includes(p.status)).length;
-    const outcomes='<div class="home-pipeline-outcomes"><strong>Archived outcomes</strong><p>All time &middot; Won '+won+' &middot; Lost '+lost+'</p></div>';
+    const outcomes='<div class="home-pipeline-outcomes"><strong>Archived outcomes</strong><p>'+(won+lost?'All time &middot; Won '+won+' &middot; Lost '+lost:'No won or lost proposals archived yet')+'</p></div>';
     const workload={}; active.forEach(p=>{const names=[...new Set(csv(p.presales).map(n=>n.trim()).filter(Boolean))]; (names.length?names:["Unassigned"]).forEach(name=>{workload[name]=(workload[name]||0)+1;});});
     const load=Object.entries(workload).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).slice(0,5);
     const maxLoad=Math.max(1,...load.map(x=>x[1]));
-    const loadHtml=load.length?load.map(([name,n])=>'<a class="home-workload-row dashboard-filter-link" href="'+esc(name==='Unassigned'?proposalFilterLink('unassigned'):proposalFilterLink('owner',name))+'"><span class="home-workload-avatar" aria-hidden="true">'+esc(initials(name))+'</span><span class="home-workload-info">'+esc(name)+'</span><span class="home-workload-track"><i style="width:'+Math.round(n/maxLoad*100)+'%"></i></span><b class="home-workload-count">'+n+'</b></a>').join(""):'<p class="home-empty">No proposal assignment data yet.</p>';
+    const loadHtml=load.length?load.map(([name,n])=>'<a class="home-workload-row dashboard-filter-link" href="'+esc(name==='Unassigned'?proposalFilterLink('unassigned'):proposalFilterLink('owner',name))+'"><span class="home-workload-avatar" aria-hidden="true">'+esc(initials(name))+'</span><span class="home-workload-info">'+esc(name)+'</span><span class="home-workload-track" title="'+n+' active proposal'+(n>1?'s':'')+'"><i style="width:'+Math.round(n/maxLoad*100)+'%"></i></span><b class="home-workload-count">'+n+'</b></a>').join(""):'<p class="home-empty">No proposal assignment data yet.</p>';
     root.className='home-dash-content';
     root.innerHTML='<section class="home-deadline-banner"><div><strong>Closest deadline</strong><span>'+esc(nextDeadline?deadlineCustomer:"No submission deadline set")+'</span></div>'+(nextDeadline?'<span class="home-deadline-value">'+esc(deadlineLabel)+'</span>':"")+'</section>'+
       '<div class="home-kpis">'+kpi('active','Active proposals',active.length,'Currently open',0)+kpi('overdue','Overdue',overdue.length,'Past submission deadline',1)+kpi('due','Due in 7 days',dueSoon.length,'Today through the next 7 days',2)+kpi('unassigned','Unassigned',unassigned.length,'Needs a Presales owner',3)+'</div>'+ 
