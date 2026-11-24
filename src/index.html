@@ -1678,7 +1678,7 @@ html body{
       <summary>Team Manager Emails</summary>
       <div class="product-team-grid" id="productTeamManagerGrid"></div>
     </details>
-    <div class="product-team-sections" id="productTeamGrid"></div>
+    <div class="product-team-sections ps-sales" id="productTeamGrid"></div>
     <div class="otree-wrap" id="productTeamOrg" hidden></div>
   </section>
   <section class="ps-sec" id="psSales">
@@ -2765,14 +2765,33 @@ html body{
     });
     $("productTeamStatus").textContent=matches.length?matches.length+" entries":"No matching entries.";
     const renderCard=row=>'<article class="rescard product-team-card"><header><h2>'+esc(row.name||"PIC not listed")+'</h2><strong>'+esc(row.role)+'</strong></header><p>'+esc([row.group,row.level,"Manager: "+row.manager].filter(Boolean).join(" · "))+'</p><ul>'+row.products.map(product=>'<li>'+esc(product)+'</li>').join("")+'</ul>'+productTeamSpvField(row)+productTeamEmailField(row)+'</article>';
-    const sections=[["PS","Product Specialists"],["TPS","Technical Product Specialists"]];
     const filtered=terms.some(Boolean)||Boolean(role||group);
-    $("productTeamGrid").innerHTML=sections.map(([key,title])=>{
-      const rows=matches.filter(row=>row.role===key);
-      if(!rows.length) return "";
-      return '<details class="rescard product-team-fold"'+(filtered?' open':'')+'><summary><span>'+title+'</span><small>'+rows.length+' entries</small></summary><div class="product-team-grid">'+rows.map(renderCard).join("")+'</div></details>';
-    }).join("");
+    const byName=(x,y)=>String(x.name).localeCompare(String(y.name));
+    const cards=rows=>'<div class="product-team-grid">'+rows.map(renderCard).join("")+'</div>';
+    const section=(title,count,rows)=>'<div class="smgr"><div class="smgr-h"><b>'+esc(title)+'</b><span class="smgr-c">'+count+'</span></div>'+cards(rows)+'</div>';
+    $("productTeamGrid").innerHTML=PRODUCT_TEAM_HEADS.map(h=>{
+      const rows=matches.filter(r=>r.role===h.role); if(!rows.length) return "";
+      const groups=[...new Set(rows.map(r=>r.group))].sort((x,y)=>String(x).localeCompare(String(y),undefined,{numeric:true}));
+      const body=groups.map(g=>{
+        const inG=rows.filter(r=>r.group===g), mgr=(inG.find(r=>r.manager)||{}).manager||"";
+        const spvAll=productTeam.filter(r=>r.role===h.role&&r.group===g&&r.level==="SPV"&&r.name).sort(byName);
+        const names=new Set(spvAll.map(x=>x.name));
+        let inner="";
+        if(spvAll.length){
+          for(const sv of spvAll){
+            const team=inG.filter(r=>r.spv===sv.name), own=inG.filter(r=>r.id===sv.id);
+            if(team.length||own.length) inner+=section("SPV · "+sv.name,team.length+" team member"+(team.length===1?"":"s"),[...own,...team.sort(byName)]);
+          }
+          const loose=inG.filter(r=>r.level!=="SPV"&&(!r.spv||!names.has(r.spv))).sort(byName);
+          if(loose.length) inner+=section("Not assigned to an SPV",loose.length+" specialists",loose);
+        }else inner=section(mgr?"Reports to "+mgr:"Team",inG.length+" specialists",inG.slice().sort(byName));
+        const collapsed=!filtered;
+        return '<div class="sgrp'+(collapsed?' collapsed':'')+'"><div class="sgrp-headrow"><button type="button" class="sgrp-h gm" data-sgrp aria-expanded="'+(collapsed?'false':'true')+'"><span class="sgrp-ttl"><span class="sgrp-chev" aria-hidden="true">▸</span><b>'+esc(g)+'</b></span><span>'+(mgr?'Manager: '+esc(mgr)+' · ':'')+inG.length+' specialists'+(spvAll.length?' · '+spvAll.length+' SPV':'')+'</span></button></div><div class="sgrp-body">'+inner+'</div></div>';
+      }).join("");
+      return '<div class="sdir"><div class="sdir-h"><span class="sdir-tag">'+esc(h.tag)+'</span><b>'+esc(h.name)+'</b><span class="sdir-nm">'+esc(h.sub)+'</span><span class="sdir-c">'+rows.length+' specialists · '+groups.length+' groups</span></div>'+body+'</div>';
+    }).join("")||'<p class="lead">No matching entries.</p>';
   }
+  $("productTeamGrid").addEventListener("click",e=>{ const h=e.target.closest("[data-sgrp]"); if(!h) return; const g=h.closest(".sgrp"); if(!g) return; const c=g.classList.toggle("collapsed"); h.setAttribute("aria-expanded",c?"false":"true"); });
   function productTeamSpvOptions(row){
     return (productTeam||[]).filter(x=>x.level==="SPV"&&x.name&&x.role===row.role&&x.group===row.group).map(x=>x.name);
   }
