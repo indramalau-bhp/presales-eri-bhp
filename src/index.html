@@ -1431,6 +1431,26 @@ html body{
 #teamGrid .team-card-footer .acts{align-items:center;gap:6px}
 #teamGrid .team-card-footer .acts .link{font-size:13.5px;font-weight:600}
 #teamGrid .team-card-footer .mail{font-size:13px}
+
+/* Proposal Monitor polish */
+.proposal-list-entry[aria-pressed="true"]{border-color:var(--accent)!important;box-shadow:inset 4px 0 var(--accent),var(--glass-sh)!important;background:color-mix(in srgb,var(--accent) 8%,var(--glass-bg))!important}
+.proposal-list-owner{font-size:12.5px;color:var(--muted)}
+.proposal-list-owner b{color:var(--fg);font-weight:600}
+.proposal-list-meta{font-size:12.5px}
+.prop-view b{font-size:12px;min-width:24px;height:24px}
+.pp-d{font-size:12px;gap:3px;padding-right:14px}
+.pp-d b{font-size:14px}
+.pp-group-title{font-size:12.5px!important;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:18px!important}
+.pp-rks{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;padding:6px 12px;border-radius:999px;background:var(--accent-soft)}
+.pp-rks::after{content:"↗";font-size:12px}
+.pp-acts .link{font-size:13.5px;font-weight:600}
+.proposal-readiness h3{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:15px}
+.proposal-readiness h3 small{font-size:12.5px;font-weight:600;color:var(--muted)}
+.proposal-readiness li{font-size:14px;align-items:center}
+.proposal-readiness li>span{display:inline-flex;align-items:center;gap:9px}
+.pr-ic{flex:none;width:18px;height:18px;border-radius:50%;border:2px solid var(--warn);display:inline-grid;place-items:center;font:700 11px/1 var(--font-body);font-style:normal;color:#fff}
+.proposal-readiness li:has(.ready) .pr-ic{background:var(--ok);border-color:var(--ok)}
+.proposal-readiness li b{font-size:13px}
 </style>
 </head>
 <body>
@@ -3008,9 +3028,9 @@ html body{
   });
   function proposalReadiness(proposal){
     const labels=[["adminDocumentsReady","Administrative documents"],["productPricingConfirmed","Product pricing"],["proposalUploaded","Proposal uploaded"]];
-    return '<section class="proposal-readiness"><h3>Submission checklist</h3><ul>'+labels.map(([key,label])=>{
+    return '<section class="proposal-readiness"><h3>Submission checklist <small>'+labels.filter(([key])=>proposal[key]==="1").length+'/'+labels.length+' ready</small></h3><ul>'+labels.map(([key,label])=>{
       const ready=proposal[key]==="1";
-      return '<li><span>'+label+'</span><b class="'+(ready?"ready":"pending")+'">'+(ready?"Ready":"Pending")+'</b></li>';
+      return '<li><span><i class="pr-ic" aria-hidden="true">'+(ready?"✓":"")+'</i>'+label+'</span><b class="'+(ready?"ready":"pending")+'">'+(ready?"Ready":"Pending")+'</b></li>';
     }).join("")+'</ul></section>';
   }
   document.querySelectorAll("[data-proposal-layout]").forEach(button=>button.onclick=()=>{
@@ -3104,7 +3124,7 @@ html body{
         const deadline=dl===null?"No deadline":dl<0?"Overdue":dl===0?"Due today":"Due "+fmt(p.submission);
         const status=PROP_STATUS_LABEL[p.status]||p.status||"Prebid";
         return '<button type="button" class="proposal-list-entry" data-select-proposal="'+esc(key(p))+'" aria-pressed="'+active+'"><strong>'+esc(p.customer||p.title||"Untitled proposal")+'</strong><span class="proposal-list-meta"><span class="chip '+(SC[p.status]||"none")+'">'+esc(status)+'</span>'+
-          (DONE.includes(p.status)?"":'<span>'+esc(deadline)+'</span>')+'</span></button>'+(active&&compact?detail:"");
+          (DONE.includes(p.status)?(p.status==="Submitted"?'<span>'+esc(p.submittedAt?"Submitted "+fmt(p.submittedAt):"")+'</span>':""):'<span>'+esc(deadline)+'</span>')+'</span>'+((p.presales||p.sales)?'<span class="proposal-list-owner">'+(p.presales?'Presales: <b>'+esc(p.presales)+'</b>':"")+(p.presales&&p.sales?' · ':"")+(p.sales?'Sales: <b>'+esc(p.sales)+'</b>':"")+'</span>':"")+'</button>'+(active&&compact?detail:"");
       };
       el.classList.add("proposal-detail-layout");
       el.innerHTML='<div class="proposal-list" role="group" aria-label="Proposals">'+renderGroups(entry)+'</div>'+
