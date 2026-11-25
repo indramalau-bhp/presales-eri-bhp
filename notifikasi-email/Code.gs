@@ -24,20 +24,63 @@ const STAGES = [150, 90, 60, 30, 14, 7];                     // tahap pengingat 
 function setup() {
   // Hapus trigger lama, lalu pasang: warranty = mingguan (Senin), proposal = harian.
   ScriptApp.getProjectTriggers()
-    .filter(t => ['dailyCheck', 'checkRequests', 'checkProposals'].indexOf(t.getHandlerFunction()) >= 0)
+    .filter(t => ['dailyCheck', 'checkRequests', 'checkProposals', 'checkSubmitDay', 'checkRequestEscalation'].indexOf(t.getHandlerFunction()) >= 0)
     .forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('dailyCheck').timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(RUN_HOUR).create();
-  ScriptApp.newTrigger('checkProposals').timeBased().everyDays(1).atHour(RUN_HOUR).create();
+  ScriptApp.newTrigger('checkProposals').timeBased().everyDays(1).atHour(PROPOSAL_HOUR).create();
+  ScriptApp.newTrigger('checkRequestEscalation').timeBased().everyHours(1).create();
+  SUBMIT_DAY_HOURS.forEach(function (h) { ScriptApp.newTrigger('checkSubmitDay').timeBased().everyDays(1).atHour(h).create(); });
   Logger.log(dailyCheck(true));
   Logger.log(checkProposals(true));
 }
 
 function checkNow() { Logger.log(dailyCheck(true)); }
 function checkProposalsNow() { Logger.log(checkProposals(true)); }
+function checkSubmitDayNow() { Logger.log(checkSubmitDay(true)); }
 
-// ============ PENGINGAT PROPOSAL (harian) ============
-// Pengingat dikirim tiap 2 hari; saat sisa ≤ 3 hari menjadi tiap hari. Berhenti setelah Submitted/Menang/Kalah.
-function checkProposals(force) {
+// ============ PENGINGAT PROPOSAL ============
+// Sebelum hari H : 1 email jam 06:00 (tiap 2 hari; saat sisa <= 3 hari menjadi tiap hari).
+// Hari H (submit): email pertama jam 06:00, lalu pengingat lanjutan jam 09:00, 12:00 dan 15:00
+//   HANYA bila checklist masih ada yang belum lengkap. Mulai jam ESCALATE_FROM_HOUR, manager dan GM sales
+//   ikut di-CC selama masih ada yang belum lengkap. Berhenti setelah status Submitted/Menang/Kalah.
+// Setiap email menandai (merah) item checklist yang belum lengkap.
+const PROPOSAL_HOUR = 6;                    // jam email harian / email pertama hari H (WIB)
+const SUBMIT_DAY_HOURS = [9, 12, 15];      // pengingat lanjutan hari H (hanya bila belum lengkap)
+const ESCALATE_FROM_HOUR = 12;             // mulai jam ini manager + GM sales di-CC
+
+function checkProposals(force) { return runProposalReminders_(force, false); }
+function checkSubmitDay(force) { return runProposalReminders_(force, true); }
+
+// Daftar checklist: Sampul 1 (dokumen administrasi - Sales, dokumen teknis/proposal - Presales),
+// Sampul 2 (harga - Sales, Product Specialist, Principal), link Drive, dan item tambahan dari form Add proposal.
+function checklistItems_(pp) {
+  var c = pp.checks || {};
+  var items = [
+    { cover: 'Sampul 1', label: 'Dokumen administrasi', owner: 'Sales', ok: !!c.admin },
+    { cover: 'Sampul 1', label: 'Dokumen teknis (proposal)', owner: 'Presales', ok: !!c.uploaded },
+    { cover: 'Sampul 2', label: 'Harga', owner: 'Sales, Product Specialist, Principal', ok: !!c.pricing },
+    { cover: 'Dokumen', label: 'Link Google Drive proposal', owner: 'Presales', ok: !!c.rks }
+  ];
+  (c.extra || []).forEach(function (x) { items.push({ cover: 'Tambahan', label: x.label, owner: x.owner || 'Other', ok: !!x.done }); });
+  return items;
+}
+
+function missingItems_(pp) {
+  return checklistItems_(pp).filter(function (x) { return !x.ok; }).map(function (x) { return x.cover + ': ' + x.label + ' (' + x.owner + ')'; });
+}
+
+function checklistHtml_(pp) {
+  var last = '', html = '<table style="border-collapse:collapse;font-size:14px;width:100%;margin:6px 0 0">';
+  checklistItems_(pp).forEach(function (x) {
+    if (x.cover !== last) { html += '<tr><td colspan="2" style="padding:10px 10px 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#667;font-weight:bold">' + esc_(x.cover) + '</td></tr>'; last = x.cover; }
+    html += x.ok
+      ? '<tr><td style="padding:6px 10px;border-bottom:1px solid #e4e7ec;color:#067647">&#10003; ' + esc_(x.label) + ' <span style="color:#667;font-size:12px">&middot; ' + esc_(x.owner) + '</span></td><td style="padding:6px 10px;border-bottom:1px solid #e4e7ec;color:#067647;text-align:right">Lengkap</td></tr>'
+      : '<tr style="background:#fef3f2"><td style="padding:6px 10px;border-bottom:1px solid #fecdca;color:#b42318;font-weight:bold">&#10007; ' + esc_(x.label) + ' <span style="font-weight:normal;font-size:12px">&middot; ' + esc_(x.owner) + '</span></td><td style="padding:6px 10px;border-bottom:1px solid #fecdca;color:#b42318;font-weight:bold;text-align:right">BELUM</td></tr>';
+  });
+  return html + '</table>';
+}
+
+function runProposalReminders_(force, submitDayOnly) {
   var resp = UrlFetchApp.fetch(APP_URL + '/api/proposalData', {
     method: 'post', headers: { 'x-notify-key': NOTIFY_KEY }, muteHttpExceptions: true
   });
@@ -45,7 +88,8 @@ function checkProposals(force) {
   var props = (JSON.parse(resp.getContentText()).result) || [];
   var tz = 'Asia/Jakarta';
   var today = new Date(Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd') + 'T00:00:00');
-  var DONE = ['Submitted', 'Menang', 'Kalah'];
+  var hourNow = parseInt(Utilities.formatDate(new Date(), tz, 'H'), 10);
+  var DONE = ['Submitted', 'Menang', 'Kalah', 'Cancelled', 'Won', 'Lost'];
   var sent = 0, out = [];
   props.forEach(function (pp) {
     if (DONE.indexOf(pp.status) >= 0) return;
@@ -53,33 +97,91 @@ function checkProposals(force) {
     var sub = new Date(pp.submission.slice(0, 10) + 'T00:00:00');
     var daysLeft = Math.round((sub - today) / 86400000);
     if (daysLeft < 0) return;                                  // sudah lewat
-    var due = force || daysLeft <= 3 || (daysLeft % 2 === 0);   // ≤3 tiap hari, selain itu tiap 2 hari
-    if (!due) return;
+    if (submitDayOnly && daysLeft !== 0) return;
+    var missing = missingItems_(pp);
+    if (daysLeft === 0) {
+      // hari H: jam 06:00 selalu kirim; pengingat lanjutan hanya bila masih ada yang belum lengkap
+      if (submitDayOnly && !missing.length && !force) return;
+    } else if (!(force || daysLeft <= 3 || (daysLeft % 2 === 0))) return;   // <=3 tiap hari, selain itu tiap 2 hari
     var to = String(pp.notifyEmails || '').split(/[,;]+/).map(function (x) { return x.trim(); }).filter(function (x) { return /@/.test(x); });
     if (!to.length) to = [FALLBACK_RECIPIENTS];
-    var urg = daysLeft <= 3 ? '#b42318' : (daysLeft <= 7 ? '#b54708' : '#1677b3');
+    var cc = ALWAYS_CC ? [ALWAYS_CC] : [];
+    var escalate = daysLeft === 0 && missing.length && (force || hourNow >= ESCALATE_FROM_HOUR);
+    if (escalate) String(pp.escalateEmails || '').split(/[,;]+/).forEach(function (x) { x = x.trim(); if (/@/.test(x) && to.indexOf(x) < 0 && cc.indexOf(x) < 0) cc.push(x); });
+    var urg = daysLeft === 0 ? '#b42318' : (daysLeft <= 3 ? '#b42318' : (daysLeft <= 7 ? '#b54708' : '#1677b3'));
     var nm = (pp.customer || pp.title || 'Proposal');
-    var subj = 'Pengingat Proposal: ' + nm + ' — ' + (daysLeft === 0 ? 'SUBMIT HARI INI' : 'H-' + daysLeft);
-    var html = '<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;color:#1a2233">' +
+    var subj = daysLeft === 0
+      ? (missing.length ? '[SUBMIT HARI INI] ' + nm + ' — ' + missing.length + ' item belum lengkap' : '[SUBMIT HARI INI] ' + nm + ' — semua lengkap, siap submit')
+      : 'Pengingat Proposal: ' + nm + ' — H-' + daysLeft + (missing.length ? ' (' + missing.length + ' item belum lengkap)' : '');
+    var banner = daysLeft === 0
+      ? '<div style="background:' + (missing.length ? '#fef3f2' : '#ecfdf3') + ';border:1px solid ' + (missing.length ? '#fda29b' : '#abefc6') + ';border-radius:8px;padding:12px 14px;margin:0 0 14px;color:' + (missing.length ? '#b42318' : '#067647') + '">' +
+        (missing.length ? '<b>Yang belum lengkap:</b><br>&bull; ' + missing.map(esc_).join('<br>&bull; ') : '<b>Semua checklist lengkap.</b> Proposal siap disubmit hari ini.') + '</div>'
+      : (missing.length ? '<p style="margin:0 0 12px;color:#b42318"><b>' + missing.length + ' item belum lengkap</b> &mdash; lihat checklist di bawah.</p>' : '');
+    var html = '<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;color:#1a2233">' +
       '<h2 style="margin:0 0 4px;color:' + urg + '">' + (daysLeft === 0 ? 'Submit hari ini' : 'Sisa ' + daysLeft + ' hari menuju submission') + '</h2>' +
-      '<p style="margin:0 0 14px;color:#556">Pengingat progres proposal/tender.</p>' +
+      '<p style="margin:0 0 14px;color:#556">Pengingat progres proposal/tender' + (daysLeft === 0 ? ' &middot; update jam ' + hourNow + ':00 WIB' : '') + '.</p>' + banner +
       '<table style="border-collapse:collapse;font-size:14px">' +
       '<tr><td style="padding:5px 12px;color:#667">Customer</td><td style="padding:5px 12px"><b>' + esc_(nm) + '</b></td></tr>' +
       (pp.title ? '<tr><td style="padding:5px 12px;color:#667">Tender</td><td style="padding:5px 12px">' + esc_(pp.title) + '</td></tr>' : '') +
       '<tr><td style="padding:5px 12px;color:#667">Sales</td><td style="padding:5px 12px">' + esc_(pp.sales || '-') + '</td></tr>' +
       '<tr><td style="padding:5px 12px;color:#667">Presales</td><td style="padding:5px 12px">' + esc_(pp.presales || '-') + '</td></tr>' +
       '<tr><td style="padding:5px 12px;color:#667">Status</td><td style="padding:5px 12px">' + esc_(pp.status || '-') + '</td></tr>' +
-      '<tr><td style="padding:5px 12px;color:#667">Submission</td><td style="padding:5px 12px"><b>' + esc_(pp.submission) + '</b></td></tr>' +
+      '<tr><td style="padding:5px 12px;color:#667">Submission</td><td style="padding:5px 12px"><b>' + esc_(pp.submission) + (pp.submissionTime ? ' pukul ' + esc_(pp.submissionTime) + ' WIB' : '') + '</b></td></tr>' +
       '</table>' +
+      '<h3 style="margin:18px 0 4px;font-size:15px">Checklist submission</h3>' + checklistHtml_(pp) +
       '<p style="margin:18px 0"><a href="' + APP_URL + '/#/presales/proposal" style="background:' + urg + ';color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;font-size:14px">Buka Monitor Proposal</a></p>' +
+      (escalate && cc.length ? '<p style="margin:0;color:#667;font-size:12px">Salinan dikirim ke manager/GM sales karena masih ada item yang belum lengkap.</p>' : '') +
       '</div>';
     var opt = { to: to.join(','), subject: subj, htmlBody: html, name: 'Monitor Proposal' };
-    if (ALWAYS_CC) opt.cc = ALWAYS_CC;
+    if (cc.length) opt.cc = cc.join(',');
     MailApp.sendEmail(opt);
-    sent++; out.push(nm + ' (H-' + daysLeft + ' → ' + to.join(',') + ')');
+    sent++; out.push(nm + ' (' + (daysLeft === 0 ? 'H ' + hourNow + ':00' : 'H-' + daysLeft) + ', ' + missing.length + ' belum lengkap → ' + to.join(',') + (escalate ? ' +cc' : '') + ')');
   });
   return 'Proposal: ' + sent + ' email terkirim. ' + out.join('; ');
 }
+
+// ============ ESKALASI REQUEST SALES ============
+// Request yang belum direspons lebih dari REQ_ESCALATE_AFTER_H jam dikirim ke Presales Manager (1 email ringkasan per jam
+// bila ada yang baru lewat batas; tiap request hanya dieskalasi sekali). Hanya dikirim pukul 07:00-19:59 WIB.
+const REQ_ESCALATE_TO = 'indra.malau@berca.co.id';   // Presales Manager
+const REQ_ESCALATE_AFTER_H = 8;
+const REQ_TYPE_LABEL = { proposal: 'Proposal', config: 'Fase 3 · Config', service: 'Fase 4 · Harga', bestprice: 'Fase 5 · Best Price' };
+
+function checkRequestEscalation(force) {
+  var tz = 'Asia/Jakarta', hourNow = parseInt(Utilities.formatDate(new Date(), tz, 'H'), 10);
+  if (!force && (hourNow < 7 || hourNow >= 20)) return 'Di luar jam kirim.';
+  var resp = UrlFetchApp.fetch(APP_URL + '/api/requestData', { method: 'post', headers: { 'x-notify-key': NOTIFY_KEY }, muteHttpExceptions: true });
+  if (resp.getResponseCode() !== 200) return 'Gagal ambil data request: HTTP ' + resp.getResponseCode();
+  var rows = (JSON.parse(resp.getContentText()).result) || [];
+  var props = PropertiesService.getScriptProperties(), sentMap = {};
+  try { sentMap = JSON.parse(props.getProperty('reqEscalated') || '{}'); } catch (e) { sentMap = {}; }
+  var now = Date.now(), live = {}, fresh = [];
+  rows.forEach(function (r) {
+    live[r.id] = 1;
+    var hrs = (now - new Date(r.receivedAt).getTime()) / 3600000;
+    if (hrs >= REQ_ESCALATE_AFTER_H && !sentMap[r.id]) fresh.push({ r: r, hrs: hrs });
+  });
+  Object.keys(sentMap).forEach(function (id) { if (!live[id]) delete sentMap[id]; });   // yang sudah direspons dilupakan
+  if (fresh.length) {
+    var rowsHtml = fresh.map(function (x) {
+      var r = x.r, h = Math.floor(x.hrs), m = Math.round((x.hrs - h) * 60);
+      return '<tr style="background:#fef3f2"><td style="padding:8px 10px;border-bottom:1px solid #fecdca"><b>' + esc_(r.customer || r.subject || '(tanpa subjek)') + '</b>' +
+        '<br><span style="color:#667;font-size:13px">' + esc_(r.subject || '') + '</span><br><span style="color:#667;font-size:12px">' + esc_(r.sales || r.fromEmail || '') + ' &middot; ' + esc_(REQ_TYPE_LABEL[r.type] || 'Belum terklasifikasi') + '</span></td>' +
+        '<td style="padding:8px 10px;border-bottom:1px solid #fecdca;color:#b42318;font-weight:bold;white-space:nowrap">' + h + ' j ' + m + ' m</td>' +
+        '<td style="padding:8px 10px;border-bottom:1px solid #fecdca">' + (r.link ? '<a href="' + esc_(r.link) + '">Email</a>' : '') + '</td></tr>';
+    }).join('');
+    var html = '<div style="font-family:Arial,Helvetica,sans-serif;max-width:620px;color:#1a2233"><h2 style="margin:0 0 4px;color:#b42318">' + fresh.length + ' request sales belum direspons &gt; ' + REQ_ESCALATE_AFTER_H + ' jam</h2>' +
+      '<p style="margin:0 0 12px;color:#556">Mohon tindak lanjut atau tugaskan ke presales yang tersedia.</p><table style="border-collapse:collapse;font-size:14px;width:100%">' + rowsHtml + '</table>' +
+      '<p style="margin:16px 0"><a href="' + APP_URL + '/#/presales/requests" style="background:#b42318;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;font-size:14px">Buka Request Monitor</a></p></div>';
+    var opt = { to: REQ_ESCALATE_TO, subject: '[Eskalasi] ' + fresh.length + ' request sales belum direspons > ' + REQ_ESCALATE_AFTER_H + ' jam', htmlBody: html, name: 'Monitor Request' };
+    if (ALWAYS_CC) opt.cc = ALWAYS_CC;
+    MailApp.sendEmail(opt);
+    fresh.forEach(function (x) { sentMap[x.r.id] = now; });
+  }
+  props.setProperty('reqEscalated', JSON.stringify(sentMap));
+  return 'Eskalasi: ' + fresh.length + ' request dikirim ke ' + REQ_ESCALATE_TO + '.';
+}
+function checkRequestEscalationNow() { Logger.log(checkRequestEscalation(true)); }
 
 function resetState() { PropertiesService.getScriptProperties().deleteProperty('eowState'); }
 

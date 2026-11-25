@@ -8,6 +8,15 @@ const SCHEMA = [
   "CREATE TABLE IF NOT EXISTS devices (id TEXT PRIMARY KEY, customerId TEXT NOT NULL, sn TEXT NOT NULL, type TEXT DEFAULT '', brand TEXT DEFAULT '', model TEXT DEFAULT '', note TEXT DEFAULT '', location TEXT DEFAULT '', warranty TEXT DEFAULT '', eosl TEXT DEFAULT '', updatedAt TEXT DEFAULT '', updatedBy TEXT DEFAULT '')",
   "CREATE INDEX IF NOT EXISTS idx_devices_customer ON devices(customerId)",
   "CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT NOT NULL)",
+  "CREATE TABLE IF NOT EXISTS activity_sessions (sid TEXT PRIMARY KEY, email TEXT NOT NULL, started TEXT NOT NULL, last TEXT NOT NULL, page TEXT DEFAULT '', views INTEGER DEFAULT 0, actions INTEGER DEFAULT 0, ip TEXT DEFAULT '', ua TEXT DEFAULT '')",
+  "CREATE INDEX IF NOT EXISTS idx_actsess_last ON activity_sessions(last)",
+  "CREATE TABLE IF NOT EXISTS activity_events (id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT NOT NULL, sid TEXT DEFAULT '', email TEXT NOT NULL, kind TEXT NOT NULL, detail TEXT DEFAULT '')",
+  "CREATE INDEX IF NOT EXISTS idx_actev_ts ON activity_events(ts)",
+  "CREATE TABLE IF NOT EXISTS customer_master (id TEXT PRIMARY KEY, name TEXT NOT NULL, nameKey TEXT NOT NULL, code TEXT DEFAULT '', sales TEXT DEFAULT '[]', source TEXT DEFAULT '', createdBy TEXT DEFAULT '', createdAt TEXT DEFAULT '', updatedAt TEXT DEFAULT '')",
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_cm_key ON customer_master(nameKey)",
+  "CREATE TABLE IF NOT EXISTS sales_requests (id TEXT PRIMARY KEY, threadId TEXT NOT NULL, subject TEXT DEFAULT '', fromEmail TEXT DEFAULT '', fromName TEXT DEFAULT '', sales TEXT DEFAULT '', customer TEXT DEFAULT '', type TEXT DEFAULT '', typeAuto INTEGER DEFAULT 1, status TEXT DEFAULT 'new', receivedAt TEXT DEFAULT '', firstResponseAt TEXT DEFAULT '', responder TEXT DEFAULT '', doneAt TEXT DEFAULT '', snippet TEXT DEFAULT '', link TEXT DEFAULT '', assignee TEXT DEFAULT '', createdAt TEXT DEFAULT '', updatedAt TEXT DEFAULT '')",
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_sreq_thread ON sales_requests(threadId)",
+  "CREATE INDEX IF NOT EXISTS idx_sreq_recv ON sales_requests(receivedAt)",
   "CREATE TABLE IF NOT EXISTS login_attempts (ip TEXT PRIMARY KEY, fails INTEGER NOT NULL DEFAULT 0, until INTEGER NOT NULL DEFAULT 0)"
 ];
 const DEV_COLS = ["id","customerId","sn","type","brand","model","note","location","warranty","eosl","updatedAt","updatedBy"];
@@ -20,6 +29,36 @@ const EMAIL_RE = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
 const maskEmails = v => String(v || "").replace(/([A-Za-z0-9._%+-])[A-Za-z0-9._%+-]*@([A-Za-z0-9.-]+\.[A-Za-z]{2,})/g, "$1***@$2");
 const SN_MASK = "**********";
 const uuid = () => crypto.randomUUID();
+// ---- Data Customer (master list) ----
+const cmKey = n => { const t = clean(n).toLowerCase().replace(/[^a-z0-9]+/g, " ").split(" ").filter(w => w && !["pt", "cv", "tbk", "persero", "ud"].includes(w)).join(""); return t || clean(n).toLowerCase(); };
+const cmSales = v => { let a = v; if (typeof a === "string") { try { a = JSON.parse(a); } catch (_) { a = a.split(/[,;]+/); } } return [...new Set((Array.isArray(a) ? a : []).map(clean).filter(Boolean))].slice(0, 6); };
+const cmOut = r => r && ({ id: r.id, name: r.name, code: r.code || "", sales: cmSales(r.sales), source: r.source || "", updatedAt: r.updatedAt || "" });
+// Creates a master row only when the name is new. An existing row is never modified here.
+async function cmEnsure(db, name, opt = {}) {
+  name = clean(name); if (!name) return null;
+  const key = cmKey(name);
+  const ex = await db.prepare("SELECT * FROM customer_master WHERE nameKey=?").bind(key).first();
+  if (ex) return { ...cmOut(ex), existed: true };
+  const now = new Date().toISOString(), id = "cm-" + uuid().slice(0, 8);
+  await db.prepare("INSERT OR IGNORE INTO customer_master (id,name,nameKey,code,sales,source,createdBy,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?,?)")
+    .bind(id, name, key, clean(opt.code), JSON.stringify(cmSales(opt.sales)), clean(opt.source), clean(opt.who), now, now).run();
+  const row = await db.prepare("SELECT * FROM customer_master WHERE nameKey=?").bind(key).first();
+  return { ...cmOut(row), existed: false };
+}
+async function cmSeed(db) {
+  const done = await db.prepare("SELECT v FROM settings WHERE k='cm:seeded'").first();
+  if (done) return;
+  const inv = await db.prepare("SELECT name,code FROM customers").all();
+  for (const c of inv.results) await cmEnsure(db, c.name, { code: c.code, source: "inventory" });
+  const pr = await db.prepare("SELECT data FROM site_items WHERE kind='proposal'").all();
+  const bySales = new Map();
+  for (const r of pr.results) { let d = {}; try { d = JSON.parse(r.data); } catch (_) {} const n = clean(d.customer); if (!n) continue; const k = cmKey(n); if (!bySales.has(k)) bySales.set(k, { name: n, sales: [] }); if (clean(d.sales)) bySales.get(k).sales.push(clean(d.sales)); }
+  for (const v of bySales.values()) {
+    const row = await cmEnsure(db, v.name, { sales: v.sales, source: "proposal" });
+    if (row && row.existed && !row.sales.length && v.sales.length) await db.prepare("UPDATE customer_master SET sales=? WHERE id=? AND (sales='[]' OR sales='')").bind(JSON.stringify(cmSales(v.sales)), row.id).run();
+  }
+  await db.prepare("INSERT OR REPLACE INTO settings (k,v) VALUES ('cm:seeded',?)").bind(new Date().toISOString()).run();
+}
 const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
 
 async function ensureSchema(db) {
@@ -35,6 +74,7 @@ async function ensureSchema(db) {
   }
   try { await db.prepare("ALTER TABLE customers ADD COLUMN presales TEXT DEFAULT ''").run(); } catch (e) { /* kolom sudah ada */ }
   try { await db.prepare("ALTER TABLE customers ADD COLUMN sales TEXT DEFAULT ''").run(); } catch (e) { /* kolom sudah ada */ }
+  try { await db.prepare("ALTER TABLE customers ADD COLUMN external TEXT DEFAULT ''").run(); } catch (e) { /* kolom sudah ada */ }
   try { await db.prepare("ALTER TABLE devices ADD COLUMN muteWarranty TEXT DEFAULT ''").run(); } catch (e) { /* kolom sudah ada */ }
   try { await db.prepare("ALTER TABLE devices ADD COLUMN renewalStatus TEXT DEFAULT ''").run(); } catch (e) { /* kolom sudah ada */ }
   try { await db.prepare("ALTER TABLE devices ADD COLUMN renewalOwner TEXT DEFAULT ''").run(); } catch (e) { /* kolom sudah ada */ }
@@ -140,10 +180,18 @@ const SEED_SALES = [
 ];
 const SITE_DEFAULT = { ...SITE_DEFAULT_EN };   // diganti versi Indonesia setelah SITE_ID didefinisikan
 const SITE_KEYS = Object.keys(SITE_DEFAULT);
-const ITEM_KINDS = { service: ["title", "desc", "sla", "inputs"], member: ["name", "role", "region", "email", "photo", "expertise", "coverage", "inactive"], report: ["title", "desc", "url"], resource: ["title", "desc", "url", "category"], sales: ["name", "email", "director", "directorName", "gm", "gmName", "team", "mgr", "mgrEmail", "presales", "active"], salesContact: ["name", "type", "email"], vendor: ["brand", "product", "category", "eosl", "url", "note"], skill: ["person", "domain", "level", "cert", "certDate", "certFile", "certFileName", "note"], org: ["name", "title", "dept", "level", "photo", "you"], proposal: ["title", "customer", "sales", "presales", "productBrand", "productPics", "productPicEmails", "notifyEmails", "prebid", "submission", "rksUrl", "status", "adminDocumentsReady", "productPricingConfirmed", "proposalUploaded", "analysis", "note", "submittedAt", "archivedAt", "cancelledAt"] };
-const PROPOSAL_SUBMISSION_CHECKS = [["adminDocumentsReady","Administrative documents are ready"],["productPricingConfirmed","Product pricing is confirmed"],["proposalUploaded","Proposal has been uploaded"]];
+const ITEM_KINDS = { service: ["title", "desc", "sla", "inputs"], member: ["name", "role", "region", "email", "photo", "expertise", "coverage", "inactive"], report: ["title", "desc", "url"], resource: ["title", "desc", "url", "category"], sales: ["name", "email", "photo", "director", "directorName", "gm", "gmName", "team", "mgr", "mgrEmail", "presales", "active"], salesContact: ["name", "type", "email"], vendor: ["brand", "product", "category", "eosl", "url", "note"], skill: ["person", "domain", "level", "cert", "certDate", "certFile", "certFileName", "note"], org: ["name", "title", "dept", "level", "photo", "you"], proposal: ["title", "customer", "sales", "presales", "productBrand", "productPics", "productPicEmails", "notifyEmails", "prebid", "submission", "submissionTime", "rksUrl", "status", "adminDocumentsReady", "proposalUploaded", "productPricingConfirmed", "checklistExtra", "analysis", "note", "submittedAt", "archivedAt", "cancelledAt"] };
+// Sampul 1 = administrative + technical documents, Sampul 2 = price
+const PROPOSAL_SUBMISSION_CHECKS = [["adminDocumentsReady","Sampul 1 - Administrative documents are ready (Sales)"],["proposalUploaded","Sampul 1 - Technical document / proposal is uploaded (Presales)"],["productPricingConfirmed","Sampul 2 - Price is confirmed (Sales, Product Specialist, Principal)"]];
+const CHECK_OWNERS = ["Sales", "Presales", "Product Specialist", "Principal", "Manager", "Other"];
+function parseChecklistExtra(v) {
+  let a = []; try { a = typeof v === "string" ? JSON.parse(v || "[]") : (Array.isArray(v) ? v : []); } catch (_) { a = []; }
+  if (!Array.isArray(a)) a = [];
+  return a.slice(0, 20).map(x => ({ label: clean(x && x.label).slice(0, 120), owner: CHECK_OWNERS.includes(clean(x && x.owner)) ? clean(x.owner) : "Other", done: !!(x && x.done) })).filter(x => x.label);
+}
 function proposalSubmissionGaps(proposal) {
   const missing = PROPOSAL_SUBMISSION_CHECKS.filter(([key]) => proposal[key] !== "1").map(([, label]) => label);
+  for (const x of parseChecklistExtra(proposal.checklistExtra)) if (!x.done) missing.push("Extra requirement: " + x.label + " (" + x.owner + ")");
   let validDriveLink = false;
   try {
     const link = new URL(proposal.rksUrl);
@@ -161,7 +209,7 @@ const SITE_ID = {
   servicesIntro: "End-to-end presales support for enterprise infrastructure \u2014 compute, storage, virtualization, HCI, data protection, networking, and hybrid cloud.",
   contactTitle: "Need to reach the team?",
   contactDesc: "Email the presales group, or contact the right engineer by region and expertise in the Team section below.",
-  footer: "Presales ERI \u00b7 Internal \u2014 PT Berca Hardayaperkasa"
+  footer: "ERI Sales and Presales Workspace \u00b7 Internal \u2014 PT Berca Hardayaperkasa"
 };
 // Previous Indonesian copy, kept only so any already-migrated database is refreshed to English.
 const OLD_ID = {
@@ -170,7 +218,7 @@ const OLD_ID = {
   servicesIntro: "Pilih layanan sesuai kebutuhan. Siapkan data pada bagian \u201cyang perlu disiapkan\u201d agar request bisa langsung dikerjakan.",
   contactTitle: "Butuh diskusi cepat?",
   contactDesc: "Kirim email ke grup tim presales, atau hubungi langsung PIC sesuai wilayah dan keahlian di bagian Tim.",
-  footer: "Presales ERI \u00b7 Internal Berca"
+  footer: "ERI Sales and Presales Workspace \u00b7 Internal Berca"
 };
 const SVC_ID = {
   "svc-1": ["Solution Design & Architecture", "Architecture design across compute, storage, virtualization, HCI, backup/DR, and hybrid cloud \u2014 balanced for performance, reliability, and cost.", "Business requirements & workload list\nExisting infrastructure condition\nTarget budget & timeline"],
@@ -252,6 +300,177 @@ async function seedSiteIfEmpty(db) {
   SEED_TEAM.forEach((r, i) => st.push(db.prepare("INSERT OR IGNORE INTO site_items (id,kind,sort,data,updatedAt,updatedBy) VALUES (?,?,?,?,?,'seed')").bind("tm-" + (i + 1), "member", (i + 1) * 10, JSON.stringify({ name: r[0], role: r[1], region: r[2], email: r[3], photo: "" }), now)));
   st.push(db.prepare("INSERT OR IGNORE INTO site_items (id,kind,sort,data,updatedAt,updatedBy) VALUES (?,?,?,?,?,'seed')").bind("rp-1", "report", 10, JSON.stringify({ title: "Analytics Dashboard", desc: "Performance insights: project delivery metrics, solution effectiveness and team performance.", url: "https://lookerstudio.google.com/u/0/reporting/a1939f42-82ad-44a5-a770-9a3932504754/page/xn1OF" }), now));
   await db.batch(st);
+}
+
+// ---- Team leave from Google Calendar (secret iCal address in env LEAVE_ICAL_URL) ----
+function icsUnescape(s) { return String(s || "").replace(/\\n/gi, " ").replace(/\\([,;\\])/g, "$1").trim(); }
+function parseIcsEvents(text) {
+  const src = String(text || "").replace(/\r?\n[ \t]/g, "");
+  const out = [];
+  for (const block of src.split("BEGIN:VEVENT").slice(1)) {
+    const body = block.split("END:VEVENT")[0];
+    const ev = { attendees: [], allDay: false };
+    for (const line of body.split(/\r?\n/)) {
+      const i = line.indexOf(":"); if (i < 0) continue;
+      const key = line.slice(0, i), val = line.slice(i + 1), name = key.split(";")[0].toUpperCase();
+      if (name === "SUMMARY") ev.summary = icsUnescape(val);
+      else if (name === "DTSTART" || name === "DTEND") {
+        const d = val.trim(), ymd = d.slice(0, 4) + "-" + d.slice(4, 6) + "-" + d.slice(6, 8);
+        let iso = ymd;
+        if (d.length > 8) { // date-time: Z = UTC -> shift to Jakarta (UTC+7)
+          const t = Date.UTC(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8), +d.slice(9, 11) || 0, +d.slice(11, 13) || 0) + (d.endsWith("Z") ? 7 * 3600e3 : 0);
+          iso = new Date(t).toISOString().slice(0, 10);
+          if (name === "DTEND" && /T0000/.test(d)) iso = new Date(t - 864e5).toISOString().slice(0, 10);
+        } else { ev.allDay = true; if (name === "DTEND") iso = new Date(Date.parse(ymd + "T00:00:00Z") - 864e5).toISOString().slice(0, 10); }
+        if (name === "DTSTART") ev.start = iso; else ev.end = iso;
+      } else if (name === "ATTENDEE" || name === "ORGANIZER") { const m = val.match(/mailto:([^\s]+)/i); if (m) ev.attendees.push(m[1].toLowerCase()); }
+      else if (name === "STATUS" && /CANCELLED/i.test(val)) ev.cancelled = true;
+    }
+    if (ev.start && !ev.cancelled) { if (!ev.end || ev.end < ev.start) ev.end = ev.start; out.push(ev); }
+  }
+  return out;
+}
+async function getLeave(env, members) {
+  // LEAVE_ICAL_URL: one shared team calendar URL, or several entries separated by ";".
+  // An entry is either "URL" (names are read from the event) or "Name|URL" (a personal calendar: every event belongs to that person).
+  const entries = String(env.LEAVE_ICAL_URL || "").split(/[;\n]+/).map(s => s.trim()).filter(Boolean).slice(0, 12).map(s => {
+    const k = s.lastIndexOf("|"); return k > 0 ? { owner: s.slice(0, k).trim(), url: s.slice(k + 1).trim() } : { owner: "", url: s };
+  }).filter(e => /^https:\/\//i.test(e.url));
+  if (!entries.length) return { configured: false, items: [] };
+  const today = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
+  const horizon = new Date(Date.parse(today + "T00:00:00Z") + 30 * 864e5).toISOString().slice(0, 10);
+  const people = (members || []).filter(m => m && m.name && m.inactive !== "1");
+  const toks = n => String(n).toLowerCase().split(/[^a-z]+/).filter(t => t.length >= 3);
+  const freq = {}; people.forEach(m => new Set(toks(m.name)).forEach(t => { freq[t] = (freq[t] || 0) + 1; }));
+  const byName = txt => {
+    const words = new Set(toks(txt || ""));
+    return people.find(m => { const t = toks(m.name); return t.length && t.every(x => words.has(x)); })
+      || people.find(m => toks(m.name).some(x => x.length >= 4 && freq[x] === 1 && words.has(x)));
+  };
+  const results = await Promise.all(entries.map(async en => {
+    try {
+      const res = await fetch(en.url, { cf: { cacheTtl: 600, cacheEverything: true } });
+      return res.ok ? { en, text: (await res.text()).slice(0, 5000000) } : { en, err: res.status };
+    } catch (e) { return { en, err: "network" }; }
+  }));
+  if (results.every(r => r.err)) throw new UserError("Google Calendar could not be read (" + results[0].err + "). Check the iCal address.");
+  const items = [], seen = new Set();
+  for (const r of results) {
+    if (r.err) continue;
+    const owner = r.en.owner ? byName(r.en.owner) : null;
+    for (const ev of parseIcsEvents(r.text)) {
+      if (ev.end < today || ev.start > horizon) continue;
+      const s = ev.summary || "";
+      const trip = /business\s*trip|dinas|perjalanan|\bBT\b|on-?site/i.test(s), leave = /cuti|annual|leave|libur|\boff\b|izin/i.test(s);
+      if (!trip && !leave && !ev.allDay) continue;
+      const who = owner || people.find(m => m.email && ev.attendees.includes(String(m.email).toLowerCase())) || byName(s);
+      if (!who) continue;
+      const type = trip ? "Business trip" : "Annual", key = who.name + "|" + type + "|" + ev.start + "|" + ev.end;
+      if (seen.has(key)) continue; seen.add(key);
+      items.push({ name: who.name, email: who.email || "", type, start: ev.start, end: ev.end });
+    }
+  }
+  items.sort((a, b) => a.start.localeCompare(b.start) || a.name.localeCompare(b.name));
+  return { configured: true, today, items };
+}
+
+// ---- Manual team leave (stored in settings as leave:<id>) ----
+const LEAVE_TYPES = ["Annual", "Business trip"];
+async function listManualLeave(db, today, horizon) {
+  const rows = (await db.prepare("SELECT k,v FROM settings WHERE k LIKE 'leave:%'").all()).results || [];
+  const out = [];
+  for (const r of rows) {
+    try { const x = JSON.parse(r.v); if (x && x.end >= today && x.start <= horizon) out.push({ ...x, id: r.k.slice(6), manual: true }); } catch (e) { /* skip bad row */ }
+  }
+  return out;
+}
+
+// ---- Activity log (who / how long / what) — visible to master admins only ----
+async function logActivity(db, sid, email, kind, detail) {
+  try {
+    const ts = new Date().toISOString();
+    await db.prepare("INSERT INTO activity_events (ts,sid,email,kind,detail) VALUES (?,?,?,?,?)").bind(ts, String(sid || "").slice(0, 40), String(email || "").toLowerCase(), kind, String(detail || "").slice(0, 200)).run();
+    if (sid && kind === "action") await db.prepare("UPDATE activity_sessions SET actions=actions+1,last=? WHERE sid=?").bind(ts, String(sid).slice(0, 40)).run();
+    if (Math.random() < 0.02) { // keep 90 days
+      const cut = new Date(Date.now() - 90 * 864e5).toISOString();
+      await db.prepare("DELETE FROM activity_events WHERE ts<?").bind(cut).run();
+      await db.prepare("DELETE FROM activity_sessions WHERE last<?").bind(cut).run();
+    }
+  } catch (e) { /* logging must never break the app */ }
+}
+function describeAction(fn, args) {
+  const a = Array.isArray(args) ? args : [];
+  const pick = o => o && typeof o === "object" ? (o.title || o.name || o.customer || o.sn || o.id || "") : "";
+  const parts = [typeof a[0] === "string" ? a[0] : "", pick(a[1]) || pick(a[0])].filter(Boolean);
+  return fn + (parts.length ? " — " + parts.join(" · ") : "");
+}
+async function trackPing(db, me, sid, page, act, request) {
+  const email = String(me.email || "").toLowerCase(), s = String(sid || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 40);
+  if (!email || s.length < 8) return;
+  const now = new Date().toISOString(), pg = String(page || "").slice(0, 120);
+  const row = await db.prepare("SELECT email,page FROM activity_sessions WHERE sid=?").bind(s).first();
+  if (row && String(row.email).toLowerCase() !== email) return; // session id belongs to someone else
+  if (!row) {
+    const ip = request.headers.get("cf-connecting-ip") || "", ua = String(request.headers.get("user-agent") || "").slice(0, 160);
+    await db.prepare("INSERT INTO activity_sessions (sid,email,started,last,page,views,actions,ip,ua) VALUES (?,?,?,?,?,?,0,?,?)").bind(s, email, now, now, pg, pg ? 1 : 0, ip, ua).run();
+    await logActivity(db, s, email, "login", "Opened the app" + (pg ? " (" + pg + ")" : ""));
+  } else {
+    const changed = pg && pg !== row.page;
+    await db.prepare("UPDATE activity_sessions SET last=?" + (changed ? ",page=?,views=views+1" : "") + " WHERE sid=?").bind(...(changed ? [now, pg, s] : [now, s])).run();
+    if (changed) await logActivity(db, s, email, "view", pg);
+  }
+  const action = String(act || "").slice(0, 200);
+  if (action) await logActivity(db, s, email, "action", action);
+}
+
+// ---- Page Builder: menu order/visibility + custom pages (settings: pages:published, pages:draft, pages:hist:<ts>, pages:histmeta) ----
+const NAV_KEYS = ["proposal", "alur", "tim", "sales", "product-team", "kontak"];
+const TOP_KEYS = ["presales", "inventaris"];
+const BLOCK_TYPES = ["heading", "text", "cards", "links", "button", "image", "callout", "divider"];
+const cutStr = (v, n) => String(v == null ? "" : v).slice(0, n);
+const safeUrl = u => { u = String(u || "").trim(); return /^(https?:\/\/|mailto:|#\/|\/)/i.test(u) ? u.slice(0, 500) : ""; };
+function cleanPagesCfg(c) {
+  c = c && typeof c === "object" ? c : {};
+  const nav = c.nav && typeof c.nav === "object" ? c.nav : {};
+  const pick = a => [...new Set((Array.isArray(a) ? a : []).filter(k => NAV_KEYS.includes(k)))];
+  const pickT = a => [...new Set((Array.isArray(a) ? a : []).filter(k => TOP_KEYS.includes(k)))];
+  const out = { nav: { order: pick(nav.order), hidden: pick(nav.hidden), topOrder: pickT(nav.topOrder), topHidden: pickT(nav.topHidden) }, pages: [] };
+  if (out.nav.topHidden.length >= TOP_KEYS.length) out.nav.topHidden = []; // at least one main menu item must stay visible
+  const slugs = new Set(), ids = new Set();
+  for (const p of (Array.isArray(c.pages) ? c.pages : []).slice(0, 30)) {
+    if (!p || typeof p !== "object") continue;
+    let slug = cutStr(p.slug, 40).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || "page";
+    const base = slug; let n = 2; while (slugs.has(slug) || ["p", "builder", "activity"].includes(slug)) slug = base + "-" + (n++);
+    slugs.add(slug);
+    const blocks = [];
+    for (const b of (Array.isArray(p.blocks) ? p.blocks : []).slice(0, 60)) {
+      if (!b || !BLOCK_TYPES.includes(b.type)) continue;
+      let bid = cutStr(b.id, 20).replace(/[^A-Za-z0-9_-]/g, "") || uuid().slice(0, 8); while (ids.has(bid)) bid = uuid().slice(0, 8); ids.add(bid);
+      const nb = { id: bid, type: b.type, hidden: b.hidden ? 1 : 0 };
+      if (b.type === "heading") { nb.text = cutStr(b.text, 200); nb.level = b.level === "h3" ? "h3" : "h2"; }
+      else if (b.type === "text") nb.text = cutStr(b.text, 6000);
+      else if (b.type === "cards" || b.type === "links") { nb.title = cutStr(b.title, 120); nb.items = (Array.isArray(b.items) ? b.items : []).slice(0, 40).map(it => ({ title: cutStr(it && it.title, 120), desc: cutStr(it && it.desc, 500), url: safeUrl(it && it.url) })); }
+      else if (b.type === "button") { nb.label = cutStr(b.label, 80); nb.url = safeUrl(b.url); }
+      else if (b.type === "image") { nb.url = /^https:\/\//i.test(String(b.url || "").trim()) ? cutStr(String(b.url).trim(), 500) : ""; nb.caption = cutStr(b.caption, 200); }
+      else if (b.type === "callout") { nb.title = cutStr(b.title, 120); nb.text = cutStr(b.text, 1500); nb.tone = ["info", "warn", "ok"].includes(b.tone) ? b.tone : "info"; }
+      blocks.push(nb);
+    }
+    let pid = cutStr(p.id, 20).replace(/[^A-Za-z0-9_-]/g, "") || uuid().slice(0, 8); while (ids.has(pid)) pid = uuid().slice(0, 8); ids.add(pid);
+    out.pages.push({ id: pid, title: cutStr(p.title, 80).trim() || "Untitled page", slug, area: p.area === "inventaris" ? "inventaris" : "presales", hidden: p.hidden ? 1 : 0, blocks });
+  }
+  if (JSON.stringify(out).length > 300000) throw new UserError("The page configuration is too large. Remove some blocks.");
+  return out;
+}
+async function readJsonSetting(db, key) { const r = await db.prepare("SELECT v FROM settings WHERE k=?").bind(key).first(); if (!r) return null; try { return JSON.parse(r.v); } catch (e) { return null; } }
+async function writeSetting(db, key, val) { await db.prepare("INSERT INTO settings (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(key, typeof val === "string" ? val : JSON.stringify(val)).run(); }
+const EMPTY_PAGES = { nav: { order: [], hidden: [], topOrder: [], topHidden: [] }, pages: [] };
+async function getPagesFor(db, master) {
+  const published = (await readJsonSetting(db, "pages:published")) || EMPTY_PAGES;
+  const uiTexts = ((await readJsonSetting(db, "uitexts")) || {}).map || {};
+  if (!master) return { published: { ...published, pages: (published.pages || []).filter(p => !p.hidden) }, uiTexts }; // hidden pages are never sent to the team
+  const draft = await readJsonSetting(db, "pages:draft");
+  const history = (await readJsonSetting(db, "pages:histmeta")) || [];
+  return { published, draft: draft || null, history, uiTexts };
 }
 async function readSite(db, withPrivate) {
   Object.assign(SITE_DEFAULT, SITE_ID);
@@ -936,11 +1155,13 @@ function proposalReminderRecipients(proposal, site, productTeam) {
   const sales=salesName?(site.sales||[]).find(row=>[row.name,row.email].some(value=>normalize(value)===salesName)):null;
   const manager=sales&&(site.salesContacts||[]).find(row=>row.type==="Manager"&&row.email&&normalize(row.name)===normalize(sales.mgr));
   const gm=sales&&(site.salesContacts||[]).find(row=>row.type==="GM"&&row.email&&normalize(row.name)===normalize(sales.gmName));
-  const brand=normalize(proposal.productBrand);
-  const tpsAlias=brand==="dell isg"?"dell":"";
-  const specialists=brand?productTeam.filter(row=>!row.inactive&&row.products.some(value=>{
-    const product=normalize(value);
-    return product===brand||(row.role==="TPS"&&tpsAlias&&product===tpsAlias);
+  const brands=String(proposal.productBrand||"").split(/[,;]/).map(normalize).filter(Boolean);
+  const specialists=brands.length?productTeam.filter(row=>!row.inactive&&brands.some(brand=>{
+    const tpsAlias=brand==="dell isg"?"dell":"";
+    return row.products.some(value=>{
+      const product=normalize(value);
+      return product===brand||(row.role==="TPS"&&tpsAlias&&product===tpsAlias);
+    });
   })):[];
   const candidates=[
     ...split(proposal.notifyEmails),...split(proposal.productPicEmails),
@@ -952,7 +1173,138 @@ function proposalReminderRecipients(proposal, site, productTeam) {
   return [...new Set(candidates.map(normalize).filter(email=>/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(email)))].join(", ");
 }
 
+// Sales manager and GM of the tagged sales person (copied on the submit-day reminders that are still incomplete)
+function proposalEscalationEmails(proposal, site) {
+  const normalize = v => String(v || "").trim().toLowerCase();
+  const salesName = normalize(proposal.sales);
+  const sales = salesName ? (site.sales || []).find(r => [r.name, r.email].some(v => normalize(v) === salesName)) : null;
+  if (!sales) return "";
+  const manager = (site.salesContacts || []).find(r => r.type === "Manager" && r.email && normalize(r.name) === normalize(sales.mgr));
+  const gm = (site.salesContacts || []).find(r => r.type === "GM" && r.email && normalize(r.name) === normalize(sales.gmName));
+  return [...new Set([manager && manager.email, sales.mgrEmail, gm && gm.email].map(normalize).filter(e => /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(e)))].join(", ");
+}
+
+// ---- Sales requests that arrive by e-mail (Google Group, read by an Apps Script) ----
+const REQ_TYPES = { proposal: "Proposal", service: "Harga Services", config: "Config / Sizing", bestprice: "Best Price" };
+const REQ_STATUS = ["new", "responded", "done", "ignored"];
+const REQ_RULES = [
+  ["proposal", /\b(rfp|rfq|rks|tender|lelang|penawaran teknis|proposal|compliance matrix|bid|pengadaan)\b/g],
+  ["service", /\b(mandays?|man days?|jasa|implementasi|implementation|sow|scope of work|support|maintenance|sla|migrasi|migration|harga services?|service price|harga jasa)\b/g],
+  ["bestprice", /\b(best price|bestprice|special price|harga terbaik|harga khusus|diskon|discount|nego|negosiasi)\b/g],
+  ["config", /\b(sizing|bom|bill of materials?|konfigurasi|configuration|config|spesifikasi|specs?|specification|quotation|kapasitas|capacity)\b/g]
+];
+// Keyword scoring: subject words count triple. Returns "" when nothing matches or two types tie.
+// An explicit tag in the subject, e.g. "[Config] PT Abc - sizing storage", decides the type.
+const REQ_TAGS = { proposal: "proposal", tender: "proposal", rfp: "proposal", config: "config", sizing: "config", konfigurasi: "config", bom: "config", harga: "service", service: "service", services: "service", jasa: "service", "best price": "bestprice", bestprice: "bestprice", bp: "bestprice", price: "bestprice" };
+function classifyRequest(subject, body) {
+  for (const m of String(subject || "").matchAll(/\[([^\]]{1,24})\]/g)) { const k = REQ_TAGS[m[1].trim().toLowerCase().replace(/\s+/g, " ")]; if (k) return k; }
+  const s = String(subject || "").toLowerCase(), b = String(body || "").toLowerCase();
+  const score = REQ_RULES.map(([k, re]) => [k, 3 * (s.match(re) || []).length + (b.match(re) || []).length]).sort((x, y) => y[1] - x[1]);
+  if (!score[0][1] || score[0][1] === score[1][1]) return "";
+  return score[0][0];
+}
+const reqOut = r => r && ({ id: r.id, subject: r.subject, fromEmail: r.fromEmail, fromName: r.fromName, sales: r.sales, customer: r.customer, type: r.type, typeAuto: !!r.typeAuto, status: r.status, receivedAt: r.receivedAt, firstResponseAt: r.firstResponseAt, responder: r.responder, doneAt: r.doneAt, snippet: r.snippet, link: r.link, assignee: r.assignee });
+async function reqIngest(db, payload) {
+  await ensureSchema(db); await cmSeed(db);
+  const site = await API.getSite(db);
+  const low = s => clean(s).toLowerCase();
+  const presales = new Map();
+  for (const x of site.members || []) if (x.inactive !== "1" && x.email) presales.set(low(x.email), x.name || x.email);
+  // Product specialists (PS / TPS) and their managers also count as responders: Config requests are sent to them directly
+  const responders = new Map(presales);
+  try {
+    for (const r of await API.getProductTeam(db)) {
+      if (!r.inactive && r.email && !responders.has(low(r.email))) responders.set(low(r.email), r.name || r.email);
+      if (r.managerEmail && !responders.has(low(r.managerEmail))) responders.set(low(r.managerEmail), r.manager || r.managerEmail);
+    }
+  } catch (_) {}
+  const salesBy = new Map();
+  for (const x of site.sales || []) if (x.email) salesBy.set(low(x.email), x.name);
+  for (const x of site.salesContacts || []) if (x.email && !salesBy.has(low(x.email))) salesBy.set(low(x.email), x.name);
+  const cm = (await db.prepare("SELECT name,nameKey FROM customer_master").all()).results.map(r => ({ name: r.name, key: r.nameKey })).filter(r => r.key && r.key.length >= 4).sort((a, b) => b.key.length - a.key.length);
+  const compact = s => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const out = { created: 0, updated: 0, skipped: 0 };
+  const now = new Date().toISOString();
+  for (const th of ((payload && payload.threads) || []).slice(0, 200)) {
+    const threadId = clean(th && th.threadId);
+    const msgs = ((th && th.messages) || []).map(m => ({ from: low(m && m.from), name: clean(m && m.fromName), t: new Date(m && m.date).getTime() })).filter(m => m.from && Number.isFinite(m.t)).sort((a, b) => a.t - b.t);
+    if (!threadId || !msgs.length) { out.skipped++; continue; }
+    const first = msgs[0];
+    if (presales.has(first.from)) { out.skipped++; continue; }   // started by presales: not a sales request
+    const resp = msgs.find(m => m.t > first.t && responders.has(m.from) && m.from !== first.from);
+    const subject = clean(th.subject).slice(0, 300), snippet = clean(th.snippet).slice(0, 600);
+    const hay = compact(subject + " " + snippet);
+    const hit = cm.find(r => hay.includes(r.key));
+    const type = classifyRequest(subject, snippet);
+    const ex = await db.prepare("SELECT * FROM sales_requests WHERE threadId=?").bind(threadId).first();
+    const respAt = resp ? new Date(resp.t).toISOString() : "", respName = resp ? (responders.get(resp.from) || resp.name || resp.from) : "";
+    if (!ex) {
+      await db.prepare("INSERT INTO sales_requests (id,threadId,subject,fromEmail,fromName,sales,customer,type,typeAuto,status,receivedAt,firstResponseAt,responder,snippet,link,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?,1,?,?,?,?,?,?,?,?)")
+        .bind("req-" + uuid().slice(0, 8), threadId, subject, first.from, first.name, salesBy.get(first.from) || first.name || first.from, hit ? hit.name : "", type, resp ? "responded" : "new", new Date(first.t).toISOString(), respAt, respName, snippet, clean(th.link).slice(0, 500), now, now).run();
+      if (resp) await db.prepare("UPDATE sales_requests SET assignee=? WHERE threadId=? AND assignee=''").bind(resp.from, threadId).run();
+      out.created++;
+    } else {
+      const sets = [], vals = [];
+      if (!ex.assignee && resp) { sets.push("assignee=?"); vals.push(resp.from); }
+      if (!ex.firstResponseAt && resp) { sets.push("firstResponseAt=?", "responder=?"); vals.push(respAt, respName); if (ex.status === "new") sets.push("status='responded'"); }
+      if (ex.typeAuto && !ex.type && type) { sets.push("type=?"); vals.push(type); }
+      if (!ex.customer && hit) { sets.push("customer=?"); vals.push(hit.name); }
+      if (sets.length) { await db.prepare("UPDATE sales_requests SET " + sets.join(",") + ",updatedAt=? WHERE id=?").bind(...vals, now, ex.id).run(); out.updated++; } else out.skipped++;
+    }
+  }
+  return out;
+}
+
 const API = {
+  // Master sees every request; other presales only the ones they sent or that are assigned to them
+  async getRequests(db, who, scope) {
+    await ensureSchema(db);
+    if (scope === "all") { const r = await db.prepare("SELECT * FROM sales_requests ORDER BY receivedAt DESC LIMIT 500").all(); return r.results.map(reqOut); }
+    const em = String(who || "").trim().toLowerCase(); if (!em.includes("@")) return [];
+    const r = await db.prepare("SELECT * FROM sales_requests WHERE lower(fromEmail)=?1 OR lower(assignee)=?1 ORDER BY receivedAt DESC LIMIT 300").bind(em).all();
+    return r.results.map(reqOut);
+  },
+  // Sales (and presales) see only requests sent from their own e-mail address
+  async getMyRequests(db, who) {
+    await ensureSchema(db);
+    const em = String(who || "").trim().toLowerCase();
+    if (!em || !em.includes("@")) return [];
+    // A Sales Manager also sees the requests of the sales people who report to them
+    let ems = [em];
+    try {
+      const site = await API.getSite(db);
+      const cEmail = name => { const c = (site.salesContacts || []).find(x => x.email && String(x.name || "").trim().toLowerCase() === String(name || "").trim().toLowerCase()); return c ? String(c.email).trim().toLowerCase() : ""; };
+      for (const s of (site.sales || [])) {
+        const e = String(s.email || "").trim().toLowerCase();
+        if (e && (String(s.mgrEmail || "").trim().toLowerCase() === em || (s.mgr && cEmail(s.mgr) === em))) ems.push(e);
+      }
+      ems = [...new Set(ems)].slice(0, 50);
+    } catch (_) { ems = [em]; }
+    // ...plus requests assigned to this account (e.g. a PS / TPS who replied to a Config request)
+    const r = await db.prepare("SELECT * FROM sales_requests WHERE (lower(fromEmail) IN (" + ems.map(() => "?").join(",") + ") OR lower(assignee)=?) AND status!='ignored' ORDER BY receivedAt DESC LIMIT 300").bind(...ems, em).all();
+    return r.results.map(reqOut);
+  },
+  async updateRequest(db, who, id, patch, scope) {
+    await ensureSchema(db);
+    const ex = await db.prepare("SELECT * FROM sales_requests WHERE id=?").bind(clean(id)).first();
+    if (!ex) throw new UserError("Request not found.");
+    const me = String(who || "").trim().toLowerCase();
+    if (scope !== "all" && !(String(ex.fromEmail || "").toLowerCase() === me || String(ex.assignee || "").toLowerCase() === me)) throw new UserError("This request is not assigned to you.");
+    patch = patch || {}; const sets = [], vals = [], now = new Date().toISOString();
+    if (patch.type !== undefined) { const t = clean(patch.type); if (t && !REQ_TYPES[t]) throw new UserError("Unknown request type."); sets.push("type=?", "typeAuto=0"); vals.push(t); }
+    if (patch.customer !== undefined) { sets.push("customer=?"); vals.push(clean(patch.customer).slice(0, 200)); }
+    if (patch.assignee !== undefined && scope === "all") { sets.push("assignee=?"); vals.push(clean(patch.assignee).slice(0, 200)); }
+    if (patch.status !== undefined) {
+      const s = clean(patch.status); if (!REQ_STATUS.includes(s)) throw new UserError("Unknown status.");
+      sets.push("status=?"); vals.push(s);
+      if (!ex.assignee && s !== "ignored") { sets.push("assignee=?"); vals.push(me); }
+      if (s === "responded" && !ex.firstResponseAt) { sets.push("firstResponseAt=?", "responder=?"); vals.push(now, String(who || "")); }
+      if (s === "done") { sets.push("doneAt=?"); vals.push(now); if (!ex.firstResponseAt) { sets.push("firstResponseAt=?", "responder=?"); vals.push(now, String(who || "")); } }
+    }
+    if (!sets.length) return reqOut(ex);
+    await db.prepare("UPDATE sales_requests SET " + sets.join(",") + ",updatedAt=? WHERE id=?").bind(...vals, now, ex.id).run();
+    return reqOut(await db.prepare("SELECT * FROM sales_requests WHERE id=?").bind(ex.id).first());
+  },
   async getProductTeam(db) {
     const saved=await db.prepare("SELECT k,v FROM settings WHERE k LIKE 'product_team_email:%' OR k LIKE 'product_team_spv:%' OR k LIKE 'product_team_off:%'").all();
     const emails=new Map(saved.results.map(row=>[row.k,row.v]));
@@ -961,7 +1313,7 @@ const API = {
       const managerId=row.manager?productTeamManagerKey(row):"";
       const spvId=row.name&&row.level!=="SPV"?productTeamSpvKey(row):"";
       const spv=spvId?emails.get(spvId)||"":"";
-      return {...row,id,inactive:!!(id&&emails.get("product_team_off:"+id)==="1"),email:emails.get(id)||"",managerId,managerEmail:emails.get(managerId)||"",spvId,spv:PRODUCT_TEAM.some(x=>x.level==="SPV"&&x.name===spv&&x.role===row.role&&x.group===row.group)?spv:""};
+      return {...row,id,inactive:!!(id&&emails.get("product_team_off:"+id)==="1"),email:emails.get(id)||"",managerId,managerEmail:emails.get(managerId)||"",spvId,spv:(spv==="@manager"&&row.manager)?"@manager":(PRODUCT_TEAM.some(x=>x.level==="SPV"&&x.name===spv&&x.role===row.role&&x.group===row.group)?spv:"")};
     });
   },
   // Atasan langsung (SPV) untuk anggota non-SPV; hanya boleh SPV dari role+grup yang sama. Kosong = hapus.
@@ -969,12 +1321,55 @@ const API = {
     const person=typeof id==="string"?PRODUCT_TEAM.find(row=>row.name&&row.level!=="SPV"&&productTeamSpvKey(row)===id):null;
     if(!person||typeof value!=="string") return null;
     const spv=value.trim();
-    if(spv&&!PRODUCT_TEAM.some(x=>x.level==="SPV"&&x.name===spv&&x.role===person.role&&x.group===person.group)) return null;
+    if(spv==="@manager"){ if(!person.manager) return null; }
+    else if(spv&&!PRODUCT_TEAM.some(x=>x.level==="SPV"&&x.name===spv&&x.role===person.role&&x.group===person.group)) return null;
     if(spv) await db.prepare("INSERT INTO settings (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(id,spv).run();
     else await db.prepare("DELETE FROM settings WHERE k=?").bind(id).run();
     return {id,spv};
   },
   // Activate / deactivate a Product Team member (master only). Inactive people are hidden from product contacts and reminders.
+  // handled in the route block (need request identity); stubs let the route guard pass
+  async ping() { return null; },
+  // Interface text overrides: { "original text": "replacement" }, applied in the browser by exact match.
+  async saveUiTexts(db, who, map) {
+    const out = {}; let n = 0;
+    for (const [k, v] of Object.entries(map && typeof map === "object" ? map : {})) {
+      const key = String(k).replace(/[\u0000-\u001f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 300);
+      const val = String(v == null ? "" : v).replace(/[\u0000-\u001f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 500);
+      if (!key || !val || val === key) continue;
+      if (++n > 2000) throw new UserError("Too many text changes (max 2000).");
+      out[key] = val;
+    }
+    const prev = await readJsonSetting(db, "uitexts");
+    if (prev) await writeSetting(db, "uitexts:prev", prev);
+    await writeSetting(db, "uitexts", { map: out, by: who, ts: new Date().toISOString() });
+    return out;
+  },
+  async getPages() { return null; },
+  async savePagesDraft(db, who, cfg) { const c = cleanPagesCfg(cfg); await writeSetting(db, "pages:draft", c); return { savedAt: new Date().toISOString(), cfg: c }; },
+  async discardPagesDraft(db) { await db.prepare("DELETE FROM settings WHERE k='pages:draft'").run(); return { ok: true }; },
+  async publishPages(db, who, cfg, label) {
+    const c = cfg ? cleanPagesCfg(cfg) : (await readJsonSetting(db, "pages:draft")) || (await readJsonSetting(db, "pages:published")) || EMPTY_PAGES;
+    const ts = new Date().toISOString();
+    await writeSetting(db, "pages:published", c);
+    await writeSetting(db, "pages:hist:" + ts, { ts, by: who, label: cutStr(label, 80), data: c });
+    const meta = (await readJsonSetting(db, "pages:histmeta")) || [];
+    meta.unshift({ ts, by: who, label: cutStr(label, 80), pages: c.pages.length, blocks: c.pages.reduce((a, p) => a + p.blocks.length, 0) });
+    for (const old of meta.splice(15)) await db.prepare("DELETE FROM settings WHERE k=?").bind("pages:hist:" + old.ts).run();
+    await writeSetting(db, "pages:histmeta", meta);
+    await db.prepare("DELETE FROM settings WHERE k='pages:draft'").run();
+    return { published: c, history: meta };
+  },
+  async restorePages(db, who, ts) {
+    const row = await readJsonSetting(db, "pages:hist:" + clean(ts));
+    if (!row || !row.data) throw new UserError("That version is no longer available.");
+    await writeSetting(db, "pages:draft", row.data);
+    return { draft: row.data };
+  },
+  async getActivity() { return null; },
+  async getLeave() { return null; },
+  async saveLeave() { return null; },
+  async deleteLeave() { return null; },
   async saveProductTeamActive(db,id,active) {
     if(typeof id!=="string"||!PRODUCT_TEAM.some(row=>row.name&&productTeamKey(row)===id)) return null;
     const k="product_team_off:"+id;
@@ -1038,6 +1433,11 @@ const API = {
       if (d.photo && !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(d.photo)) throw new UserError("Photo format is not supported.");
       if (d.photo.length > 300000) throw new UserError("Photo size is too large.");
     }
+    if (kind === "sales") {
+      d.photo = String(d.photo || "");
+      if (d.photo && !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(d.photo)) throw new UserError("Photo format is not supported.");
+      if (d.photo.length > 300000) throw new UserError("Photo size is too large.");
+    }
     if (kind === "org") {
       if (!d.name) throw new UserError("Name is required.");
       if (d.photo && !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(d.photo)) throw new UserError("Photo format is not supported.");
@@ -1050,6 +1450,9 @@ const API = {
       if (!PROP_STATUS.includes(d.status)) throw new UserError("Unknown proposal status.");
       if (d.rksUrl && !/^https:\/\//.test(d.rksUrl)) throw new UserError("RKS link must start with https://");
       for (const [key] of PROPOSAL_SUBMISSION_CHECKS) d[key] = d[key] === "1" ? "1" : "";
+      d.checklistExtra = JSON.stringify(parseChecklistExtra(d.checklistExtra));
+      if (d.submissionTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(d.submissionTime)) throw new UserError("Submission time must be HH:MM (24 hours).");
+      if (d.submissionTime && !d.submission) throw new UserError("Set the submission date before adding a submission time.");
       if (d.status === "Submitted") {
         const existing = rec.id
           ? await db.prepare("SELECT data FROM site_items WHERE id=? AND kind='proposal'").bind(clean(rec.id)).first()
@@ -1065,12 +1468,14 @@ const API = {
       const prev = rec.id ? await db.prepare("SELECT data FROM site_items WHERE id=? AND kind='proposal'").bind(clean(rec.id)).first() : null;
       let creator = "";
       try { creator = prev ? String(JSON.parse(prev.data).createdBy || "") : (who && who !== "admin" ? String(who).toLowerCase() : ""); } catch (_) {}
+      delete d.canManage;
       d.createdBy = creator;
     }
     const id = clean(rec.id) || (kind.slice(0, 3) + "-" + uuid().slice(0, 8));
     const sort = Number.isFinite(+rec.sort) && rec.sort !== "" ? Math.round(+rec.sort) : Date.now() % 1e6;
     await db.prepare("INSERT INTO site_items (id,kind,sort,data,updatedAt,updatedBy) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET sort=excluded.sort,data=excluded.data,updatedAt=excluded.updatedAt,updatedBy=excluded.updatedBy")
       .bind(id, kind, sort, JSON.stringify(d), new Date().toISOString(), who).run();
+    if (kind === "proposal") { try { await cmEnsure(db, d.customer, { sales: d.sales ? [d.sales] : [], source: "proposal", who }); } catch (_) {} }
     return { id, sort, ...d };
   },
   async deleteItem(db, who, id) {
@@ -1084,7 +1489,7 @@ const API = {
     const canSee = id => full || ctx.master || ctx.edit.has(id) || tagged.has(id);
     await seedIfEmpty(db);
     await seedBayanIfNeeded(db);
-    const c = await db.prepare("SELECT id,name,code,pic,note,presales,COALESCE(sales,'') AS sales,updatedAt,createdBy FROM customers").all();
+    const c = await db.prepare("SELECT id,name,code,pic,note,presales,COALESCE(sales,'') AS sales,COALESCE(external,'') AS external,updatedAt,createdBy FROM customers").all();
     const d = await db.prepare("SELECT " + DEV_COLS.join(",") + ",COALESCE(muteWarranty,'') AS muteWarranty,COALESCE(renewalStatus,'') AS renewalStatus,COALESCE(renewalOwner,'') AS renewalOwner,COALESCE(dismantled,'') AS dismantled FROM devices").all();
     // Pengunjung tanpa login: alamat email disamarkan (h***@berca.co.id)
     // Sales accounts only see the customers they are tagged on (or administer)
@@ -1092,8 +1497,10 @@ const API = {
     const rows = ctx.salesOnly && !full ? c.results.filter(ownRow) : c.results;
     const customers = rows.map(({ createdBy, ...customer }) => {
       const canEdit = mayEditCustomer(ctx, { id: customer.id, createdBy });
-      return (canSee(customer.id) || canEdit) ? { ...customer, canEdit }
-        : { ...customer, pic: "", note: maskEmails(customer.note), presales: maskEmails(customer.presales), sales: maskEmails(customer.sales), canEdit };
+      // Export/download only for customers this account created or is tagged on (master always)
+      const canExport = !!(ctx.master || ctx.edit.has(customer.id) || tagged.has(customer.id) || canEdit);
+      return (canSee(customer.id) || canEdit) ? { ...customer, canEdit, canExport }
+        : { ...customer, pic: "", note: maskEmails(customer.note), presales: maskEmails(customer.presales), sales: maskEmails(customer.sales), external: maskEmails(customer.external), canEdit, canExport };
     });
     let devices = d.results;
     if (ctx.salesOnly && !full) { const ok = new Set(rows.map(x => x.id)); devices = devices.filter(x => ok.has(x.customerId)); }
@@ -1112,9 +1519,31 @@ const API = {
     }
     return { customers, devices, canWrite: ctx.master || ctx.edit.size > 0, isMaster: !!ctx.master, editable: [...ctx.edit], sheetUrl: "", salesOnly: !!(ctx.salesOnly && !full) };
   },
+  async getCustomerMaster(db) {
+    await ensureSchema(db); await cmSeed(db);
+    const r = await db.prepare("SELECT * FROM customer_master ORDER BY name COLLATE NOCASE").all();
+    return r.results.map(cmOut);
+  },
+  async saveCustomerMaster(db, who, rec) {
+    await ensureSchema(db); await cmSeed(db);
+    const name = clean(rec && rec.name); if (!name) throw new UserError("Customer name is required.");
+    const id = clean(rec && rec.id);
+    if (!id) return await cmEnsure(db, name, { code: rec && rec.code, sales: rec && rec.sales, source: clean(rec && rec.source) || "manual", who });
+    const key = cmKey(name);
+    const dup = await db.prepare("SELECT 1 FROM customer_master WHERE nameKey=? AND id<>?").bind(key, id).first();
+    if (dup) throw new UserError("Customer " + name + " already exists.");
+    const r = await db.prepare("UPDATE customer_master SET name=?,nameKey=?,code=?,sales=?,updatedAt=? WHERE id=?").bind(name, key, clean(rec.code), JSON.stringify(cmSales(rec.sales)), new Date().toISOString(), id).run();
+    if (!r.meta.changes) throw new UserError("Customer not found.");
+    return cmOut(await db.prepare("SELECT * FROM customer_master WHERE id=?").bind(id).first());
+  },
+  async deleteCustomerMaster(db, who, id) {
+    await ensureSchema(db);
+    await db.prepare("DELETE FROM customer_master WHERE id=?").bind(clean(id)).run();
+    return true;
+  },
   async saveCustomer(db, who, rec) {
     const existingId = clean(rec && rec.id);
-    const c = { id: existingId || uuid(), name: clean(rec && rec.name), code: clean(rec && rec.code), pic: clean(rec && rec.pic), note: clean(rec && rec.note), presales: clean(rec && rec.presales), sales: clean(rec && rec.sales).toLowerCase(), updatedAt: new Date().toISOString(), updatedBy: who };
+    const c = { id: existingId || uuid(), name: clean(rec && rec.name), code: clean(rec && rec.code), pic: clean(rec && rec.pic), note: clean(rec && rec.note), presales: clean(rec && rec.presales), external: clean(rec && rec.external).toLowerCase(), sales: clean(rec && rec.sales).toLowerCase(), updatedAt: new Date().toISOString(), updatedBy: who };
     if (!c.name) throw new UserError("Customer name is required.");
     const dup = await db.prepare("SELECT 1 FROM customers WHERE lower(name)=lower(?) AND id<>?").bind(c.name, c.id).first();
     if (dup) throw new UserError("Customer " + c.name + " already exists.");
@@ -1122,15 +1551,18 @@ const API = {
     if (bad.length) throw new UserError("Presales PIC email is not valid: " + bad.join(", ") + ". Separate multiple emails with commas.");
     const badSales = c.sales.split(/[\s,;]+/).filter(Boolean).filter(e => !EMAIL_RE.test(e));
     if (badSales.length) throw new UserError("Sales email is not valid: " + badSales.join(", ") + ". Separate multiple emails with commas.");
-    const values = [c.name, c.code, c.pic, c.note, c.presales, c.sales, c.updatedAt, c.updatedBy];
+    const badExt = c.external.split(/[\s,;]+/).filter(Boolean).filter(e => !EMAIL_RE.test(e));
+    if (badExt.length) throw new UserError("External (customer) email is not valid: " + badExt.join(", ") + ". Separate multiple emails with commas.");
+    const values = [c.name, c.code, c.pic, c.note, c.presales, c.sales, c.external, c.updatedAt, c.updatedBy];
     if (existingId) {
-      const result = await db.prepare("UPDATE customers SET name=?,code=?,pic=?,note=?,presales=?,sales=?,updatedAt=?,updatedBy=? WHERE id=?")
+      const result = await db.prepare("UPDATE customers SET name=?,code=?,pic=?,note=?,presales=?,sales=?,external=?,updatedAt=?,updatedBy=? WHERE id=?")
         .bind(...values, existingId).run();
       if (!result.meta.changes) throw new UserError("Customer not found.");
     } else {
-      await db.prepare("INSERT INTO customers (name,code,pic,note,presales,sales,updatedAt,updatedBy,id,createdBy) VALUES (?,?,?,?,?,?,?,?,?,?)")
+      await db.prepare("INSERT INTO customers (name,code,pic,note,presales,sales,external,updatedAt,updatedBy,id,createdBy) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
         .bind(...values, c.id, who).run();
     }
+    try { await cmEnsure(db, c.name, { code: c.code, source: "inventory", who }); } catch (_) {}
     return c;
   },
   // ---- Kelola admin per customer (khusus master admin) ----
@@ -1222,7 +1654,7 @@ const API = {
 // ---------- Auth: Google ID token -> signed session cookie ----------
 const COOKIE = "inv_session";
 const SESSION_HOURS = 12;
-const VERSION = "2026-11-23.4";   // dinaikkan tiap rilis; tampil di /health untuk memastikan deploy berhasil
+const VERSION = "2026-11-25.1";   // dinaikkan tiap rilis; tampil di /health untuk memastikan deploy berhasil
 const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 const b64uDecode = s => { s = String(s).replace(/-/g, "+").replace(/_/g, "/"); return Uint8Array.from(atob(s + "=".repeat((4 - s.length % 4) % 4)), c => c.charCodeAt(0)); };
 let hmacKey = null;
@@ -1322,7 +1754,7 @@ async function accessCtx(env, me) {
   return { master, presales, edit, email: me.email, tagged, salesOnly };
 }
 function proposalsVisibleTo(data, ctx, email) {
-  if (ctx.master) return data;
+  if (ctx.master) return { ...data, proposals: (data.proposals || []).map(p => ({ ...p, canManage: true })) };
   const userEmail = String(email || "").trim().toLowerCase();
   if (!userEmail) return { ...data, proposals: [] };
   const toks = v => [...new Set(String(v || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean))];
@@ -1349,7 +1781,9 @@ function proposalsVisibleTo(data, ctx, email) {
   const isMyReport = name => reports.some(n => same(n, name));
   return {
     ...data,
-    proposals: (data.proposals || []).filter(p => {
+    proposals: (data.proposals || []).map(p => ({ ...p, canManage: !!(ctx.presales && (
+      String(p.createdBy || "").toLowerCase() === userEmail ||
+      String(p.presales || "").split(/[,;\n]+/).some(name => isMe(name.trim())))) })).filter(p => {
       // 1) created or last edited by this account
       if (String(p.createdBy || "").toLowerCase() === userEmail || String(p.editedBy || "").toLowerCase() === userEmail) return true;
       // 2) tagged as Sales
@@ -1361,11 +1795,19 @@ function proposalsVisibleTo(data, ctx, email) {
     })
   };
 }
-const MASTER_ONLY = new Set(["deleteCustomer", "listAdmins", "saveAdmin", "deleteAdmin", "saveSiteText", "saveItem", "deleteItem"]);
+const MASTER_ONLY = new Set(["savePagesDraft", "publishPages", "restorePages", "discardPagesDraft", "deleteCustomer", "listAdmins", "saveAdmin", "deleteAdmin", "saveSiteText", "saveUiTexts", "saveItem", "deleteItem"]);
 function mayEditCustomer(ctx, customer) {
   return !!(ctx && (ctx.master || (ctx.presales
     ? ctx.email && customer.createdBy === ctx.email
     : ctx.edit.has(customer.id))));
+}
+async function canManageProposal(db, ctx, id) {
+  if (!ctx || !ctx.presales || !ctx.email) return false;
+  const row = await db.prepare("SELECT id FROM site_items WHERE id=? AND kind='proposal'").bind(clean(id)).first();
+  if (!row) return false;
+  const vis = proposalsVisibleTo(await API.getSite(db), ctx, ctx.email);
+  const p = (vis.proposals || []).find(x => x.id === clean(id));
+  return !!(p && p.canManage);
 }
 async function authorize(db, ctx, fn, args) {
   const deny = () => { const e = new UserError("You do not have admin rights for this customer."); e.status = 403; throw e; };
@@ -1378,6 +1820,16 @@ async function authorize(db, ctx, fn, args) {
       }
       return;
     }
+    // Presales who created the proposal or is tagged as Presales (Primary / Co) may edit it
+    if (kind === "proposal" && ctx.presales && clean(rec.id) && await canManageProposal(db, ctx, rec.id)) return;
+    deny();
+  }
+  if (fn === "getCustomerMaster") { if (ctx.presales) return; deny(); }
+  if (fn === "getMyRequests") { if (ctx.email) return; deny(); }
+  if (fn === "getRequests" || fn === "updateRequest") { if (ctx.presales) return; deny(); }
+  if (fn === "saveCustomerMaster") { if (ctx.presales && !clean(args[0] && args[0].id)) return; deny(); }
+  if (fn === "deleteItem") {
+    if (ctx.presales && await canManageProposal(db, ctx, args[0])) return;
     deny();
   }
   if (fn === "saveCustomer") {
@@ -1449,7 +1901,7 @@ export default {
       }
     }
     if (request.method === "GET" && (p === "/" || p === "/index.html")) {
-      return new Response(HTML_TEMPLATE, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-frame-options": "DENY", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://accounts.google.com; frame-src https://accounts.google.com" } });
+      return new Response(HTML_TEMPLATE, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-frame-options": (new URL(request.url).searchParams.get("vmframe") === "1" ? "SAMEORIGIN" : "DENY"), "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors " + (new URL(request.url).searchParams.get("vmframe") === "1" ? "'self'" : "'none'") + "; script-src 'self' 'unsafe-inline' https://accounts.google.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://accounts.google.com; frame-src 'self' https://accounts.google.com" } });
     }
     if (!env.DB) return json({ error: "The D1 database is not bound (binding name: DB)." }, 500);
     try {
@@ -1521,7 +1973,32 @@ export default {
         // Dipakai script notifikasi email (Google Apps Script) — butuh kunci rahasia NOTIFY_KEY
         if (!env.NOTIFY_KEY) return json({ error: "NOTIFY_KEY is not set in Cloudflare." }, 503);
         if (!(await safeEqual(String(request.headers.get("x-notify-key") || ""), String(env.NOTIFY_KEY)))) return json({ error: "Incorrect notification key." }, 401);
-        return json({ result: await API.getAll(env.DB, null, true) });
+        // Every e-mail on the customer card (Notes/Sales Manager, Presales PIC, Sales, External) gets the warranty notification.
+        // They are merged into "presales" so the existing Apps Script (which reads note + presales) needs no change.
+        const all = await API.getAll(env.DB, null, true);
+        const mails = t => String(t || "").match(/[A-Za-z0-9._%+'-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) || [];
+        all.customers = all.customers.map(c => {
+          const seen = new Set(), out = [];
+          for (const e of [...mails(c.note), ...mails(c.presales), ...mails(c.sales), ...mails(c.external)]) { const k = e.toLowerCase(); if (!seen.has(k)) { seen.add(k); out.push(e); } }
+          return { ...c, notifyEmails: out.join(", "), presales: out.join(", ") };
+        });
+        return json({ result: all });
+      }
+      if (p === "/api/requestIngest" && request.method === "POST") {
+        // Used by the Apps Script that reads the presales Google Group mailbox. Needs NOTIFY_KEY.
+        if (!env.NOTIFY_KEY) return json({ error: "NOTIFY_KEY is not set in Cloudflare." }, 503);
+        if (!(await safeEqual(String(request.headers.get("x-notify-key") || ""), String(env.NOTIFY_KEY)))) return json({ error: "Incorrect notification key." }, 401);
+        const body = await request.json().catch(() => null);
+        if (!body || !Array.isArray(body.threads)) return json({ error: "Invalid request." }, 400);
+        return json({ result: await reqIngest(env.DB, body) });
+      }
+      if (p === "/api/requestData") {
+        // Used by the request-escalation Apps Script: requests that are still waiting for a response (needs NOTIFY_KEY)
+        if (!env.NOTIFY_KEY) return json({ error: "NOTIFY_KEY is not set in Cloudflare." }, 503);
+        if (!(await safeEqual(String(request.headers.get("x-notify-key") || ""), String(env.NOTIFY_KEY)))) return json({ error: "Incorrect notification key." }, 401);
+        await ensureSchema(env.DB);
+        const r = await env.DB.prepare("SELECT * FROM sales_requests WHERE status='new' ORDER BY receivedAt ASC LIMIT 200").all();
+        return json({ result: r.results.map(reqOut) });
       }
       if (p === "/api/proposalData") {
         // Dipakai script pengingat proposal (Apps Script) — butuh NOTIFY_KEY
@@ -1529,19 +2006,85 @@ export default {
         if (!(await safeEqual(String(request.headers.get("x-notify-key") || ""), String(env.NOTIFY_KEY)))) return json({ error: "Incorrect notification key." }, 401);
         const site = await readSite(env.DB, true);
         const productTeam = await API.getProductTeam(env.DB);
-        const props = site.proposals.map(x => ({ id: x.id, title: x.title || "", customer: x.customer || "", sales: x.sales || "", presales: x.presales || "", submission: x.submission || "", status: x.status || "", notifyEmails: proposalReminderRecipients(x, site, productTeam) }));
+        const props = site.proposals.map(x => ({ id: x.id, title: x.title || "", customer: x.customer || "", sales: x.sales || "", presales: x.presales || "", submission: x.submission || "", submissionTime: x.submissionTime || "", status: x.status || "", notifyEmails: proposalReminderRecipients(x, site, productTeam),
+          // Checklist for the submit-day reminder: what is still missing
+          checks: { admin: x.adminDocumentsReady === "1", pricing: x.productPricingConfirmed === "1", uploaded: x.proposalUploaded === "1", rks: !!clean(x.rksUrl), extra: parseChecklistExtra(x.checklistExtra) },
+          escalateEmails: proposalEscalationEmails(x, site) }));
         return json({ result: props });
       }
       const m = p.match(/^\/api\/([A-Za-z]+)$/);
       if (m && request.method === "POST" && API[m[1]]) {
         if (!isViewer) return json({ error: "Please sign in with a Google @" + domain + " account.", login: true }, 401);
-        if (previewAs && !["getAll", "getSite", "getPublic", "getProductTeam"].includes(m[1])) return json({ error: "Preview mode is read-only. Exit the preview to make changes." }, 403);
+        if (previewAs && !["getAll", "getSite", "getPublic", "getProductTeam", "getLeave", "getPages"].includes(m[1])) return json({ error: "Preview mode is read-only. Exit the preview to make changes." }, 403);
+        if (m[1] === "getPages") return json({ result: await getPagesFor(env.DB, !!realCtx.master && !previewAs) });
+        if (m[1] === "ping") {
+          if (previewAs || !me.email) return json({ result: { ok: true } });
+          const args = await request.json().catch(() => []);
+          await trackPing(env.DB, me, args[0], args[1], args[2], request).catch(() => {});
+          return json({ result: { ok: true } });
+        }
+        if (m[1] === "getActivity") {
+          if (!realCtx.master || previewAs) return json({ error: "Master Admin access required." }, 403);
+          const args = await request.json().catch(() => []);
+          const days = Math.min(90, Math.max(1, Number(args[0]) || 14)), since = new Date(Date.now() - days * 864e5).toISOString();
+          const sessions = ((await env.DB.prepare("SELECT sid,email,started,last,page,views,actions,ip,ua FROM activity_sessions WHERE last>=? ORDER BY last DESC LIMIT 400").bind(since).all()).results) || [];
+          const events = ((await env.DB.prepare("SELECT ts,sid,email,kind,detail FROM activity_events WHERE ts>=? ORDER BY ts DESC LIMIT 600").bind(since).all()).results) || [];
+          const site = await readSite(env.DB, true), nameOf = {};
+          (site.members || []).forEach(x => { if (x.email) nameOf[String(x.email).toLowerCase()] = x.name; });
+          (site.sales || []).forEach(x => { if (x.email && !nameOf[String(x.email).toLowerCase()]) nameOf[String(x.email).toLowerCase()] = x.name; });
+          return json({ result: { now: new Date().toISOString(), days, names: nameOf, sessions, events } });
+        }
+        if (m[1] === "getLeave" || m[1] === "saveLeave" || m[1] === "deleteLeave") {
+          if (!(ctx.master || ctx.presales)) return json({ error: "Presales access required." }, 403);
+          const myEmail = String(me.email || "").toLowerCase();
+          const site = await readSite(env.DB, true);
+          const people = (site.members || []).filter(x => x && x.name && x.inactive !== "1" && x.email);
+          const today = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
+          const horizon = new Date(Date.parse(today + "T00:00:00Z") + 60 * 864e5).toISOString().slice(0, 10);
+          if (m[1] === "getLeave") {
+            let items = (await listManualLeave(env.DB, today, horizon)).map(x => ({ ...x, mine: String(x.email || "").toLowerCase() === myEmail, canEdit: ctx.master || String(x.email || "").toLowerCase() === myEmail }));
+            let cal = false;
+            if (env.LEAVE_ICAL_URL) { try { const g = await getLeave(env, site.members); cal = g.configured; items = items.concat(g.items); } catch (e) { /* calendar optional */ } }
+            items = items.filter(x => x.end >= today && x.start <= horizon).sort((a, b) => a.start.localeCompare(b.start) || a.name.localeCompare(b.name));
+            const mePerson = people.find(x => String(x.email).toLowerCase() === myEmail);
+            return json({ result: { configured: true, today, items, calendar: cal, canAdd: ctx.master || !!mePerson, master: !!ctx.master, me: mePerson ? mePerson.name : "", people: ctx.master ? people.map(x => ({ name: x.name, email: String(x.email).toLowerCase() })) : (mePerson ? [{ name: mePerson.name, email: myEmail }] : []) } });
+          }
+          const args = await request.json().catch(() => null);
+          if (!Array.isArray(args)) return json({ error: "Invalid request." }, 400);
+          if (m[1] === "deleteLeave") {
+            const id = clean(args[0]); const row = await env.DB.prepare("SELECT v FROM settings WHERE k=?").bind("leave:" + id).first();
+            if (!row) return json({ error: "Leave entry not found." }, 404);
+            let x = {}; try { x = JSON.parse(row.v); } catch (e) { /* */ }
+            if (!ctx.master && String(x.email || "").toLowerCase() !== myEmail) return json({ error: "You can only remove your own leave." }, 403);
+            await env.DB.prepare("DELETE FROM settings WHERE k=?").bind("leave:" + id).run();
+            await logActivity(env.DB, request.headers.get("x-sid"), myEmail, "action", "deleteLeave — " + (x.name || id));
+            return json({ result: { id } });
+          }
+          const rec = args[0] || {}, date = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v)) && !isNaN(Date.parse(v + "T00:00:00Z"));
+          const email = (ctx.master ? clean(rec.email) : myEmail).toLowerCase(), person = people.find(x => String(x.email).toLowerCase() === email);
+          if (!person) return json({ error: "Pick a team member." }, 400);
+          if (!LEAVE_TYPES.includes(rec.type)) return json({ error: "Type must be Annual or Business trip." }, 400);
+          if (!date(rec.start) || !date(rec.end) || rec.end < rec.start) return json({ error: "Enter a valid start and end date (end on or after start)." }, 400);
+          if ((Date.parse(rec.end) - Date.parse(rec.start)) / 864e5 > 120) return json({ error: "A leave entry can be at most 120 days." }, 400);
+          const id = clean(rec.id) || uuid().slice(0, 12);
+          if (clean(rec.id)) {
+            const row = await env.DB.prepare("SELECT v FROM settings WHERE k=?").bind("leave:" + id).first();
+            if (!row) return json({ error: "Leave entry not found." }, 404);
+            let x = {}; try { x = JSON.parse(row.v); } catch (e) { /* */ }
+            if (!ctx.master && String(x.email || "").toLowerCase() !== myEmail) return json({ error: "You can only edit your own leave." }, 403);
+          }
+          const val = { name: person.name, email, type: rec.type, start: rec.start, end: rec.end, by: myEmail, at: new Date().toISOString() };
+          await env.DB.prepare("INSERT INTO settings (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind("leave:" + id, JSON.stringify(val)).run();
+          await logActivity(env.DB, request.headers.get("x-sid"), myEmail, "action", (clean(rec.id) ? "editLeave" : "addLeave") + " — " + person.name + " · " + rec.type + " " + rec.start + "→" + rec.end);
+          return json({ result: { id, ...val } });
+        }
         if (m[1] === "getProductTeam") return me.email || isAdmin ? json({ result: await API.getProductTeam(env.DB) }) : json({ error: "Sign in to view the directory." }, 403);
         if (m[1] === "saveProductTeamEmail") {
           if(!ctx.master) return json({error:"Master Admin access required."},403);
           const args=await request.json().catch(()=>null);
           if(!Array.isArray(args)) return json({error:"Invalid request."},400);
           const saved=await API.saveProductTeamEmail(env.DB,args[0],args[1]);
+          if(saved) await logActivity(env.DB, request.headers.get("x-sid"), me.email, "action", "saveProductTeamEmail — " + String(args[0]||"") + (args[1]!==undefined?" · "+String(args[1]):""));
           return saved?json({result:saved}):json({error:"Invalid PIC or email address."},400);
         }
         if (m[1] === "saveProductTeamActive") {
@@ -1549,6 +2092,7 @@ export default {
           const args=await request.json().catch(()=>null);
           if(!Array.isArray(args)) return json({error:"Invalid request."},400);
           const saved=await API.saveProductTeamActive(env.DB,args[0],!!args[1]);
+          if(saved) await logActivity(env.DB, request.headers.get("x-sid"), me.email, "action", "saveProductTeamActive — " + String(args[0]||"") + (args[1]!==undefined?" · "+String(args[1]):""));
           return saved?json({result:saved}):json({error:"Unknown product team member."},400);
         }
         if (m[1] === "saveProductTeamSpv") {
@@ -1556,6 +2100,7 @@ export default {
           const args=await request.json().catch(()=>null);
           if(!Array.isArray(args)) return json({error:"Invalid request."},400);
           const saved=await API.saveProductTeamSpv(env.DB,args[0],args[1]);
+          if(saved) await logActivity(env.DB, request.headers.get("x-sid"), me.email, "action", "saveProductTeamSpv — " + String(args[0]||"") + (args[1]!==undefined?" · "+String(args[1]):""));
           return saved?json({result:saved}):json({error:"Invalid person or SPV."},400);
         }
         if (m[1] === "getAll") return json({ result: await API.getAll(env.DB, ctx) });
@@ -1564,11 +2109,18 @@ export default {
         let args = await request.json().catch(() => []); if (!Array.isArray(args)) args = [];
         const canCreateProposal = m[1] === "saveItem" && args[0] === "proposal" && ctx.presales && !clean(args[1] && args[1].id);
         const canSaveCustomer = m[1] === "saveCustomer" && ctx.presales && !!ctx.email;
-        if (!ctx.master && !ctx.edit.size && !canCreateProposal && !canSaveCustomer) return json({ error: "You do not have permission to perform this action." }, 403);
+        const canManageProp = ctx.presales && ((m[1] === "saveItem" && args[0] === "proposal" && !!clean(args[1] && args[1].id)) || m[1] === "deleteItem");
+        const canCustMaster = ctx.presales && (m[1] === "getCustomerMaster" || m[1] === "saveCustomerMaster");
+        const canReq = (ctx.presales && (m[1] === "getRequests" || m[1] === "updateRequest")) || (!!ctx.email && m[1] === "getMyRequests");
+        if (!ctx.master && !ctx.edit.size && !canCreateProposal && !canSaveCustomer && !canManageProp && !canCustMaster && !canReq) return json({ error: "You do not have permission to perform this action." }, 403);
+        if (m[1] === "getRequests") args = [ctx.master ? "all" : "own"];
+        if (m[1] === "updateRequest") args = [args[0], args[1], ctx.master ? "all" : "own"];
         await authorize(env.DB, ctx, m[1], args);
         const who = me.email || "admin";
         if (m[1] === "saveAdmin") args = [args[0], args[1], domain];
-        return json({ result: await API[m[1]](env.DB, who, ...args) });
+        const outcome = await API[m[1]](env.DB, who, ...args);
+        if (!/^(get|list|read|ping)/.test(m[1])) await logActivity(env.DB, request.headers.get("x-sid"), me.email || "admin", "action", describeAction(m[1], args));
+        return json({ result: outcome });
       }
       return new Response("Not found", { status: 404 });
     } catch (e) {
