@@ -1,9 +1,9 @@
-// Inventaris Aset Customer — Cloudflare Worker + D1
-// Binding D1: DB. Secret: ADMIN_PASSWORD (wrangler secret put ADMIN_PASSWORD)
-// Akses: siapa pun bisa MELIHAT tanpa login; tambah/ubah/hapus hanya untuk admin (password).
-import HTML_TEMPLATE from "./index.html";
+var __defProp = Object.defineProperty;
+var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-const SCHEMA = [
+// src/worker.js
+import HTML_TEMPLATE from "./index.html";
+var SCHEMA = [
   "CREATE TABLE IF NOT EXISTS customers (id TEXT PRIMARY KEY, name TEXT NOT NULL, createdBy TEXT NOT NULL DEFAULT '', code TEXT DEFAULT '', pic TEXT DEFAULT '', note TEXT DEFAULT '', updatedAt TEXT DEFAULT '', updatedBy TEXT DEFAULT '')",
   "CREATE TABLE IF NOT EXISTS devices (id TEXT PRIMARY KEY, customerId TEXT NOT NULL, sn TEXT NOT NULL, type TEXT DEFAULT '', brand TEXT DEFAULT '', model TEXT DEFAULT '', note TEXT DEFAULT '', location TEXT DEFAULT '', warranty TEXT DEFAULT '', eosl TEXT DEFAULT '', updatedAt TEXT DEFAULT '', updatedBy TEXT DEFAULT '')",
   "CREATE INDEX IF NOT EXISTS idx_devices_customer ON devices(customerId)",
@@ -19,100 +19,163 @@ const SCHEMA = [
   "CREATE INDEX IF NOT EXISTS idx_sreq_recv ON sales_requests(receivedAt)",
   "CREATE TABLE IF NOT EXISTS login_attempts (ip TEXT PRIMARY KEY, fails INTEGER NOT NULL DEFAULT 0, until INTEGER NOT NULL DEFAULT 0)"
 ];
-const DEV_COLS = ["id","customerId","sn","type","brand","model","note","location","warranty","eosl","updatedAt","updatedBy"];
-let schemaReady = false;
-
-class UserError extends Error {}
-const clean = v => String(v === undefined || v === null ? "" : v).trim();
-const cleanDate = v => { v = clean(v); if (v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) throw new UserError("Date format must be yyyy-mm-dd: " + v); return v; };
-const EMAIL_RE = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
-const maskEmails = v => String(v || "").replace(/([A-Za-z0-9._%+-])[A-Za-z0-9._%+-]*@([A-Za-z0-9.-]+\.[A-Za-z]{2,})/g, "$1***@$2");
-const SN_MASK = "**********";
-const uuid = () => crypto.randomUUID();
-// ---- Data Customer (master list) ----
-const cmKey = n => { const t = clean(n).toLowerCase().replace(/[^a-z0-9]+/g, " ").split(" ").filter(w => w && !["pt", "cv", "tbk", "persero", "ud"].includes(w)).join(""); return t || clean(n).toLowerCase(); };
-const cmSales = v => { let a = v; if (typeof a === "string") { try { a = JSON.parse(a); } catch (_) { a = a.split(/[,;]+/); } } return [...new Set((Array.isArray(a) ? a : []).map(clean).filter(Boolean))].slice(0, 6); };
-const cmOut = r => r && ({ id: r.id, name: r.name, code: r.code || "", sales: cmSales(r.sales), source: r.source || "", updatedAt: r.updatedAt || "" });
-// Creates a master row only when the name is new. An existing row is never modified here.
+var DEV_COLS = ["id", "customerId", "sn", "type", "brand", "model", "note", "location", "warranty", "eosl", "updatedAt", "updatedBy"];
+var schemaReady = false;
+var UserError = class extends Error {
+  static {
+    __name(this, "UserError");
+  }
+};
+var clean = /* @__PURE__ */ __name((v) => String(v === void 0 || v === null ? "" : v).trim(), "clean");
+var cleanDate = /* @__PURE__ */ __name((v) => {
+  v = clean(v);
+  if (v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) throw new UserError("Date format must be yyyy-mm-dd: " + v);
+  return v;
+}, "cleanDate");
+var EMAIL_RE = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
+var maskEmails = /* @__PURE__ */ __name((v) => String(v || "").replace(/([A-Za-z0-9._%+-])[A-Za-z0-9._%+-]*@([A-Za-z0-9.-]+\.[A-Za-z]{2,})/g, "$1***@$2"), "maskEmails");
+var SN_MASK = "**********";
+var uuid = /* @__PURE__ */ __name(() => crypto.randomUUID(), "uuid");
+var cmKey = /* @__PURE__ */ __name((n) => {
+  const t = clean(n).toLowerCase().replace(/[^a-z0-9]+/g, " ").split(" ").filter((w) => w && !["pt", "cv", "tbk", "persero", "ud"].includes(w)).join("");
+  return t || clean(n).toLowerCase();
+}, "cmKey");
+var cmSales = /* @__PURE__ */ __name((v) => {
+  let a = v;
+  if (typeof a === "string") {
+    try {
+      a = JSON.parse(a);
+    } catch (_) {
+      a = a.split(/[,;]+/);
+    }
+  }
+  return [...new Set((Array.isArray(a) ? a : []).map(clean).filter(Boolean))].slice(0, 6);
+}, "cmSales");
+var cmOut = /* @__PURE__ */ __name((r) => r && { id: r.id, name: r.name, code: r.code || "", sales: cmSales(r.sales), managers: cmSales(r.managers), source: r.source || "", updatedAt: r.updatedAt || "" }, "cmOut");
 async function cmEnsure(db, name, opt = {}) {
-  name = clean(name); if (!name) return null;
+  name = clean(name);
+  if (!name) return null;
   const key = cmKey(name);
   const ex = await db.prepare("SELECT * FROM customer_master WHERE nameKey=?").bind(key).first();
   if (ex) return { ...cmOut(ex), existed: true };
-  const now = new Date().toISOString(), id = "cm-" + uuid().slice(0, 8);
-  await db.prepare("INSERT OR IGNORE INTO customer_master (id,name,nameKey,code,sales,source,createdBy,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?,?)")
-    .bind(id, name, key, clean(opt.code), JSON.stringify(cmSales(opt.sales)), clean(opt.source), clean(opt.who), now, now).run();
+  const now = (/* @__PURE__ */ new Date()).toISOString(), id = "cm-" + uuid().slice(0, 8);
+  const inserted = await db.prepare("INSERT OR IGNORE INTO customer_master (id,name,nameKey,code,sales,managers,source,createdBy,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(id, name, key, clean(opt.code), JSON.stringify(cmSales(opt.sales)), JSON.stringify(cmSales(opt.managers)), clean(opt.source), clean(opt.who), now, now).run();
   const row = await db.prepare("SELECT * FROM customer_master WHERE nameKey=?").bind(key).first();
-  return { ...cmOut(row), existed: false };
+  return { ...cmOut(row), existed: !inserted.meta.changes };
 }
+__name(cmEnsure, "cmEnsure");
 async function cmSeed(db) {
   const done = await db.prepare("SELECT v FROM settings WHERE k='cm:seeded'").first();
   if (done) return;
   const inv = await db.prepare("SELECT name,code FROM customers").all();
   for (const c of inv.results) await cmEnsure(db, c.name, { code: c.code, source: "inventory" });
   const pr = await db.prepare("SELECT data FROM site_items WHERE kind='proposal'").all();
-  const bySales = new Map();
-  for (const r of pr.results) { let d = {}; try { d = JSON.parse(r.data); } catch (_) {} const n = clean(d.customer); if (!n) continue; const k = cmKey(n); if (!bySales.has(k)) bySales.set(k, { name: n, sales: [] }); if (clean(d.sales)) bySales.get(k).sales.push(clean(d.sales)); }
+  const bySales = /* @__PURE__ */ new Map();
+  for (const r of pr.results) {
+    let d = {};
+    try {
+      d = JSON.parse(r.data);
+    } catch (_) {
+    }
+    const n = clean(d.customer);
+    if (!n) continue;
+    const k = cmKey(n);
+    if (!bySales.has(k)) bySales.set(k, { name: n, sales: [] });
+    if (clean(d.sales)) bySales.get(k).sales.push(clean(d.sales));
+  }
   for (const v of bySales.values()) {
     const row = await cmEnsure(db, v.name, { sales: v.sales, source: "proposal" });
     if (row && row.existed && !row.sales.length && v.sales.length) await db.prepare("UPDATE customer_master SET sales=? WHERE id=? AND (sales='[]' OR sales='')").bind(JSON.stringify(cmSales(v.sales)), row.id).run();
   }
-  await db.prepare("INSERT OR REPLACE INTO settings (k,v) VALUES ('cm:seeded',?)").bind(new Date().toISOString()).run();
+  await db.prepare("INSERT OR REPLACE INTO settings (k,v) VALUES ('cm:seeded',?)").bind((/* @__PURE__ */ new Date()).toISOString()).run();
 }
-const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
-
+__name(cmSeed, "cmSeed");
+var json = /* @__PURE__ */ __name((obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } }), "json");
 async function ensureSchema(db) {
   if (schemaReady) return;
-  await db.batch(SCHEMA.map(s => db.prepare(s)));
+  await db.batch(SCHEMA.map((s) => db.prepare(s)));
   const customerColumns = await db.prepare("PRAGMA table_info(customers)").all();
-  if (!customerColumns.results.some(column => column.name === "createdBy")) {
-    try { await db.prepare("ALTER TABLE customers ADD COLUMN createdBy TEXT NOT NULL DEFAULT ''").run(); }
-    catch (e) {
+  if (!customerColumns.results.some((column) => column.name === "createdBy")) {
+    try {
+      await db.prepare("ALTER TABLE customers ADD COLUMN createdBy TEXT NOT NULL DEFAULT ''").run();
+    } catch (e) {
       const columns = await db.prepare("PRAGMA table_info(customers)").all();
-      if (!columns.results.some(column => column.name === "createdBy")) throw e;
+      if (!columns.results.some((column) => column.name === "createdBy")) throw e;
     }
   }
-  try { await db.prepare("ALTER TABLE customers ADD COLUMN presales TEXT DEFAULT ''").run(); } catch (e) { /* kolom sudah ada */ }
-  try { await db.prepare("ALTER TABLE customers ADD COLUMN sales TEXT DEFAULT ''").run(); } catch (e) { /* kolom sudah ada */ }
-  try { await db.prepare("ALTER TABLE customers ADD COLUMN external TEXT DEFAULT ''").run(); } catch (e) { /* kolom sudah ada */ }
-  try { await db.prepare("ALTER TABLE devices ADD COLUMN muteWarranty TEXT DEFAULT ''").run(); } catch (e) { /* kolom sudah ada */ }
-  try { await db.prepare("ALTER TABLE devices ADD COLUMN renewalStatus TEXT DEFAULT ''").run(); } catch (e) { /* kolom sudah ada */ }
-  try { await db.prepare("ALTER TABLE devices ADD COLUMN renewalOwner TEXT DEFAULT ''").run(); } catch (e) { /* kolom sudah ada */ }
-  try { await db.prepare("ALTER TABLE devices ADD COLUMN dismantled TEXT DEFAULT ''").run(); } catch (e) { /* kolom sudah ada */ }
+  try {
+    await db.prepare("ALTER TABLE customer_master ADD COLUMN managers TEXT DEFAULT '[]'").run();
+  } catch (e) {
+    if (!/duplicate column name/i.test(String(e))) throw e;
+  }
+  try {
+    await db.prepare("ALTER TABLE customers ADD COLUMN presales TEXT DEFAULT ''").run();
+  } catch (e) {
+  }
+  try {
+    await db.prepare("ALTER TABLE customers ADD COLUMN sales TEXT DEFAULT ''").run();
+  } catch (e) {
+  }
+  try {
+    await db.prepare("ALTER TABLE customers ADD COLUMN external TEXT DEFAULT ''").run();
+  } catch (e) {
+  }
+  try {
+    await db.prepare("ALTER TABLE devices ADD COLUMN muteWarranty TEXT DEFAULT ''").run();
+  } catch (e) {
+  }
+  try {
+    await db.prepare("ALTER TABLE devices ADD COLUMN renewalStatus TEXT DEFAULT ''").run();
+  } catch (e) {
+  }
+  try {
+    await db.prepare("ALTER TABLE devices ADD COLUMN renewalOwner TEXT DEFAULT ''").run();
+  } catch (e) {
+  }
+  try {
+    await db.prepare("ALTER TABLE devices ADD COLUMN dismantled TEXT DEFAULT ''").run();
+  } catch (e) {
+  }
   await db.prepare("CREATE TABLE IF NOT EXISTS site_items (id TEXT PRIMARY KEY, kind TEXT NOT NULL, sort INTEGER DEFAULT 0, data TEXT NOT NULL, updatedAt TEXT DEFAULT '', updatedBy TEXT DEFAULT '')").run();
   await db.prepare("CREATE TABLE IF NOT EXISTS customer_admins (email TEXT NOT NULL, customerId TEXT NOT NULL, addedBy TEXT DEFAULT '', addedAt TEXT DEFAULT '', PRIMARY KEY (email, customerId))").run();
   schemaReady = true;
 }
-
+__name(ensureSchema, "ensureSchema");
 function normDevice(rec, who) {
   const d = {
-    id: clean(rec.id) || uuid(), customerId: clean(rec.customerId), sn: clean(rec.sn), type: clean(rec.type), brand: clean(rec.brand),
-    model: clean(rec.model), note: clean(rec.note), location: clean(rec.location),
-    warranty: cleanDate(rec.warranty), eosl: cleanDate(rec.eosl), updatedAt: new Date().toISOString(), updatedBy: who
+    id: clean(rec.id) || uuid(),
+    customerId: clean(rec.customerId),
+    sn: clean(rec.sn),
+    type: clean(rec.type),
+    brand: clean(rec.brand),
+    model: clean(rec.model),
+    note: clean(rec.note),
+    location: clean(rec.location),
+    warranty: cleanDate(rec.warranty),
+    eosl: cleanDate(rec.eosl),
+    updatedAt: (/* @__PURE__ */ new Date()).toISOString(),
+    updatedBy: who
   };
   if (!d.customerId) throw new UserError("No customer selected.");
   if (!d.sn || !d.type || !d.brand) throw new UserError("Serial Number, Device Type, and Brand are required.");
   return d;
 }
-const upsertDevice = (db, d) => db.prepare(
-  "INSERT INTO devices (" + DEV_COLS.join(",") + ") VALUES (" + DEV_COLS.map(() => "?").join(",") + ") " +
-  "ON CONFLICT(id) DO UPDATE SET " + DEV_COLS.slice(1).map(c => c + "=excluded." + c).join(",")
-).bind(...DEV_COLS.map(c => d[c]));
-
-// Data awal (Indonesia Power, 79 perangkat) — otomatis diisi saat database masih kosong
-const SEED_CUSTOMERS = [["indonesia-power","Indonesia Power","IP","","","2026-10-30T06:00:00Z"]];
-const SEED_DEV_COLS = ["id","customerId","sn","type","brand","model","note","location","warranty","eosl","updatedAt"];
-const SEED_DEVICES = [["1I02130C19","indonesia-power","1I02130C19","Network Switch","HPE","SN2410bM 24SFP+ 4QSFP28 P2C Swch","SW COHE 2","DC-Gandul","2027-03-31","","2026-10-30T02:00:00Z"],["1Y7NYX3","indonesia-power","1Y7NYX3","Server","Dell","PowerEdge R750","Nibiru 1","DC-Gandul","2027-07-12","","2026-10-30T02:00:00Z"],["2S6845B100","indonesia-power","2S6845B100","Storage","HPE","MSA 2050","","Kantor Pusat","","","2026-10-30T05:42:08.860Z"],["2Y7NYX3","indonesia-power","2Y7NYX3","Server","Dell","PowerEdge R750","Nibiru 2","DC-Gandul","2027-07-12","","2026-10-30T02:00:00Z"],["3TF11801JD","indonesia-power","3TF11801JD","Network Switch","HPE","SN2010M 18SFP28 4QSFP28 P2C Swch","SW DHCI 1","DC-Gandul","2027-03-31","","2026-10-30T02:00:00Z"],["3TF119004J","indonesia-power","3TF119004J","Network Switch","HPE","SN2010M 18SFP28 4QSFP28 P2C Swch","SW DHCI 2","DC-Gandul","2027-03-31","","2026-10-30T02:00:00Z"],["3Y7NYX3","indonesia-power","3Y7NYX3","Server","Dell","PowerEdge R750","Nibiru 3","DC-Gandul","2027-07-12","","2026-10-30T02:00:00Z"],["411378","indonesia-power","411378","Storage","Hitachi Vantara","VSP G600","Storage DEV","DC-Gandul","","","2026-10-30T00:00:00Z"],["490568","indonesia-power","490568","Storage","Hitachi Vantara","VSP G350","DRC Batam","DRC-Batam","","","2026-10-30T01:00:00Z"],["5Q4BL94","indonesia-power","5Q4BL94","Server","Dell","PowerEdge R760","azura4","DC-Gandul","2030-07-20","","2026-10-30T00:00:00Z"],["5UM133006T","indonesia-power","5UM133006T","Storage","HPE","NS dHCI AF40 AF DC 2p CTO Base Array","DC Gandul · NMB SN AF-234120","DC-Gandul","2024-09-03","","2026-10-30T01:00:00Z"],["5UMHN000H0","indonesia-power","5UMHN000H0","Storage","HPE","NS AF All Flash AFS3 CTO Exp Shelf","DC Gandul · NMB SN AF-246190","DC-Gandul","2027-02-01","","2026-10-30T02:00:00Z"],["611725","indonesia-power","611725","Storage","Hitachi Vantara","VSP E590","DC Gandul","DC-Gandul","","","2026-10-30T01:00:00Z"],["613126","indonesia-power","613126","Storage","Hitachi Vantara","VSP E590","DRC Batam","DRC-Batam","","","2026-10-30T05:41:45.868Z"],["8Q4BL94","indonesia-power","8Q4BL94","Server","Dell","PowerEdge R760","azura3","DC-Gandul","2030-07-20","","2026-10-30T00:00:00Z"],["92213550","indonesia-power","92213550","Storage","Hitachi Vantara","HUS130","Storage DEV","DC-Gandul","","","2026-10-30T00:00:00Z"],["93MC874","indonesia-power","93MC874","Server","Dell","PowerEdge R760","anubis11","DRC-Batam","2028-02-27","","2026-10-30T00:00:00Z"],["9WTMF14","indonesia-power","9WTMF14","Server","Dell","PowerEdge R750","VBR","DC-Gandul","2027-03-07","","2026-10-30T01:00:00Z"],["9XX7R44","indonesia-power","9XX7R44","Server","Dell","PowerEdge R760","Skypiea 1","DC-Gandul","2027-10-18","","2026-10-30T01:00:00Z"],["ACA20201BF","indonesia-power","ACA20201BF","Network Switch","HPE","SN2410bM 24SFP+ 4QSFP28 P2C Swch","SW COHE 1","DC-Gandul","2027-03-31","","2026-10-30T02:00:00Z"],["BP4BL94","indonesia-power","BP4BL94","Server","Dell","PowerEdge R760","azura1","DC-Gandul","2030-07-20","","2026-10-30T00:00:00Z"],["BXX7R44","indonesia-power","BXX7R44","Server","Dell","PowerEdge R760","Skypiea 2","DC-Gandul","2027-10-18","","2026-10-30T01:00:00Z"],["CN1AGMW2GT","indonesia-power","CN1AGMW2GT","Network Switch","HPE","Office Connect","Switch Management DRC","DRC-Batam","2025-01-27","","2026-10-30T00:00:00Z"],["CN2BKFT00J","indonesia-power","CN2BKFT00J","Network Switch","HPE","5710 48XGT 6QS+/2QS28 Switch","Switch Storage HDS","DRC-Batam","","","2026-10-30T05:41:31.804Z"],["CN2BKFT00P","indonesia-power","CN2BKFT00P","Network Switch","HPE","5710 48XGT 6QS+/2QS28 Switch","Switch Storage HDS","DRC-Batam","","","2026-10-30T05:42:03.123Z"],["CN762508HW","indonesia-power","CN762508HW","Server","HPE","ProLiant DL380 Gen9","testho3.indonesiapower","Kantor Pusat","2025-03-31","","2026-10-30T00:00:00Z"],["CXX7R44","indonesia-power","CXX7R44","Server","Dell","PowerEdge R750","Nibiru 5","DC-Gandul","2027-10-18","","2026-10-30T01:00:00Z"],["CZC002WS8V","indonesia-power","CZC002WS8V","SAN Switch","HPE","SN3600B 32Gb 24/8 FC Switch","SAN SW STR BACKUP 1","DC-Gandul","2027-03-31","","2026-10-30T02:00:00Z"],["CZC002WSDM","indonesia-power","CZC002WSDM","SAN Switch","HPE","SN3600B 32Gb 24/8 FC Switch","SAN SW STR BACKUP 2","DC-Gandul","2027-03-31","","2026-10-30T02:00:00Z"],["DEC31007YL","indonesia-power","DEC31007YL","Tape Library","HPE","StoreEver MSL2024","Tape Library","DC-Gandul","2027-06-14","","2026-10-30T02:00:00Z"],["HTVJL94","indonesia-power","HTVJL94","Storage","Dell","PowerStore 1200T","Storage Production","DC-Gandul","2030-07-20","","2026-10-30T00:00:00Z"],["ILC2330517","indonesia-power","ILC2330517","Network Switch","HPE","SN2410M 24SFP28 4QSFP28 P2C Swch","Switch Cluster DELL 1","DC-Gandul","2027-03-12","","2026-10-30T02:00:00Z"],["ILC233051G","indonesia-power","ILC233051G","Network Switch","HPE","SN2410M 24SFP28 4QSFP28 P2C Swch","Switch Cluster DELL 2","DC-Gandul","2027-03-12","","2026-10-30T02:00:00Z"],["J71Y6Y3","indonesia-power","J71Y6Y3","Storage","Dell","Unity XT480","DC Gandul","DC-Gandul","2027-07-12","","2026-10-30T02:00:00Z"],["JP4BL94","indonesia-power","JP4BL94","Server","Dell","PowerEdge R760","azura2","DC-Gandul","2030-07-20","","2026-10-30T00:00:00Z"],["JX7NYX3","indonesia-power","JX7NYX3","Server","Dell","PowerEdge R750","Nibiru 4","DC-Gandul","2027-07-12","","2026-10-30T02:00:00Z"],["Q23AI12882","indonesia-power","Q23AI12882","Storage","QNAP","TVS-872XT-i5-16G","Storage CCTV","Kantor Pusat","2028-06-08","","2026-10-30T00:00:00Z"],["SG22KRT01V","indonesia-power","SG22KRT01V","Network Switch","HPE","Aruba 8360-48XT","TOR Switch DRC","DRC-Batam","2047-08-04","","2026-10-30T00:00:00Z"],["SG22KRT023","indonesia-power","SG22KRT023","Network Switch","HPE","Aruba 8360-48XT","TOR Switch DRC","DRC-Batam","2047-08-04","","2026-10-30T00:00:00Z"],["SGH039WDS1","indonesia-power","SGH039WDS1","HCI Node","HPE","SimpliVity 380 Gen10 Node","Target Airgap","DC-Gandul","2027-03-31","","2026-10-30T02:00:00Z"],["SGH121SN0B","indonesia-power","SGH121SN0B","Server","HPE","DL180 Gen10","Server HLR VEEAM","DC-Gandul","2024-07-02","","2026-10-30T00:00:00Z"],["SGH131YLRV","indonesia-power","SGH131YLRV","Server","HPE","DL380 Gen10 8SFF NC CTO Svr","ESXHO 1","Kantor Pusat","2027-03-31","","2026-10-30T02:00:00Z"],["SGH131YLTS","indonesia-power","SGH131YLTS","Server","HPE","DL380 Gen10 8SFF NC CTO Svr","Odin 2 GPU","DC-Gandul","2027-03-31","","2026-10-30T02:00:00Z"],["SGH131YLY8","indonesia-power","SGH131YLY8","Server","HPE","DL360 Gen10 8SFF NC CTO Svr","Odin 3","DC-Gandul","2027-03-31","","2026-10-30T02:00:00Z"],["SGH131YLYB","indonesia-power","SGH131YLYB","Server","HPE","DL360 Gen10 8SFF NC CTO Svr","Odin 1","DC-Gandul","2027-03-31","","2026-10-30T02:00:00Z"],["SGH201YK4S","indonesia-power","SGH201YK4S","Server","HPE","ProLiant DL360 Gen10","anubis3","DRC-Batam","2025-07-20","","2026-10-30T00:00:00Z"],["SGH201YK51","indonesia-power","SGH201YK51","Server","HPE","ProLiant DL360 Gen10","anubis4","DRC-Batam","2028-07-20","","2026-10-30T00:00:00Z"],["SGH201YK55","indonesia-power","SGH201YK55","Server","HPE","ProLiant DL360 Gen10","anubis2","DRC-Batam","2028-07-20","","2026-10-30T00:00:00Z"],["SGH201YK59","indonesia-power","SGH201YK59","Server","HPE","ProLiant DL360 Gen10","anubis7","DRC-Batam","2025-07-20","","2026-10-30T00:00:00Z"],["SGH201YK5T","indonesia-power","SGH201YK5T","Server","HPE","ProLiant DL360 Gen10","anubis1","DRC-Batam","2025-07-20","","2026-10-30T00:00:00Z"],["SGH218WC4T","indonesia-power","SGH218WC4T","Server","HPE","DL360 Gen10 8SFF NC CTO Svr","Odin 4","DC-Gandul","2027-03-31","","2026-10-30T02:00:00Z"],["SGH220SGNB","indonesia-power","SGH220SGNB","Server","HPE","DL380 Gen10 8SFF NC CTO Svr","ESXHO 2","Kantor Pusat","2027-03-31","","2026-10-30T02:00:00Z"],["SGH238T9XK","indonesia-power","SGH238T9XK","Backup Appliance","HPE","ProLiant DL380 Gen10 48TB Server for Cohesity DataPlatform","Repo DRC Node 1","DRC-Batam","2027-03-31","","2026-10-30T02:00:00Z"],["SGH238T9XW","indonesia-power","SGH238T9XW","Backup Appliance","HPE","DL380 G10 48TB CTO Svr for Cohesity","Repo DC Node 2","DC-Gandul","2027-03-31","","2026-10-30T02:00:00Z"],["SGH238T9Y4","indonesia-power","SGH238T9Y4","Backup Appliance","HPE","ProLiant DL380 Gen10 48TB Server for Cohesity DataPlatform","Repo DRC Node 2","DRC-Batam","2027-03-31","","2026-10-30T02:00:00Z"],["SGH238T9YT","indonesia-power","SGH238T9YT","Backup Appliance","HPE","DL380 G10 48TB CTO Svr for Cohesity","Repo DC Node 3","DC-Gandul","2027-03-31","","2026-10-30T02:00:00Z"],["SGH238T9YV","indonesia-power","SGH238T9YV","Backup Appliance","HPE","ProLiant DL380 Gen10 48TB Server for Cohesity DataPlatform","Repo DRC Node 3","DRC-Batam","2027-03-31","","2026-10-30T02:00:00Z"],["SGH238T9ZN","indonesia-power","SGH238T9ZN","Backup Appliance","HPE","DL380 G10 48TB CTO Svr for Cohesity","Repo DC Node 1","DC-Gandul","2027-03-31","","2026-10-30T02:00:00Z"],["SGH238TBF6","indonesia-power","SGH238TBF6","Backup Appliance","HPE","DL380 G10 48TB CTO Svr for Cohesity","Obj DR Node 2","DRC-Batam","2027-03-31","","2026-10-30T02:00:00Z"],["SGH238TBFM","indonesia-power","SGH238TBFM","Backup Appliance","HPE","DL380 G10 48TB CTO Svr for Cohesity","Obj DR Node 4","DRC-Batam","2027-03-31","","2026-10-30T02:00:00Z"],["SGH238TBG1","indonesia-power","SGH238TBG1","Backup Appliance","HPE","DL380 G10 48TB CTO Svr for Cohesity","Obj DR Node 5","DRC-Batam","2027-03-31","","2026-10-30T02:00:00Z"],["SGH238TBGG","indonesia-power","SGH238TBGG","Backup Appliance","HPE","DL380 G10 48TB CTO Svr for Cohesity","Obj DR Node 3","DRC-Batam","2027-03-31","","2026-10-30T02:00:00Z"],["SGH238TBGW","indonesia-power","SGH238TBGW","Backup Appliance","HPE","DL380 G10 48TB CTO Svr for Cohesity","Obj DR Node 1","DRC-Batam","2027-03-31","","2026-10-30T02:00:00Z"],["SGH308XXLQ","indonesia-power","SGH308XXLQ","Backup Appliance","HPE","DL380 G10 48TB CTO Svr for Cohesity","Repo DC Node 4","DC-Gandul","","","2026-10-30T05:41:54.660Z"],["SGH308XXQV","indonesia-power","SGH308XXQV","Backup Appliance","HPE","DL380 G10 48TB CTO Svr for Cohesity","Repo DRC Node 4 · cek: di file warranty tertulis Repo DC Node 4","DC-Gandul","2027-03-07","","2026-10-30T02:00:00Z"],["SGH319TS3Y","indonesia-power","SGH319TS3Y","Server","HPE","Proliant DL360 Gen10+","Qstar","DC-Gandul","2027-06-16","","2026-10-30T02:00:00Z"],["SGH413HMGB","indonesia-power","SGH413HMGB","Backup Appliance","HPE","ProLiant DL380 Gen10+ 48TB Server for Cohesity","Repo DC Node 5","DC-Gandul","2028-08-28","","2026-10-30T00:00:00Z"],["SGH806T6HS","indonesia-power","SGH806T6HS","HCI Node","HPE","SimpliVity 380 Gen10 Node","Balder 2","DC-Gandul","2025-03-31","","2026-10-30T01:00:00Z"],["SGH806T6HV","indonesia-power","SGH806T6HV","HCI Node","HPE","SimpliVity 380 Gen10 Node","Balder 1","DC-Gandul","2025-03-31","","2026-10-30T01:00:00Z"],["SGH806TML1","indonesia-power","SGH806TML1","HCI Node","HPE","SimpliVity 380 Gen10 Node","Balder 3 · cek SN: di file warranty tertulis SGH826TML1","DC-Gandul","2025-03-31","","2026-10-30T01:00:00Z"],["SGH806TML3","indonesia-power","SGH806TML3","HCI Node","HPE","SimpliVity 380 Gen10 Node","Balder 4 · cek SN: di file warranty tertulis SGH826TML3","DC-Gandul","2025-03-31","","2026-10-30T01:00:00Z"],["SGH909V743","indonesia-power","SGH909V743","HCI Node","HPE","SimpliVity 380 Gen10 Node","Dimirio 2","DC-Gandul","2027-03-31","","2026-10-30T02:00:00Z"],["SGH909V745","indonesia-power","SGH909V745","HCI Node","HPE","SimpliVity 380 Gen10 Node","Dimirio 3","DC-Gandul","2027-03-31","","2026-10-30T02:00:00Z"],["SGH941V741","indonesia-power","SGH941V741","HCI Node","HPE","SimpliVity 380 Gen10 Node","Balder 6 · cek SN: di file warranty tertulis SGH909V741","DC-Gandul","2027-03-31","","2026-10-30T02:00:00Z"],["SGH941V747","indonesia-power","SGH941V747","HCI Node","HPE","SimpliVity 380 Gen10 Node","Balder 5 · cek SN: di file warranty tertulis SGH909V747","DC-Gandul","2025-03-31","","2026-10-30T01:00:00Z"],["SGH941VTCP","indonesia-power","SGH941VTCP","HCI Node","HPE","SimpliVity 380 Gen10 Node","Dimirio 6","DC-Gandul","2027-03-31","","2026-10-30T02:00:00Z"],["SGH941VTCR","indonesia-power","SGH941VTCR","HCI Node","HPE","SimpliVity 380 Gen10 Node","Dimirio 5","DC-Gandul","2027-03-31","","2026-10-30T02:00:00Z"],["SGH941VTCT","indonesia-power","SGH941VTCT","HCI Node","HPE","SimpliVity 380 Gen10 Node","Dimirio 1","DC-Gandul","2027-03-31","","2026-10-30T02:00:00Z"],["SGH941VTCW","indonesia-power","SGH941VTCW","HCI Node","HPE","SimpliVity 380 Gen10 Node","Dimirio 4","DC-Gandul","2027-03-31","","2026-10-30T02:00:00Z"]];
+__name(normDevice, "normDevice");
+var upsertDevice = /* @__PURE__ */ __name((db, d) => db.prepare(
+  "INSERT INTO devices (" + DEV_COLS.join(",") + ") VALUES (" + DEV_COLS.map(() => "?").join(",") + ") ON CONFLICT(id) DO UPDATE SET " + DEV_COLS.slice(1).map((c) => c + "=excluded." + c).join(",")
+).bind(...DEV_COLS.map((c) => d[c])), "upsertDevice");
+var SEED_CUSTOMERS = [["indonesia-power", "Indonesia Power", "IP", "", "", "2026-10-30T06:00:00Z"]];
+var SEED_DEV_COLS = ["id", "customerId", "sn", "type", "brand", "model", "note", "location", "warranty", "eosl", "updatedAt"];
+var SEED_DEVICES = [["1I02130C19", "indonesia-power", "1I02130C19", "Network Switch", "HPE", "SN2410bM 24SFP+ 4QSFP28 P2C Swch", "SW COHE 2", "DC-Gandul", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["1Y7NYX3", "indonesia-power", "1Y7NYX3", "Server", "Dell", "PowerEdge R750", "Nibiru 1", "DC-Gandul", "2027-07-12", "", "2026-10-30T02:00:00Z"], ["2S6845B100", "indonesia-power", "2S6845B100", "Storage", "HPE", "MSA 2050", "", "Kantor Pusat", "", "", "2026-10-30T05:42:08.860Z"], ["2Y7NYX3", "indonesia-power", "2Y7NYX3", "Server", "Dell", "PowerEdge R750", "Nibiru 2", "DC-Gandul", "2027-07-12", "", "2026-10-30T02:00:00Z"], ["3TF11801JD", "indonesia-power", "3TF11801JD", "Network Switch", "HPE", "SN2010M 18SFP28 4QSFP28 P2C Swch", "SW DHCI 1", "DC-Gandul", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["3TF119004J", "indonesia-power", "3TF119004J", "Network Switch", "HPE", "SN2010M 18SFP28 4QSFP28 P2C Swch", "SW DHCI 2", "DC-Gandul", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["3Y7NYX3", "indonesia-power", "3Y7NYX3", "Server", "Dell", "PowerEdge R750", "Nibiru 3", "DC-Gandul", "2027-07-12", "", "2026-10-30T02:00:00Z"], ["411378", "indonesia-power", "411378", "Storage", "Hitachi Vantara", "VSP G600", "Storage DEV", "DC-Gandul", "", "", "2026-10-30T00:00:00Z"], ["490568", "indonesia-power", "490568", "Storage", "Hitachi Vantara", "VSP G350", "DRC Batam", "DRC-Batam", "", "", "2026-10-30T01:00:00Z"], ["5Q4BL94", "indonesia-power", "5Q4BL94", "Server", "Dell", "PowerEdge R760", "azura4", "DC-Gandul", "2030-07-20", "", "2026-10-30T00:00:00Z"], ["5UM133006T", "indonesia-power", "5UM133006T", "Storage", "HPE", "NS dHCI AF40 AF DC 2p CTO Base Array", "DC Gandul \xB7 NMB SN AF-234120", "DC-Gandul", "2024-09-03", "", "2026-10-30T01:00:00Z"], ["5UMHN000H0", "indonesia-power", "5UMHN000H0", "Storage", "HPE", "NS AF All Flash AFS3 CTO Exp Shelf", "DC Gandul \xB7 NMB SN AF-246190", "DC-Gandul", "2027-02-01", "", "2026-10-30T02:00:00Z"], ["611725", "indonesia-power", "611725", "Storage", "Hitachi Vantara", "VSP E590", "DC Gandul", "DC-Gandul", "", "", "2026-10-30T01:00:00Z"], ["613126", "indonesia-power", "613126", "Storage", "Hitachi Vantara", "VSP E590", "DRC Batam", "DRC-Batam", "", "", "2026-10-30T05:41:45.868Z"], ["8Q4BL94", "indonesia-power", "8Q4BL94", "Server", "Dell", "PowerEdge R760", "azura3", "DC-Gandul", "2030-07-20", "", "2026-10-30T00:00:00Z"], ["92213550", "indonesia-power", "92213550", "Storage", "Hitachi Vantara", "HUS130", "Storage DEV", "DC-Gandul", "", "", "2026-10-30T00:00:00Z"], ["93MC874", "indonesia-power", "93MC874", "Server", "Dell", "PowerEdge R760", "anubis11", "DRC-Batam", "2028-02-27", "", "2026-10-30T00:00:00Z"], ["9WTMF14", "indonesia-power", "9WTMF14", "Server", "Dell", "PowerEdge R750", "VBR", "DC-Gandul", "2027-03-07", "", "2026-10-30T01:00:00Z"], ["9XX7R44", "indonesia-power", "9XX7R44", "Server", "Dell", "PowerEdge R760", "Skypiea 1", "DC-Gandul", "2027-10-18", "", "2026-10-30T01:00:00Z"], ["ACA20201BF", "indonesia-power", "ACA20201BF", "Network Switch", "HPE", "SN2410bM 24SFP+ 4QSFP28 P2C Swch", "SW COHE 1", "DC-Gandul", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["BP4BL94", "indonesia-power", "BP4BL94", "Server", "Dell", "PowerEdge R760", "azura1", "DC-Gandul", "2030-07-20", "", "2026-10-30T00:00:00Z"], ["BXX7R44", "indonesia-power", "BXX7R44", "Server", "Dell", "PowerEdge R760", "Skypiea 2", "DC-Gandul", "2027-10-18", "", "2026-10-30T01:00:00Z"], ["CN1AGMW2GT", "indonesia-power", "CN1AGMW2GT", "Network Switch", "HPE", "Office Connect", "Switch Management DRC", "DRC-Batam", "2025-01-27", "", "2026-10-30T00:00:00Z"], ["CN2BKFT00J", "indonesia-power", "CN2BKFT00J", "Network Switch", "HPE", "5710 48XGT 6QS+/2QS28 Switch", "Switch Storage HDS", "DRC-Batam", "", "", "2026-10-30T05:41:31.804Z"], ["CN2BKFT00P", "indonesia-power", "CN2BKFT00P", "Network Switch", "HPE", "5710 48XGT 6QS+/2QS28 Switch", "Switch Storage HDS", "DRC-Batam", "", "", "2026-10-30T05:42:03.123Z"], ["CN762508HW", "indonesia-power", "CN762508HW", "Server", "HPE", "ProLiant DL380 Gen9", "testho3.indonesiapower", "Kantor Pusat", "2025-03-31", "", "2026-10-30T00:00:00Z"], ["CXX7R44", "indonesia-power", "CXX7R44", "Server", "Dell", "PowerEdge R750", "Nibiru 5", "DC-Gandul", "2027-10-18", "", "2026-10-30T01:00:00Z"], ["CZC002WS8V", "indonesia-power", "CZC002WS8V", "SAN Switch", "HPE", "SN3600B 32Gb 24/8 FC Switch", "SAN SW STR BACKUP 1", "DC-Gandul", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["CZC002WSDM", "indonesia-power", "CZC002WSDM", "SAN Switch", "HPE", "SN3600B 32Gb 24/8 FC Switch", "SAN SW STR BACKUP 2", "DC-Gandul", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["DEC31007YL", "indonesia-power", "DEC31007YL", "Tape Library", "HPE", "StoreEver MSL2024", "Tape Library", "DC-Gandul", "2027-06-14", "", "2026-10-30T02:00:00Z"], ["HTVJL94", "indonesia-power", "HTVJL94", "Storage", "Dell", "PowerStore 1200T", "Storage Production", "DC-Gandul", "2030-07-20", "", "2026-10-30T00:00:00Z"], ["ILC2330517", "indonesia-power", "ILC2330517", "Network Switch", "HPE", "SN2410M 24SFP28 4QSFP28 P2C Swch", "Switch Cluster DELL 1", "DC-Gandul", "2027-03-12", "", "2026-10-30T02:00:00Z"], ["ILC233051G", "indonesia-power", "ILC233051G", "Network Switch", "HPE", "SN2410M 24SFP28 4QSFP28 P2C Swch", "Switch Cluster DELL 2", "DC-Gandul", "2027-03-12", "", "2026-10-30T02:00:00Z"], ["J71Y6Y3", "indonesia-power", "J71Y6Y3", "Storage", "Dell", "Unity XT480", "DC Gandul", "DC-Gandul", "2027-07-12", "", "2026-10-30T02:00:00Z"], ["JP4BL94", "indonesia-power", "JP4BL94", "Server", "Dell", "PowerEdge R760", "azura2", "DC-Gandul", "2030-07-20", "", "2026-10-30T00:00:00Z"], ["JX7NYX3", "indonesia-power", "JX7NYX3", "Server", "Dell", "PowerEdge R750", "Nibiru 4", "DC-Gandul", "2027-07-12", "", "2026-10-30T02:00:00Z"], ["Q23AI12882", "indonesia-power", "Q23AI12882", "Storage", "QNAP", "TVS-872XT-i5-16G", "Storage CCTV", "Kantor Pusat", "2028-06-08", "", "2026-10-30T00:00:00Z"], ["SG22KRT01V", "indonesia-power", "SG22KRT01V", "Network Switch", "HPE", "Aruba 8360-48XT", "TOR Switch DRC", "DRC-Batam", "2047-08-04", "", "2026-10-30T00:00:00Z"], ["SG22KRT023", "indonesia-power", "SG22KRT023", "Network Switch", "HPE", "Aruba 8360-48XT", "TOR Switch DRC", "DRC-Batam", "2047-08-04", "", "2026-10-30T00:00:00Z"], ["SGH039WDS1", "indonesia-power", "SGH039WDS1", "HCI Node", "HPE", "SimpliVity 380 Gen10 Node", "Target Airgap", "DC-Gandul", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH121SN0B", "indonesia-power", "SGH121SN0B", "Server", "HPE", "DL180 Gen10", "Server HLR VEEAM", "DC-Gandul", "2024-07-02", "", "2026-10-30T00:00:00Z"], ["SGH131YLRV", "indonesia-power", "SGH131YLRV", "Server", "HPE", "DL380 Gen10 8SFF NC CTO Svr", "ESXHO 1", "Kantor Pusat", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH131YLTS", "indonesia-power", "SGH131YLTS", "Server", "HPE", "DL380 Gen10 8SFF NC CTO Svr", "Odin 2 GPU", "DC-Gandul", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH131YLY8", "indonesia-power", "SGH131YLY8", "Server", "HPE", "DL360 Gen10 8SFF NC CTO Svr", "Odin 3", "DC-Gandul", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH131YLYB", "indonesia-power", "SGH131YLYB", "Server", "HPE", "DL360 Gen10 8SFF NC CTO Svr", "Odin 1", "DC-Gandul", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH201YK4S", "indonesia-power", "SGH201YK4S", "Server", "HPE", "ProLiant DL360 Gen10", "anubis3", "DRC-Batam", "2025-07-20", "", "2026-10-30T00:00:00Z"], ["SGH201YK51", "indonesia-power", "SGH201YK51", "Server", "HPE", "ProLiant DL360 Gen10", "anubis4", "DRC-Batam", "2028-07-20", "", "2026-10-30T00:00:00Z"], ["SGH201YK55", "indonesia-power", "SGH201YK55", "Server", "HPE", "ProLiant DL360 Gen10", "anubis2", "DRC-Batam", "2028-07-20", "", "2026-10-30T00:00:00Z"], ["SGH201YK59", "indonesia-power", "SGH201YK59", "Server", "HPE", "ProLiant DL360 Gen10", "anubis7", "DRC-Batam", "2025-07-20", "", "2026-10-30T00:00:00Z"], ["SGH201YK5T", "indonesia-power", "SGH201YK5T", "Server", "HPE", "ProLiant DL360 Gen10", "anubis1", "DRC-Batam", "2025-07-20", "", "2026-10-30T00:00:00Z"], ["SGH218WC4T", "indonesia-power", "SGH218WC4T", "Server", "HPE", "DL360 Gen10 8SFF NC CTO Svr", "Odin 4", "DC-Gandul", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH220SGNB", "indonesia-power", "SGH220SGNB", "Server", "HPE", "DL380 Gen10 8SFF NC CTO Svr", "ESXHO 2", "Kantor Pusat", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH238T9XK", "indonesia-power", "SGH238T9XK", "Backup Appliance", "HPE", "ProLiant DL380 Gen10 48TB Server for Cohesity DataPlatform", "Repo DRC Node 1", "DRC-Batam", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH238T9XW", "indonesia-power", "SGH238T9XW", "Backup Appliance", "HPE", "DL380 G10 48TB CTO Svr for Cohesity", "Repo DC Node 2", "DC-Gandul", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH238T9Y4", "indonesia-power", "SGH238T9Y4", "Backup Appliance", "HPE", "ProLiant DL380 Gen10 48TB Server for Cohesity DataPlatform", "Repo DRC Node 2", "DRC-Batam", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH238T9YT", "indonesia-power", "SGH238T9YT", "Backup Appliance", "HPE", "DL380 G10 48TB CTO Svr for Cohesity", "Repo DC Node 3", "DC-Gandul", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH238T9YV", "indonesia-power", "SGH238T9YV", "Backup Appliance", "HPE", "ProLiant DL380 Gen10 48TB Server for Cohesity DataPlatform", "Repo DRC Node 3", "DRC-Batam", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH238T9ZN", "indonesia-power", "SGH238T9ZN", "Backup Appliance", "HPE", "DL380 G10 48TB CTO Svr for Cohesity", "Repo DC Node 1", "DC-Gandul", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH238TBF6", "indonesia-power", "SGH238TBF6", "Backup Appliance", "HPE", "DL380 G10 48TB CTO Svr for Cohesity", "Obj DR Node 2", "DRC-Batam", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH238TBFM", "indonesia-power", "SGH238TBFM", "Backup Appliance", "HPE", "DL380 G10 48TB CTO Svr for Cohesity", "Obj DR Node 4", "DRC-Batam", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH238TBG1", "indonesia-power", "SGH238TBG1", "Backup Appliance", "HPE", "DL380 G10 48TB CTO Svr for Cohesity", "Obj DR Node 5", "DRC-Batam", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH238TBGG", "indonesia-power", "SGH238TBGG", "Backup Appliance", "HPE", "DL380 G10 48TB CTO Svr for Cohesity", "Obj DR Node 3", "DRC-Batam", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH238TBGW", "indonesia-power", "SGH238TBGW", "Backup Appliance", "HPE", "DL380 G10 48TB CTO Svr for Cohesity", "Obj DR Node 1", "DRC-Batam", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH308XXLQ", "indonesia-power", "SGH308XXLQ", "Backup Appliance", "HPE", "DL380 G10 48TB CTO Svr for Cohesity", "Repo DC Node 4", "DC-Gandul", "", "", "2026-10-30T05:41:54.660Z"], ["SGH308XXQV", "indonesia-power", "SGH308XXQV", "Backup Appliance", "HPE", "DL380 G10 48TB CTO Svr for Cohesity", "Repo DRC Node 4 \xB7 cek: di file warranty tertulis Repo DC Node 4", "DC-Gandul", "2027-03-07", "", "2026-10-30T02:00:00Z"], ["SGH319TS3Y", "indonesia-power", "SGH319TS3Y", "Server", "HPE", "Proliant DL360 Gen10+", "Qstar", "DC-Gandul", "2027-06-16", "", "2026-10-30T02:00:00Z"], ["SGH413HMGB", "indonesia-power", "SGH413HMGB", "Backup Appliance", "HPE", "ProLiant DL380 Gen10+ 48TB Server for Cohesity", "Repo DC Node 5", "DC-Gandul", "2028-08-28", "", "2026-10-30T00:00:00Z"], ["SGH806T6HS", "indonesia-power", "SGH806T6HS", "HCI Node", "HPE", "SimpliVity 380 Gen10 Node", "Balder 2", "DC-Gandul", "2025-03-31", "", "2026-10-30T01:00:00Z"], ["SGH806T6HV", "indonesia-power", "SGH806T6HV", "HCI Node", "HPE", "SimpliVity 380 Gen10 Node", "Balder 1", "DC-Gandul", "2025-03-31", "", "2026-10-30T01:00:00Z"], ["SGH806TML1", "indonesia-power", "SGH806TML1", "HCI Node", "HPE", "SimpliVity 380 Gen10 Node", "Balder 3 \xB7 cek SN: di file warranty tertulis SGH826TML1", "DC-Gandul", "2025-03-31", "", "2026-10-30T01:00:00Z"], ["SGH806TML3", "indonesia-power", "SGH806TML3", "HCI Node", "HPE", "SimpliVity 380 Gen10 Node", "Balder 4 \xB7 cek SN: di file warranty tertulis SGH826TML3", "DC-Gandul", "2025-03-31", "", "2026-10-30T01:00:00Z"], ["SGH909V743", "indonesia-power", "SGH909V743", "HCI Node", "HPE", "SimpliVity 380 Gen10 Node", "Dimirio 2", "DC-Gandul", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH909V745", "indonesia-power", "SGH909V745", "HCI Node", "HPE", "SimpliVity 380 Gen10 Node", "Dimirio 3", "DC-Gandul", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH941V741", "indonesia-power", "SGH941V741", "HCI Node", "HPE", "SimpliVity 380 Gen10 Node", "Balder 6 \xB7 cek SN: di file warranty tertulis SGH909V741", "DC-Gandul", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH941V747", "indonesia-power", "SGH941V747", "HCI Node", "HPE", "SimpliVity 380 Gen10 Node", "Balder 5 \xB7 cek SN: di file warranty tertulis SGH909V747", "DC-Gandul", "2025-03-31", "", "2026-10-30T01:00:00Z"], ["SGH941VTCP", "indonesia-power", "SGH941VTCP", "HCI Node", "HPE", "SimpliVity 380 Gen10 Node", "Dimirio 6", "DC-Gandul", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH941VTCR", "indonesia-power", "SGH941VTCR", "HCI Node", "HPE", "SimpliVity 380 Gen10 Node", "Dimirio 5", "DC-Gandul", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH941VTCT", "indonesia-power", "SGH941VTCT", "HCI Node", "HPE", "SimpliVity 380 Gen10 Node", "Dimirio 1", "DC-Gandul", "2027-03-31", "", "2026-10-30T02:00:00Z"], ["SGH941VTCW", "indonesia-power", "SGH941VTCW", "HCI Node", "HPE", "SimpliVity 380 Gen10 Node", "Dimirio 4", "DC-Gandul", "2027-03-31", "", "2026-10-30T02:00:00Z"]];
 async function seedIfEmpty(db) {
   const c = await db.prepare("SELECT (SELECT COUNT(*) FROM customers) + (SELECT COUNT(*) FROM devices) AS n").first();
   if (c && c.n) return;
-  const st = SEED_CUSTOMERS.map(r => db.prepare("INSERT OR IGNORE INTO customers (id,name,code,pic,note,updatedAt,updatedBy) VALUES (?,?,?,?,?,?,'seed')").bind(...r));
+  const st = SEED_CUSTOMERS.map((r) => db.prepare("INSERT OR IGNORE INTO customers (id,name,code,pic,note,updatedAt,updatedBy) VALUES (?,?,?,?,?,?,'seed')").bind(...r));
   for (const r of SEED_DEVICES) st.push(db.prepare("INSERT OR IGNORE INTO devices (" + SEED_DEV_COLS.join(",") + ",updatedBy) VALUES (" + SEED_DEV_COLS.map(() => "?").join(",") + ",'seed')").bind(...r));
   for (let i = 0; i < st.length; i += 50) await db.batch(st.slice(i, i + 50));
 }
-
-// Customer BAYAN (BYAN) — 22 server HPE; ditambahkan otomatis satu kali saat deploy
-const SEED_BAYAN_DEVICES = [["SGH123TS8P","bayan","SGH123TS8P","Server","HPE","ProLiant DL380 Gen10","bct-esx-01","SITE-BCT","2024-07-08","","2026-11-02T02:00:00Z"],["SGH123TS8N","bayan","SGH123TS8N","Server","HPE","ProLiant DL380 Gen10","bct-esx-02","SITE-BCT","2024-07-08","","2026-11-02T02:00:00Z"],["SGH015YPG9","bayan","SGH015YPG9","Server","HPE","ProLiant DL380 Gen10","bpn-esx01","HQ-BPN","2023-07-13","","2026-11-02T02:00:00Z"],["SGH015YPGC","bayan","SGH015YPGC","Server","HPE","ProLiant DL380 Gen10","bpn-esx02","HQ-BPN","2023-07-13","","2026-11-02T02:00:00Z"],["SGH533W45R","bayan","SGH533W45R","Server","HPE","ProLiant DL160 Gen9","gb2-esx-01","SITE-GB2","2020-01-09","","2026-11-02T02:00:00Z"],["SGH701TLK4","bayan","SGH701TLK4","Server","HPE","ProLiant DL160 Gen9","gb2-esx-02","SITE-GB2","2020-01-09","","2026-11-02T02:00:00Z"],["SGH827V0SJ","bayan","SGH827V0SJ","Server","HPE","ProLiant DL380 Gen10","jkt-esx-01","DC- JKT","2021-10-08","","2026-11-02T02:00:00Z"],["SGH828VRC5","bayan","SGH828VRC5","Server","HPE","ProLiant DL380 Gen10","jkt-esx-02","DC- JKT","2021-10-08","","2026-11-02T02:00:00Z"],["SGH827V0SR","bayan","SGH827V0SR","Server","HPE","ProLiant DL380 Gen10","jkt-esx-03","DC- JKT","2021-10-08","","2026-11-02T02:00:00Z"],["SGH827V0SM","bayan","SGH827V0SM","Server","HPE","ProLiant DL380 Gen10","jkt-esx-04","DC- JKT","2021-10-08","","2026-11-02T02:00:00Z"],["SGH238V4FQ","bayan","SGH238V4FQ","Server","HPE","ProLiant DL380 Gen10 Plus","jkt-esx-05","DC - JKT 2","2025-11-01","","2026-11-02T02:00:00Z"],["SGH238V4FH","bayan","SGH238V4FH","Server","HPE","ProLiant DL380 Gen10 Plus","jkt-esx-06","DC - JKT 2","2025-11-01","","2026-11-02T02:00:00Z"],["SGH015YPGL","bayan","SGH015YPGL","Server","HPE","ProLiant DL380 Gen10","mp-esx-01","SITE-MP","2023-07-13","","2026-11-02T02:00:00Z"],["SGH015YPGM","bayan","SGH015YPGM","Server","HPE","ProLiant DL380 Gen10","mp-esx-02","SITE-MP","2023-07-13","","2026-11-02T02:00:00Z"],["SGH827V0SN","bayan","SGH827V0SN","Server","HPE","ProLiant DL380 Gen10","pik-esx-01","SITE-PIK","2021-10-08","","2026-11-02T02:00:00Z"],["SGH827V0SH","bayan","SGH827V0SH","Server","HPE","ProLiant DL380 Gen10","pik-esx-02","SITE-PIK","2021-10-08","","2026-11-02T02:00:00Z"],["SGH427M6YY","bayan","SGH427M6YY","Server","HPE","ProLiant DL380 Gen11","tbg-esx-01","TBG-CLUSTER-01","2027-08-15","","2026-11-02T02:00:00Z"],["SGH427M6ZR","bayan","SGH427M6ZR","Server","HPE","ProLiant DL380 Gen11","tbg-esx-02","TBG-CLUSTER-01","2027-08-15","","2026-11-02T02:00:00Z"],["SGH827V0SK","bayan","SGH827V0SK","Server","HPE","ProLiant DL380 Gen10","tsa-esx-01","SITE-TSA","2021-10-08","","2026-11-02T02:00:00Z"],["SGH827V0SL","bayan","SGH827V0SL","Server","HPE","ProLiant DL380 Gen10","tsa-esx-02","SITE-TSA","2021-10-08","","2026-11-02T02:00:00Z"],["SGH827V0SP","bayan","SGH827V0SP","Server","HPE","ProLiant DL380 Gen10","wbm-esx-01","SITE-WBM","2021-10-08","","2026-11-02T02:00:00Z"],["SGH827V0SF","bayan","SGH827V0SF","Server","HPE","ProLiant DL380 Gen10","wbm-esx-02","SITE-WBM","2021-10-08","","2026-11-02T02:00:00Z"]];
+__name(seedIfEmpty, "seedIfEmpty");
+var SEED_BAYAN_DEVICES = [["SGH123TS8P", "bayan", "SGH123TS8P", "Server", "HPE", "ProLiant DL380 Gen10", "bct-esx-01", "SITE-BCT", "2024-07-08", "", "2026-11-02T02:00:00Z"], ["SGH123TS8N", "bayan", "SGH123TS8N", "Server", "HPE", "ProLiant DL380 Gen10", "bct-esx-02", "SITE-BCT", "2024-07-08", "", "2026-11-02T02:00:00Z"], ["SGH015YPG9", "bayan", "SGH015YPG9", "Server", "HPE", "ProLiant DL380 Gen10", "bpn-esx01", "HQ-BPN", "2023-07-13", "", "2026-11-02T02:00:00Z"], ["SGH015YPGC", "bayan", "SGH015YPGC", "Server", "HPE", "ProLiant DL380 Gen10", "bpn-esx02", "HQ-BPN", "2023-07-13", "", "2026-11-02T02:00:00Z"], ["SGH533W45R", "bayan", "SGH533W45R", "Server", "HPE", "ProLiant DL160 Gen9", "gb2-esx-01", "SITE-GB2", "2020-01-09", "", "2026-11-02T02:00:00Z"], ["SGH701TLK4", "bayan", "SGH701TLK4", "Server", "HPE", "ProLiant DL160 Gen9", "gb2-esx-02", "SITE-GB2", "2020-01-09", "", "2026-11-02T02:00:00Z"], ["SGH827V0SJ", "bayan", "SGH827V0SJ", "Server", "HPE", "ProLiant DL380 Gen10", "jkt-esx-01", "DC- JKT", "2021-10-08", "", "2026-11-02T02:00:00Z"], ["SGH828VRC5", "bayan", "SGH828VRC5", "Server", "HPE", "ProLiant DL380 Gen10", "jkt-esx-02", "DC- JKT", "2021-10-08", "", "2026-11-02T02:00:00Z"], ["SGH827V0SR", "bayan", "SGH827V0SR", "Server", "HPE", "ProLiant DL380 Gen10", "jkt-esx-03", "DC- JKT", "2021-10-08", "", "2026-11-02T02:00:00Z"], ["SGH827V0SM", "bayan", "SGH827V0SM", "Server", "HPE", "ProLiant DL380 Gen10", "jkt-esx-04", "DC- JKT", "2021-10-08", "", "2026-11-02T02:00:00Z"], ["SGH238V4FQ", "bayan", "SGH238V4FQ", "Server", "HPE", "ProLiant DL380 Gen10 Plus", "jkt-esx-05", "DC - JKT 2", "2025-11-01", "", "2026-11-02T02:00:00Z"], ["SGH238V4FH", "bayan", "SGH238V4FH", "Server", "HPE", "ProLiant DL380 Gen10 Plus", "jkt-esx-06", "DC - JKT 2", "2025-11-01", "", "2026-11-02T02:00:00Z"], ["SGH015YPGL", "bayan", "SGH015YPGL", "Server", "HPE", "ProLiant DL380 Gen10", "mp-esx-01", "SITE-MP", "2023-07-13", "", "2026-11-02T02:00:00Z"], ["SGH015YPGM", "bayan", "SGH015YPGM", "Server", "HPE", "ProLiant DL380 Gen10", "mp-esx-02", "SITE-MP", "2023-07-13", "", "2026-11-02T02:00:00Z"], ["SGH827V0SN", "bayan", "SGH827V0SN", "Server", "HPE", "ProLiant DL380 Gen10", "pik-esx-01", "SITE-PIK", "2021-10-08", "", "2026-11-02T02:00:00Z"], ["SGH827V0SH", "bayan", "SGH827V0SH", "Server", "HPE", "ProLiant DL380 Gen10", "pik-esx-02", "SITE-PIK", "2021-10-08", "", "2026-11-02T02:00:00Z"], ["SGH427M6YY", "bayan", "SGH427M6YY", "Server", "HPE", "ProLiant DL380 Gen11", "tbg-esx-01", "TBG-CLUSTER-01", "2027-08-15", "", "2026-11-02T02:00:00Z"], ["SGH427M6ZR", "bayan", "SGH427M6ZR", "Server", "HPE", "ProLiant DL380 Gen11", "tbg-esx-02", "TBG-CLUSTER-01", "2027-08-15", "", "2026-11-02T02:00:00Z"], ["SGH827V0SK", "bayan", "SGH827V0SK", "Server", "HPE", "ProLiant DL380 Gen10", "tsa-esx-01", "SITE-TSA", "2021-10-08", "", "2026-11-02T02:00:00Z"], ["SGH827V0SL", "bayan", "SGH827V0SL", "Server", "HPE", "ProLiant DL380 Gen10", "tsa-esx-02", "SITE-TSA", "2021-10-08", "", "2026-11-02T02:00:00Z"], ["SGH827V0SP", "bayan", "SGH827V0SP", "Server", "HPE", "ProLiant DL380 Gen10", "wbm-esx-01", "SITE-WBM", "2021-10-08", "", "2026-11-02T02:00:00Z"], ["SGH827V0SF", "bayan", "SGH827V0SF", "Server", "HPE", "ProLiant DL380 Gen10", "wbm-esx-02", "SITE-WBM", "2021-10-08", "", "2026-11-02T02:00:00Z"]];
 async function seedBayanIfNeeded(db) {
   if (await db.prepare("SELECT 1 FROM settings WHERE k='seed_bayan_v1'").first()) return;
   const st = [db.prepare("INSERT OR IGNORE INTO customers (id,name,code,pic,note,updatedAt,updatedBy) VALUES ('bayan','BAYAN','BYAN','','','2026-11-02T02:00:00Z','seed')")];
@@ -120,9 +183,8 @@ async function seedBayanIfNeeded(db) {
   st.push(db.prepare("INSERT OR IGNORE INTO settings (k,v) VALUES ('seed_bayan_v1','1')"));
   for (let i = 0; i < st.length; i += 50) await db.batch(st.slice(i, i + 50));
 }
-
-// ---------- Konten portal (Beranda, Layanan, Tim, Reports, Kontak) ----------
-const SITE_DEFAULT_EN = {
+__name(seedBayanIfNeeded, "seedBayanIfNeeded");
+var SITE_DEFAULT_EN = {
   tagline: "From Assessment to Architecture \u2014 We Build IT Right",
   heroTitle: "IT Solutions for Energy & Resources",
   heroDesc: "Presales solution architects for Oil & Gas, Mining, Coal and Power \u2014 from assessment and sizing to architecture design, proposals and RFP support.",
@@ -133,7 +195,7 @@ const SITE_DEFAULT_EN = {
   technologies: "VMware, Red Hat OpenShift, Microsoft Hyper-V, Dell Technologies, HPE, Lenovo, NetApp, Hitachi Vantara, Huawei, Cohesity, Veeam, Quantum, Cisco, Juniper, NVIDIA",
   footer: "TSS SA ERI \u2014 Let\u2019s Achieve Success Together."
 };
-const SEED_ITEMS = [
+var SEED_ITEMS = [
   ["service", "Solution Design & Architecture", "We design IT solution architectures that are efficient, scalable, and aligned with customer business needs. From compute, storage, and virtualization to data protection \u2014 every solution is built with performance, reliability, and cost efficiency in mind."],
   ["service", "Technical Assessment & Requirement Analysis", "We conduct comprehensive assessments of existing infrastructures to understand capacity requirements, workloads, and operational challenges. The results form the foundation for determining the most relevant and effective solutions."],
   ["service", "Sizing & Capacity Planning", "We perform capacity and performance calculations to ensure the proposed solution fits the customer's workload and supports future growth, balancing performance, scalability, and investment efficiency."],
@@ -141,7 +203,7 @@ const SEED_ITEMS = [
   ["service", "Vendor & Solution Comparison", "We help customers select the most suitable solution from multiple vendors through detailed comparisons of features, performance, and costs \u2014 so every decision is data-driven."],
   ["service", "RFP / RFQ Technical Support", "We support the sales and tender teams in preparing technical responses for RFPs and RFQs, ensuring every proposal meets customer specifications."]
 ];
-const SEED_TEAM = [
+var SEED_TEAM = [
   ["Indra Malau", "Presales Solution Architect", "", "indra.malau@berca.co.id"],
   ["Sabiq Hammam", "Presales Solution Engineer", "Sulawesi Region", "sabiq.hammam@berca.co.id"],
   ["Dendy Aryga", "Presales Solution Engineer", "Kalimantan Region", "dendy.aryga@berca.co.id"],
@@ -150,7 +212,7 @@ const SEED_TEAM = [
   ["Michael Valentino", "Presales Solution Architect", "", "michael.valentino@berca.co.id"],
   ["Fransiska Setyawan", "Presales Solution Architect", "", "fransiska.setyawan@berca.co.id"]
 ];
-const SEED_SALES = [
+var SEED_SALES = [
   ["Joddy Himawan", "joddy.himawan@berca.co.id", "ERI 1", "Herry Priasmoro", "ERI 1 A", "Eveline Yulian", "Michael Valentino, Tasya Kamila, Indra Malau"],
   ["Felizio Kostka", "felizio.kostka@berca.co.id", "ERI 1", "Herry Priasmoro", "ERI 1 A", "Eveline Yulian", "Eric Eric, Michael Valentino"],
   ["Natalia Desy Dwi Cahyani", "natalia.cahyani@berca.co.id", "ERI 1", "Herry Priasmoro", "ERI 1 A", "Eveline Yulian", "Tasya Kamila, Fransiska Setyawan"],
@@ -178,17 +240,22 @@ const SEED_SALES = [
   ["Khalif El Hamidi", "khalif.hamidi@berca.co.id", "ERI 3", "Elviliana", "ERI 3 C PKU", "Sri Dewi Hutami", "Michael Valentino, Tasya Kamila"],
   ["Stanley Aditya", "stanley.aditya@berca.co.id", "ERI 3", "Elviliana", "ERI 3 C PKU", "Sri Dewi Hutami", "Eric Eric, Michael Valentino"]
 ];
-const SITE_DEFAULT = { ...SITE_DEFAULT_EN };   // diganti versi Indonesia setelah SITE_ID didefinisikan
-const SITE_KEYS = Object.keys(SITE_DEFAULT);
-const ITEM_KINDS = { service: ["title", "desc", "sla", "inputs"], member: ["name", "role", "region", "email", "photo", "expertise", "coverage", "inactive"], report: ["title", "desc", "url"], resource: ["title", "desc", "url", "category"], sales: ["name", "email", "photo", "director", "directorName", "gm", "gmName", "team", "mgr", "mgrEmail", "presales", "active"], salesContact: ["name", "type", "email"], vendor: ["brand", "product", "category", "eosl", "url", "note"], skill: ["person", "domain", "level", "cert", "certDate", "certFile", "certFileName", "note"], org: ["name", "title", "dept", "level", "photo", "you"], proposal: ["title", "customer", "sales", "presales", "productBrand", "productPics", "productPicEmails", "notifyEmails", "prebid", "submission", "submissionTime", "rksUrl", "status", "adminDocumentsReady", "proposalUploaded", "productPricingConfirmed", "checklistExtra", "analysis", "note", "submittedAt", "archivedAt", "cancelledAt"] };
-// Sampul 1 = administrative + technical documents, Sampul 2 = price
-const PROPOSAL_SUBMISSION_CHECKS = [["adminDocumentsReady","Sampul 1 - Administrative documents are ready (Sales)"],["proposalUploaded","Sampul 1 - Technical document / proposal is uploaded (Presales)"],["productPricingConfirmed","Sampul 2 - Price is confirmed (Sales, Product Specialist, Principal)"]];
-const CHECK_OWNERS = ["Sales", "Presales", "Product Specialist", "Principal", "Manager", "Other"];
+var SITE_DEFAULT = { ...SITE_DEFAULT_EN };
+var SITE_KEYS = Object.keys(SITE_DEFAULT);
+var ITEM_KINDS = { service: ["title", "desc", "sla", "inputs"], member: ["name", "role", "region", "email", "photo", "expertise", "coverage", "inactive"], report: ["title", "desc", "url"], resource: ["title", "desc", "url", "category"], sales: ["name", "email", "photo", "director", "directorName", "gm", "gmName", "team", "mgr", "mgrEmail", "presales", "active"], salesContact: ["name", "type", "email"], vendor: ["brand", "product", "category", "eosl", "url", "note"], skill: ["person", "domain", "level", "cert", "certDate", "certFile", "certFileName", "note"], org: ["name", "title", "dept", "level", "photo", "you"], proposal: ["title", "customer", "sales", "presales", "productBrand", "productPics", "productPicEmails", "notifyEmails", "prebid", "submission", "submissionTime", "rksUrl", "status", "adminDocumentsReady", "proposalUploaded", "productPricingConfirmed", "checklistExtra", "analysis", "note", "submittedAt", "archivedAt", "cancelledAt", "cancelReason"] };
+var PROPOSAL_SUBMISSION_CHECKS = [["adminDocumentsReady", "Sampul 1 - Administrative documents are ready (Sales)"], ["proposalUploaded", "Sampul 1 - Technical document / proposal is uploaded (Presales)"], ["productPricingConfirmed", "Sampul 2 - Price is confirmed (Sales, Product Specialist, Principal)"]];
+var CHECK_OWNERS = ["Sales", "Presales", "Product Specialist", "Principal", "Manager", "Other"];
 function parseChecklistExtra(v) {
-  let a = []; try { a = typeof v === "string" ? JSON.parse(v || "[]") : (Array.isArray(v) ? v : []); } catch (_) { a = []; }
+  let a = [];
+  try {
+    a = typeof v === "string" ? JSON.parse(v || "[]") : Array.isArray(v) ? v : [];
+  } catch (_) {
+    a = [];
+  }
   if (!Array.isArray(a)) a = [];
-  return a.slice(0, 20).map(x => ({ label: clean(x && x.label).slice(0, 120), owner: CHECK_OWNERS.includes(clean(x && x.owner)) ? clean(x.owner) : "Other", done: !!(x && x.done) })).filter(x => x.label);
+  return a.slice(0, 20).map((x) => ({ label: clean(x && x.label).slice(0, 120), owner: CHECK_OWNERS.includes(clean(x && x.owner)) ? clean(x.owner) : "Other", done: !!(x && x.done) })).filter((x) => x.label);
 }
+__name(parseChecklistExtra, "parseChecklistExtra");
 function proposalSubmissionGaps(proposal) {
   const missing = PROPOSAL_SUBMISSION_CHECKS.filter(([key]) => proposal[key] !== "1").map(([, label]) => label);
   for (const x of parseChecklistExtra(proposal.checklistExtra)) if (!x.done) missing.push("Extra requirement: " + x.label + " (" + x.owner + ")");
@@ -196,31 +263,31 @@ function proposalSubmissionGaps(proposal) {
   try {
     const link = new URL(proposal.rksUrl);
     validDriveLink = link.protocol === "https:" && link.hostname === "drive.google.com" && link.pathname !== "/";
-  } catch (_) {}
+  } catch (_) {
+  }
   if (!validDriveLink) missing.push("Add the Google Drive link for the uploaded proposal");
   return missing;
 }
-const PROP_STATUS = ["Prebid", "RKS diterima", "Analisis", "Draft proposal", "Review", "Submitted", "Cancelled", "Menang", "Kalah"];
-// ---- Internal portal copy (professional English) for the Berca sales team ----
-const SITE_ID = {
-  tagline: "Presales Solution Architect \u00b7 Energy & Resources",
+__name(proposalSubmissionGaps, "proposalSubmissionGaps");
+var PROP_STATUS = ["Prebid", "RKS diterima", "Analisis", "Draft proposal", "Review", "Submitted", "Cancelled", "Menang", "Kalah"];
+var SITE_ID = {
+  tagline: "Presales Solution Architect \xB7 Energy & Resources",
   heroTitle: "Presales support for the Berca sales team",
   heroDesc: "Technical assessment, sizing & BoM, solution design, technical proposals, and RFP/RFQ support for Oil & Gas, Mining, Coal, and Power.",
   servicesIntro: "End-to-end presales support for enterprise infrastructure \u2014 compute, storage, virtualization, HCI, data protection, networking, and hybrid cloud.",
   contactTitle: "Need to reach the team?",
   contactDesc: "Email the presales group, or contact the right engineer by region and expertise in the Team section below.",
-  footer: "ERI Sales and Presales Workspace \u00b7 Internal \u2014 PT Berca Hardayaperkasa"
+  footer: "ERI Sales and Presales Workspace \xB7 Internal \u2014 PT Berca Hardayaperkasa"
 };
-// Previous Indonesian copy, kept only so any already-migrated database is refreshed to English.
-const OLD_ID = {
+var OLD_ID = {
   heroTitle: "Dukungan presales untuk tim sales Berca",
   heroDesc: "Ajukan kebutuhan assessment, sizing & BoM, desain solusi, proposal teknis, RFP/RFQ hingga PoC \u2014 lalu pantau statusnya di sini.",
-  servicesIntro: "Pilih layanan sesuai kebutuhan. Siapkan data pada bagian \u201cyang perlu disiapkan\u201d agar request bisa langsung dikerjakan.",
+  servicesIntro: "Pilih layanan sesuai kebutuhan. Siapkan data pada bagian \u201Cyang perlu disiapkan\u201D agar request bisa langsung dikerjakan.",
   contactTitle: "Butuh diskusi cepat?",
   contactDesc: "Kirim email ke grup tim presales, atau hubungi langsung PIC sesuai wilayah dan keahlian di bagian Tim.",
-  footer: "ERI Sales and Presales Workspace \u00b7 Internal Berca"
+  footer: "ERI Sales and Presales Workspace \xB7 Internal Berca"
 };
-const SVC_ID = {
+var SVC_ID = {
   "svc-1": ["Solution Design & Architecture", "Architecture design across compute, storage, virtualization, HCI, backup/DR, and hybrid cloud \u2014 balanced for performance, reliability, and cost.", "Business requirements & workload list\nExisting infrastructure condition\nTarget budget & timeline"],
   "svc-2": ["Technical Assessment & Requirement Analysis", "Assessment of the existing infrastructure, workloads, and operational constraints as the basis for the recommended solution.", "Schedule & access to the customer\nInventory/utilization data (e.g. RVTools, capacity report)\nCustomer technical PIC"],
   "svc-3": ["Sizing, Capacity Planning & BoM", "Capacity and performance calculation for current needs and 3\u20135 year growth, with a complete Bill of Materials.", "Number of VMs/applications & their specs\nData capacity & annual growth\nRPO/RTO & backup retention requirements"],
@@ -230,7 +297,7 @@ const SVC_ID = {
 };
 async function migrateInternal(db) {
   if (await db.prepare("SELECT 1 FROM settings WHERE k='migr_internal_v2'").first()) return;
-  const auto = k => [SITE_DEFAULT_EN[k], OLD_ID[k]];
+  const auto = /* @__PURE__ */ __name((k) => [SITE_DEFAULT_EN[k], OLD_ID[k]], "auto");
   const st = [];
   const r = await db.prepare("SELECT v FROM settings WHERE k='site'").first();
   const cur = r ? JSON.parse(r.v) : {};
@@ -241,22 +308,27 @@ async function migrateInternal(db) {
   st.push(db.prepare("INSERT OR IGNORE INTO settings (k,v) VALUES ('migr_internal_v2','1')"));
   await db.batch(st);
 }
+__name(migrateInternal, "migrateInternal");
 async function seedSalesIfEmpty(db) {
   if (await db.prepare("SELECT 1 FROM settings WHERE k='seed_sales_v1'").first()) return;
-  const now = new Date().toISOString(), st = [];
-  SEED_SALES.forEach((r, i) => st.push(db.prepare("INSERT OR IGNORE INTO site_items (id,kind,sort,data,updatedAt,updatedBy) VALUES (?,?,?,?,?,'seed')")
-    .bind("sl-" + (i + 1), "sales", (i + 1) * 10, JSON.stringify({ name: r[0], email: r[1], gm: r[2], gmName: r[3], team: r[4], mgr: r[5], presales: r[6], active: "1" }), now)));
+  const now = (/* @__PURE__ */ new Date()).toISOString(), st = [];
+  SEED_SALES.forEach((r, i) => st.push(db.prepare("INSERT OR IGNORE INTO site_items (id,kind,sort,data,updatedAt,updatedBy) VALUES (?,?,?,?,?,'seed')").bind("sl-" + (i + 1), "sales", (i + 1) * 10, JSON.stringify({ name: r[0], email: r[1], gm: r[2], gmName: r[3], team: r[4], mgr: r[5], presales: r[6], active: "1" }), now)));
   st.push(db.prepare("INSERT OR IGNORE INTO settings (k,v) VALUES ('seed_sales_v1','1')"));
   for (let i = 0; i < st.length; i += 50) await db.batch(st.slice(i, i + 50));
 }
-// Pindahkan Kiki Nuril & Sophie ke divisi ERI 3 D - Makassar (manager tetap Arulla Ryandiza) — jalan sekali saat deploy
+__name(seedSalesIfEmpty, "seedSalesIfEmpty");
 async function fixEri3dIfNeeded(db) {
   if (await db.prepare("SELECT 1 FROM settings WHERE k='fix_eri3d_v1'").first()) return;
-  const emails = new Set(["nuril.hakikiyah@berca.co.id", "sophie.evans@berca.co.id"]);
+  const emails = /* @__PURE__ */ new Set(["nuril.hakikiyah@berca.co.id", "sophie.evans@berca.co.id"]);
   const rows = (await db.prepare("SELECT id,data FROM site_items WHERE kind='sales'").all()).results;
   const st = [];
   for (const r of rows) {
-    let d; try { d = JSON.parse(r.data); } catch (e) { continue; }
+    let d;
+    try {
+      d = JSON.parse(r.data);
+    } catch (e) {
+      continue;
+    }
     if (emails.has(String(d.email || "").toLowerCase())) {
       d.team = "ERI 3 D - Makassar";
       st.push(db.prepare("UPDATE site_items SET data=? WHERE id=?").bind(JSON.stringify(d), r.id));
@@ -265,9 +337,9 @@ async function fixEri3dIfNeeded(db) {
   st.push(db.prepare("INSERT OR IGNORE INTO settings (k,v) VALUES ('fix_eri3d_v1','1')"));
   for (let i = 0; i < st.length; i += 50) await db.batch(st.slice(i, i + 50));
 }
-// Roster resmi Sales PIC (Director > GM > Manager > Sales) — mengganti SELURUH data sales satu kali saat deploy
-const SEED_ROSTER = [{"name":"Joddy Himawan","email":"joddy.himawan@berca.co.id","director":"ERI","directorName":"Cornelia Agustin","gm":"ERI 1","gmName":"Herry Priasmoro","team":"ERI 1 A","mgr":"Eveline Yulian","presales":"Michael Valentino, Tasya Kamila, Indra Malau","active":"1"},{"name":"Felizio Kostka","email":"Felizio.Kostka@berca.co.id","director":"ERI","directorName":"Cornelia Agustin","gm":"ERI 1","gmName":"Herry Priasmoro","team":"ERI 1 A","mgr":"Eveline Yulian","presales":"Eric Eric, Michael Valentino","active":"1"},{"name":"Fitri Mardhiyah","email":"fitri.mardhiyah@berca.co.id","director":"ERI","directorName":"Cornelia Agustin","gm":"ERI 1","gmName":"Herry Priasmoro","team":"ERI 1 B","mgr":"Exsan Bukhori","presales":"Eric Eric, Michael Valentino","active":"1"},{"name":"Daffa Adlianto Yuwono","email":"daffa.yuwono@berca.co.id","director":"ERI","directorName":"Cornelia Agustin","gm":"ERI 1","gmName":"Herry Priasmoro","team":"ERI 1 B","mgr":"Exsan Bukhori","presales":"Michael Valentino, Tasya Kamila","active":"1"},{"name":"Chynthia Ludya Soen","email":"chynthia.soen@berca.co.id","director":"ERI","directorName":"Cornelia Agustin","gm":"ERI 1","gmName":"Herry Priasmoro","team":"ERI 1 C - BPN","mgr":"Novita Supriyanto","presales":"Dendy Ariga","active":"1"},{"name":"Ahmad Ahimsyah Halil","email":"ahmad.halil@berca.co.id","director":"ERI","directorName":"Cornelia Agustin","gm":"ERI 1","gmName":"Herry Priasmoro","team":"ERI 1 C - BPN","mgr":"Novita Supriyanto","presales":"Dendy Ariga","active":"1"},{"name":"Farrel Simon","email":"farrel.simon@berca.co.id","director":"ERI","directorName":"Cornelia Agustin","gm":"ERI 2","gmName":"Eros Nainggolan","team":"ERI 2 A","mgr":"Handijaya","presales":"Eric Eric, Michael Valentino","active":"1"},{"name":"Shada Mahira Ramadhani","email":"shada.ramadhani@berca.co.id","director":"ERI","directorName":"Cornelia Agustin","gm":"ERI 2","gmName":"Eros Nainggolan","team":"ERI 2 A","mgr":"Handijaya","presales":"Tasya Kamila, Fransiska Setyawan","active":"1"},{"name":"Nadia Puspitasari","email":"nadia.puspitasari@berca.co.id","director":"ERI","directorName":"Cornelia Agustin","gm":"ERI 2","gmName":"Eros Nainggolan","team":"ERI 2 A","mgr":"Handijaya","presales":"Tasya Kamila, Fransiska Setyawan","active":"1"},{"name":"Gesya Alisa Apriany","email":"gesya.apriany@berca.co.id","director":"ERI","directorName":"Cornelia Agustin","gm":"ERI 2","gmName":"Eros Nainggolan","team":"ERI 2 B","mgr":"Alwazier Bahanan","presales":"Tasya Kamila, Fransiska Setyawan","active":"1"},{"name":"Agung Primananda","email":"agung.primananda@berca.co.id","director":"ERI","directorName":"Cornelia Agustin","gm":"ERI 2","gmName":"Eros Nainggolan","team":"ERI 2 B","mgr":"Alwazier Bahanan","presales":"Michael Valentino, Tasya Kamila","active":"1"},{"name":"RIska Islamiati","email":"Riska.Islamiati@berca.co.id","director":"ERI","directorName":"Cornelia Agustin","gm":"ERI 2","gmName":"Eros Nainggolan","team":"ERI 2 B","mgr":"Alwazier Bahanan","presales":"Tasya Kamila, Fransiska Setyawan","active":"1"},{"name":"Shinta Oktriviani","email":"shinta.oktriviani@berca.co.id","director":"ERI","directorName":"Cornelia Agustin","gm":"ERI 3","gmName":"Elviliana","team":"ERI 3 A","mgr":"Arulla Ryandiza","presales":"Eric Eric, Michael Valentino","active":"1"},{"name":"Gebby Veronika","email":"gebby.veronika@berca.co.id","director":"ERI","directorName":"Cornelia Agustin","gm":"ERI 3","gmName":"Elviliana","team":"ERI 3 A","mgr":"Arulla Ryandiza","presales":"Tasya Kamila, Fransiska Setyawan","active":"1"},{"name":"Puti Salsabila","email":"puti.salsabila@berca.co.id","director":"ERI","directorName":"Cornelia Agustin","gm":"ERI 3","gmName":"Elviliana","team":"ERI 3 A","mgr":"Arulla Ryandiza","presales":"Tasya Kamila, Fransiska Setyawan","active":"1"},{"name":"Edina Nurul Hafifah","email":"edina.hafifah@berca.co.id","director":"ERI","directorName":"Cornelia Agustin","gm":"ERI 3","gmName":"Elviliana","team":"ERI 3 A","mgr":"Arulla Ryandiza","presales":"Fransiska Setyawan, Eric Eric","active":"1"},{"name":"Fennysa","email":"fennysa.fennysa@berca.co.id","director":"ERI","directorName":"Cornelia Agustin","gm":"ERI 3","gmName":"Elviliana","team":"ERI 3 B","mgr":"Maria Villya","presales":"Eric Eric, Michael Valentino","active":"1"},{"name":"Ersa Mayori Raharjo","email":"ersa.raharjo@berca.co.id","director":"ERI","directorName":"Cornelia Agustin","gm":"ERI 3","gmName":"Elviliana","team":"ERI 3 B","mgr":"Maria Villya","presales":"Michael Valentino, Tasya Kamila","active":"1"},{"name":"Fahmi Ardiansyah","email":"fahmi.ardiansyah@berca.co.id","director":"ERI","directorName":"Cornelia Agustin","gm":"ERI 3","gmName":"Elviliana","team":"ERI 3 B","mgr":"Maria Villya","presales":"Tasya Kamila, Fransiska Setyawan","active":"1"},{"name":"Sophie","email":"sophie.evans@berca.co.id","director":"ERI","directorName":"Cornelia Agustin","gm":"ERI 3","gmName":"Elviliana","team":"ERI 3 D MKS","mgr":"Arulla Ryandiza","presales":"Sabiq Hammam","active":"1"},{"name":"Kiki Nuril","email":"nuril.hakikiyah@berca.co.id","director":"ERI","directorName":"Cornelia Agustin","gm":"ERI 3","gmName":"Elviliana","team":"ERI 3 D MKS","mgr":"Arulla Ryandiza","presales":"Sabiq Hammam","active":"1"},{"name":"Khalif El Hamidi","email":"khalif.hamidi@berca.co.id","director":"ERI","directorName":"Cornelia Agustin","gm":"ERI 3","gmName":"Elviliana","team":"ERI 3 C PKU","mgr":"Sri Dewi Hutami","presales":"Michael Valentino, Tasya Kamila","active":"1"},{"name":"Stanley Aditya","email":"Stanley.Aditya@berca.co.id","director":"ERI","directorName":"Cornelia Agustin","gm":"ERI 3","gmName":"Elviliana","team":"ERI 3 C PKU","mgr":"Sri Dewi Hutami","presales":"Eric Eric, Michael Valentino","active":"1"}];
-const SEED_ORG = [
+__name(fixEri3dIfNeeded, "fixEri3dIfNeeded");
+var SEED_ROSTER = [{ "name": "Joddy Himawan", "email": "joddy.himawan@berca.co.id", "director": "ERI", "directorName": "Cornelia Agustin", "gm": "ERI 1", "gmName": "Herry Priasmoro", "team": "ERI 1 A", "mgr": "Eveline Yulian", "presales": "Michael Valentino, Tasya Kamila, Indra Malau", "active": "1" }, { "name": "Felizio Kostka", "email": "Felizio.Kostka@berca.co.id", "director": "ERI", "directorName": "Cornelia Agustin", "gm": "ERI 1", "gmName": "Herry Priasmoro", "team": "ERI 1 A", "mgr": "Eveline Yulian", "presales": "Eric Eric, Michael Valentino", "active": "1" }, { "name": "Fitri Mardhiyah", "email": "fitri.mardhiyah@berca.co.id", "director": "ERI", "directorName": "Cornelia Agustin", "gm": "ERI 1", "gmName": "Herry Priasmoro", "team": "ERI 1 B", "mgr": "Exsan Bukhori", "presales": "Eric Eric, Michael Valentino", "active": "1" }, { "name": "Daffa Adlianto Yuwono", "email": "daffa.yuwono@berca.co.id", "director": "ERI", "directorName": "Cornelia Agustin", "gm": "ERI 1", "gmName": "Herry Priasmoro", "team": "ERI 1 B", "mgr": "Exsan Bukhori", "presales": "Michael Valentino, Tasya Kamila", "active": "1" }, { "name": "Chynthia Ludya Soen", "email": "chynthia.soen@berca.co.id", "director": "ERI", "directorName": "Cornelia Agustin", "gm": "ERI 1", "gmName": "Herry Priasmoro", "team": "ERI 1 C - BPN", "mgr": "Novita Supriyanto", "presales": "Dendy Ariga", "active": "1" }, { "name": "Ahmad Ahimsyah Halil", "email": "ahmad.halil@berca.co.id", "director": "ERI", "directorName": "Cornelia Agustin", "gm": "ERI 1", "gmName": "Herry Priasmoro", "team": "ERI 1 C - BPN", "mgr": "Novita Supriyanto", "presales": "Dendy Ariga", "active": "1" }, { "name": "Farrel Simon", "email": "farrel.simon@berca.co.id", "director": "ERI", "directorName": "Cornelia Agustin", "gm": "ERI 2", "gmName": "Eros Nainggolan", "team": "ERI 2 A", "mgr": "Handijaya", "presales": "Eric Eric, Michael Valentino", "active": "1" }, { "name": "Shada Mahira Ramadhani", "email": "shada.ramadhani@berca.co.id", "director": "ERI", "directorName": "Cornelia Agustin", "gm": "ERI 2", "gmName": "Eros Nainggolan", "team": "ERI 2 A", "mgr": "Handijaya", "presales": "Tasya Kamila, Fransiska Setyawan", "active": "1" }, { "name": "Nadia Puspitasari", "email": "nadia.puspitasari@berca.co.id", "director": "ERI", "directorName": "Cornelia Agustin", "gm": "ERI 2", "gmName": "Eros Nainggolan", "team": "ERI 2 A", "mgr": "Handijaya", "presales": "Tasya Kamila, Fransiska Setyawan", "active": "1" }, { "name": "Gesya Alisa Apriany", "email": "gesya.apriany@berca.co.id", "director": "ERI", "directorName": "Cornelia Agustin", "gm": "ERI 2", "gmName": "Eros Nainggolan", "team": "ERI 2 B", "mgr": "Alwazier Bahanan", "presales": "Tasya Kamila, Fransiska Setyawan", "active": "1" }, { "name": "Agung Primananda", "email": "agung.primananda@berca.co.id", "director": "ERI", "directorName": "Cornelia Agustin", "gm": "ERI 2", "gmName": "Eros Nainggolan", "team": "ERI 2 B", "mgr": "Alwazier Bahanan", "presales": "Michael Valentino, Tasya Kamila", "active": "1" }, { "name": "RIska Islamiati", "email": "Riska.Islamiati@berca.co.id", "director": "ERI", "directorName": "Cornelia Agustin", "gm": "ERI 2", "gmName": "Eros Nainggolan", "team": "ERI 2 B", "mgr": "Alwazier Bahanan", "presales": "Tasya Kamila, Fransiska Setyawan", "active": "1" }, { "name": "Shinta Oktriviani", "email": "shinta.oktriviani@berca.co.id", "director": "ERI", "directorName": "Cornelia Agustin", "gm": "ERI 3", "gmName": "Elviliana", "team": "ERI 3 A", "mgr": "Arulla Ryandiza", "presales": "Eric Eric, Michael Valentino", "active": "1" }, { "name": "Gebby Veronika", "email": "gebby.veronika@berca.co.id", "director": "ERI", "directorName": "Cornelia Agustin", "gm": "ERI 3", "gmName": "Elviliana", "team": "ERI 3 A", "mgr": "Arulla Ryandiza", "presales": "Tasya Kamila, Fransiska Setyawan", "active": "1" }, { "name": "Puti Salsabila", "email": "puti.salsabila@berca.co.id", "director": "ERI", "directorName": "Cornelia Agustin", "gm": "ERI 3", "gmName": "Elviliana", "team": "ERI 3 A", "mgr": "Arulla Ryandiza", "presales": "Tasya Kamila, Fransiska Setyawan", "active": "1" }, { "name": "Edina Nurul Hafifah", "email": "edina.hafifah@berca.co.id", "director": "ERI", "directorName": "Cornelia Agustin", "gm": "ERI 3", "gmName": "Elviliana", "team": "ERI 3 A", "mgr": "Arulla Ryandiza", "presales": "Fransiska Setyawan, Eric Eric", "active": "1" }, { "name": "Fennysa", "email": "fennysa.fennysa@berca.co.id", "director": "ERI", "directorName": "Cornelia Agustin", "gm": "ERI 3", "gmName": "Elviliana", "team": "ERI 3 B", "mgr": "Maria Villya", "presales": "Eric Eric, Michael Valentino", "active": "1" }, { "name": "Ersa Mayori Raharjo", "email": "ersa.raharjo@berca.co.id", "director": "ERI", "directorName": "Cornelia Agustin", "gm": "ERI 3", "gmName": "Elviliana", "team": "ERI 3 B", "mgr": "Maria Villya", "presales": "Michael Valentino, Tasya Kamila", "active": "1" }, { "name": "Fahmi Ardiansyah", "email": "fahmi.ardiansyah@berca.co.id", "director": "ERI", "directorName": "Cornelia Agustin", "gm": "ERI 3", "gmName": "Elviliana", "team": "ERI 3 B", "mgr": "Maria Villya", "presales": "Tasya Kamila, Fransiska Setyawan", "active": "1" }, { "name": "Sophie", "email": "sophie.evans@berca.co.id", "director": "ERI", "directorName": "Cornelia Agustin", "gm": "ERI 3", "gmName": "Elviliana", "team": "ERI 3 D MKS", "mgr": "Arulla Ryandiza", "presales": "Sabiq Hammam", "active": "1" }, { "name": "Kiki Nuril", "email": "nuril.hakikiyah@berca.co.id", "director": "ERI", "directorName": "Cornelia Agustin", "gm": "ERI 3", "gmName": "Elviliana", "team": "ERI 3 D MKS", "mgr": "Arulla Ryandiza", "presales": "Sabiq Hammam", "active": "1" }, { "name": "Khalif El Hamidi", "email": "khalif.hamidi@berca.co.id", "director": "ERI", "directorName": "Cornelia Agustin", "gm": "ERI 3", "gmName": "Elviliana", "team": "ERI 3 C PKU", "mgr": "Sri Dewi Hutami", "presales": "Michael Valentino, Tasya Kamila", "active": "1" }, { "name": "Stanley Aditya", "email": "Stanley.Aditya@berca.co.id", "director": "ERI", "directorName": "Cornelia Agustin", "gm": "ERI 3", "gmName": "Elviliana", "team": "ERI 3 C PKU", "mgr": "Sri Dewi Hutami", "presales": "Eric Eric, Michael Valentino", "active": "1" }];
+var SEED_ORG = [
   { name: "Natanael", title: "Director", dept: "TSS", level: "Director", you: "" },
   { name: "Ronald", title: "Division Lead", dept: "TSS MDCS", level: "Division Lead", you: "" },
   { name: "Indra Karvov Malau", title: "Presales Manager", dept: "Presales ERI", level: "Manager", you: "1" },
@@ -280,30 +352,34 @@ const SEED_ORG = [
 ];
 async function seedOrgIfNeeded(db) {
   if (await db.prepare("SELECT 1 FROM settings WHERE k='seed_org_v1'").first()) return;
-  const now = new Date().toISOString(), st = [];
+  const now = (/* @__PURE__ */ new Date()).toISOString(), st = [];
   SEED_ORG.forEach((r, i) => st.push(db.prepare("INSERT OR IGNORE INTO site_items (id,kind,sort,data,updatedAt,updatedBy) VALUES (?,?,?,?,?,'seed')").bind("org-" + (i + 1), "org", (i + 1) * 10, JSON.stringify({ ...r, photo: "" }), now)));
   st.push(db.prepare("INSERT OR IGNORE INTO settings (k,v) VALUES ('seed_org_v1','1')"));
   await db.batch(st);
 }
+__name(seedOrgIfNeeded, "seedOrgIfNeeded");
 async function loadRosterIfNeeded(db) {
   if (await db.prepare("SELECT 1 FROM settings WHERE k='roster_v1'").first()) return;
-  const now = new Date().toISOString();
+  const now = (/* @__PURE__ */ new Date()).toISOString();
   const st = [db.prepare("DELETE FROM site_items WHERE kind='sales'")];
   SEED_ROSTER.forEach((r, i) => st.push(db.prepare("INSERT OR REPLACE INTO site_items (id,kind,sort,data,updatedAt,updatedBy) VALUES (?,?,?,?,?,'roster')").bind("sl-r" + (i + 1), "sales", (i + 1) * 10, JSON.stringify(r), now)));
   st.push(db.prepare("INSERT OR IGNORE INTO settings (k,v) VALUES ('roster_v1','1')"));
   for (let i = 0; i < st.length; i += 50) await db.batch(st.slice(i, i + 50));
 }
+__name(loadRosterIfNeeded, "loadRosterIfNeeded");
 async function seedSiteIfEmpty(db) {
   if (await db.prepare("SELECT v FROM settings WHERE k='site'").first()) return;
-  const now = new Date().toISOString(), st = [db.prepare("INSERT OR IGNORE INTO settings (k,v) VALUES ('site',?)").bind(JSON.stringify(SITE_DEFAULT))];
+  const now = (/* @__PURE__ */ new Date()).toISOString(), st = [db.prepare("INSERT OR IGNORE INTO settings (k,v) VALUES ('site',?)").bind(JSON.stringify(SITE_DEFAULT))];
   SEED_ITEMS.forEach((r, i) => st.push(db.prepare("INSERT OR IGNORE INTO site_items (id,kind,sort,data,updatedAt,updatedBy) VALUES (?,?,?,?,?,'seed')").bind("svc-" + (i + 1), r[0], (i + 1) * 10, JSON.stringify({ title: r[1], desc: r[2] }), now)));
   SEED_TEAM.forEach((r, i) => st.push(db.prepare("INSERT OR IGNORE INTO site_items (id,kind,sort,data,updatedAt,updatedBy) VALUES (?,?,?,?,?,'seed')").bind("tm-" + (i + 1), "member", (i + 1) * 10, JSON.stringify({ name: r[0], role: r[1], region: r[2], email: r[3], photo: "" }), now)));
   st.push(db.prepare("INSERT OR IGNORE INTO site_items (id,kind,sort,data,updatedAt,updatedBy) VALUES (?,?,?,?,?,'seed')").bind("rp-1", "report", 10, JSON.stringify({ title: "Analytics Dashboard", desc: "Performance insights: project delivery metrics, solution effectiveness and team performance.", url: "https://lookerstudio.google.com/u/0/reporting/a1939f42-82ad-44a5-a770-9a3932504754/page/xn1OF" }), now));
   await db.batch(st);
 }
-
-// ---- Team leave from Google Calendar (secret iCal address in env LEAVE_ICAL_URL) ----
-function icsUnescape(s) { return String(s || "").replace(/\\n/gi, " ").replace(/\\([,;\\])/g, "$1").trim(); }
+__name(seedSiteIfEmpty, "seedSiteIfEmpty");
+function icsUnescape(s) {
+  return String(s || "").replace(/\\n/gi, " ").replace(/\\([,;\\])/g, "$1").trim();
+}
+__name(icsUnescape, "icsUnescape");
 function parseIcsEvents(text) {
   const src = String(text || "").replace(/\r?\n[ \t]/g, "");
   const out = [];
@@ -311,50 +387,67 @@ function parseIcsEvents(text) {
     const body = block.split("END:VEVENT")[0];
     const ev = { attendees: [], allDay: false };
     for (const line of body.split(/\r?\n/)) {
-      const i = line.indexOf(":"); if (i < 0) continue;
+      const i = line.indexOf(":");
+      if (i < 0) continue;
       const key = line.slice(0, i), val = line.slice(i + 1), name = key.split(";")[0].toUpperCase();
       if (name === "SUMMARY") ev.summary = icsUnescape(val);
       else if (name === "DTSTART" || name === "DTEND") {
         const d = val.trim(), ymd = d.slice(0, 4) + "-" + d.slice(4, 6) + "-" + d.slice(6, 8);
         let iso = ymd;
-        if (d.length > 8) { // date-time: Z = UTC -> shift to Jakarta (UTC+7)
-          const t = Date.UTC(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8), +d.slice(9, 11) || 0, +d.slice(11, 13) || 0) + (d.endsWith("Z") ? 7 * 3600e3 : 0);
+        if (d.length > 8) {
+          const t = Date.UTC(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8), +d.slice(9, 11) || 0, +d.slice(11, 13) || 0) + (d.endsWith("Z") ? 7 * 36e5 : 0);
           iso = new Date(t).toISOString().slice(0, 10);
           if (name === "DTEND" && /T0000/.test(d)) iso = new Date(t - 864e5).toISOString().slice(0, 10);
-        } else { ev.allDay = true; if (name === "DTEND") iso = new Date(Date.parse(ymd + "T00:00:00Z") - 864e5).toISOString().slice(0, 10); }
-        if (name === "DTSTART") ev.start = iso; else ev.end = iso;
-      } else if (name === "ATTENDEE" || name === "ORGANIZER") { const m = val.match(/mailto:([^\s]+)/i); if (m) ev.attendees.push(m[1].toLowerCase()); }
-      else if (name === "STATUS" && /CANCELLED/i.test(val)) ev.cancelled = true;
+        } else {
+          ev.allDay = true;
+          if (name === "DTEND") iso = new Date(Date.parse(ymd + "T00:00:00Z") - 864e5).toISOString().slice(0, 10);
+        }
+        if (name === "DTSTART") ev.start = iso;
+        else ev.end = iso;
+      } else if (name === "ATTENDEE" || name === "ORGANIZER") {
+        const m = val.match(/mailto:([^\s]+)/i);
+        if (m) ev.attendees.push(m[1].toLowerCase());
+      } else if (name === "STATUS" && /CANCELLED/i.test(val)) ev.cancelled = true;
     }
-    if (ev.start && !ev.cancelled) { if (!ev.end || ev.end < ev.start) ev.end = ev.start; out.push(ev); }
+    if (ev.start && !ev.cancelled) {
+      if (!ev.end || ev.end < ev.start) ev.end = ev.start;
+      out.push(ev);
+    }
   }
   return out;
 }
+__name(parseIcsEvents, "parseIcsEvents");
 async function getLeave(env, members) {
-  // LEAVE_ICAL_URL: one shared team calendar URL, or several entries separated by ";".
-  // An entry is either "URL" (names are read from the event) or "Name|URL" (a personal calendar: every event belongs to that person).
-  const entries = String(env.LEAVE_ICAL_URL || "").split(/[;\n]+/).map(s => s.trim()).filter(Boolean).slice(0, 12).map(s => {
-    const k = s.lastIndexOf("|"); return k > 0 ? { owner: s.slice(0, k).trim(), url: s.slice(k + 1).trim() } : { owner: "", url: s };
-  }).filter(e => /^https:\/\//i.test(e.url));
+  const entries = String(env.LEAVE_ICAL_URL || "").split(/[;\n]+/).map((s) => s.trim()).filter(Boolean).slice(0, 12).map((s) => {
+    const k = s.lastIndexOf("|");
+    return k > 0 ? { owner: s.slice(0, k).trim(), url: s.slice(k + 1).trim() } : { owner: "", url: s };
+  }).filter((e) => /^https:\/\//i.test(e.url));
   if (!entries.length) return { configured: false, items: [] };
-  const today = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
+  const today = new Date(Date.now() + 7 * 36e5).toISOString().slice(0, 10);
   const horizon = new Date(Date.parse(today + "T00:00:00Z") + 30 * 864e5).toISOString().slice(0, 10);
-  const people = (members || []).filter(m => m && m.name && m.inactive !== "1");
-  const toks = n => String(n).toLowerCase().split(/[^a-z]+/).filter(t => t.length >= 3);
-  const freq = {}; people.forEach(m => new Set(toks(m.name)).forEach(t => { freq[t] = (freq[t] || 0) + 1; }));
-  const byName = txt => {
+  const people = (members || []).filter((m) => m && m.name && m.inactive !== "1");
+  const toks = /* @__PURE__ */ __name((n) => String(n).toLowerCase().split(/[^a-z]+/).filter((t) => t.length >= 3), "toks");
+  const freq = {};
+  people.forEach((m) => new Set(toks(m.name)).forEach((t) => {
+    freq[t] = (freq[t] || 0) + 1;
+  }));
+  const byName = /* @__PURE__ */ __name((txt) => {
     const words = new Set(toks(txt || ""));
-    return people.find(m => { const t = toks(m.name); return t.length && t.every(x => words.has(x)); })
-      || people.find(m => toks(m.name).some(x => x.length >= 4 && freq[x] === 1 && words.has(x)));
-  };
-  const results = await Promise.all(entries.map(async en => {
+    return people.find((m) => {
+      const t = toks(m.name);
+      return t.length && t.every((x) => words.has(x));
+    }) || people.find((m) => toks(m.name).some((x) => x.length >= 4 && freq[x] === 1 && words.has(x)));
+  }, "byName");
+  const results = await Promise.all(entries.map(async (en) => {
     try {
       const res = await fetch(en.url, { cf: { cacheTtl: 600, cacheEverything: true } });
-      return res.ok ? { en, text: (await res.text()).slice(0, 5000000) } : { en, err: res.status };
-    } catch (e) { return { en, err: "network" }; }
+      return res.ok ? { en, text: (await res.text()).slice(0, 5e6) } : { en, err: res.status };
+    } catch (e) {
+      return { en, err: "network" };
+    }
   }));
-  if (results.every(r => r.err)) throw new UserError("Google Calendar could not be read (" + results[0].err + "). Check the iCal address.");
-  const items = [], seen = new Set();
+  if (results.every((r) => r.err)) throw new UserError("Google Calendar could not be read (" + results[0].err + "). Check the iCal address.");
+  const items = [], seen = /* @__PURE__ */ new Set();
   for (const r of results) {
     if (r.err) continue;
     const owner = r.en.owner ? byName(r.en.owner) : null;
@@ -363,121 +456,161 @@ async function getLeave(env, members) {
       const s = ev.summary || "";
       const trip = /business\s*trip|dinas|perjalanan|\bBT\b|on-?site/i.test(s), leave = /cuti|annual|leave|libur|\boff\b|izin/i.test(s);
       if (!trip && !leave && !ev.allDay) continue;
-      const who = owner || people.find(m => m.email && ev.attendees.includes(String(m.email).toLowerCase())) || byName(s);
+      const who = owner || people.find((m) => m.email && ev.attendees.includes(String(m.email).toLowerCase())) || byName(s);
       if (!who) continue;
       const type = trip ? "Business trip" : "Annual", key = who.name + "|" + type + "|" + ev.start + "|" + ev.end;
-      if (seen.has(key)) continue; seen.add(key);
+      if (seen.has(key)) continue;
+      seen.add(key);
       items.push({ name: who.name, email: who.email || "", type, start: ev.start, end: ev.end });
     }
   }
   items.sort((a, b) => a.start.localeCompare(b.start) || a.name.localeCompare(b.name));
   return { configured: true, today, items };
 }
-
-// ---- Manual team leave (stored in settings as leave:<id>) ----
-const LEAVE_TYPES = ["Annual", "Business trip"];
+__name(getLeave, "getLeave");
+var LEAVE_TYPES = ["Annual", "Business trip"];
 async function listManualLeave(db, today, horizon) {
   const rows = (await db.prepare("SELECT k,v FROM settings WHERE k LIKE 'leave:%'").all()).results || [];
   const out = [];
   for (const r of rows) {
-    try { const x = JSON.parse(r.v); if (x && x.end >= today && x.start <= horizon) out.push({ ...x, id: r.k.slice(6), manual: true }); } catch (e) { /* skip bad row */ }
+    try {
+      const x = JSON.parse(r.v);
+      if (x && x.end >= today && x.start <= horizon) out.push({ ...x, id: r.k.slice(6), manual: true });
+    } catch (e) {
+    }
   }
   return out;
 }
-
-// ---- Activity log (who / how long / what) — visible to master admins only ----
+__name(listManualLeave, "listManualLeave");
 async function logActivity(db, sid, email, kind, detail) {
   try {
-    const ts = new Date().toISOString();
+    const ts = (/* @__PURE__ */ new Date()).toISOString();
     await db.prepare("INSERT INTO activity_events (ts,sid,email,kind,detail) VALUES (?,?,?,?,?)").bind(ts, String(sid || "").slice(0, 40), String(email || "").toLowerCase(), kind, String(detail || "").slice(0, 200)).run();
     if (sid && kind === "action") await db.prepare("UPDATE activity_sessions SET actions=actions+1,last=? WHERE sid=?").bind(ts, String(sid).slice(0, 40)).run();
-    if (Math.random() < 0.02) { // keep 90 days
+    if (Math.random() < 0.02) {
       const cut = new Date(Date.now() - 90 * 864e5).toISOString();
       await db.prepare("DELETE FROM activity_events WHERE ts<?").bind(cut).run();
       await db.prepare("DELETE FROM activity_sessions WHERE last<?").bind(cut).run();
     }
-  } catch (e) { /* logging must never break the app */ }
+  } catch (e) {
+  }
 }
+__name(logActivity, "logActivity");
 function describeAction(fn, args) {
   const a = Array.isArray(args) ? args : [];
-  const pick = o => o && typeof o === "object" ? (o.title || o.name || o.customer || o.sn || o.id || "") : "";
+  const pick = /* @__PURE__ */ __name((o) => o && typeof o === "object" ? o.title || o.name || o.customer || o.sn || o.id || "" : "", "pick");
   const parts = [typeof a[0] === "string" ? a[0] : "", pick(a[1]) || pick(a[0])].filter(Boolean);
-  return fn + (parts.length ? " — " + parts.join(" · ") : "");
+  return fn + (parts.length ? " \u2014 " + parts.join(" \xB7 ") : "");
 }
+__name(describeAction, "describeAction");
 async function trackPing(db, me, sid, page, act, request) {
   const email = String(me.email || "").toLowerCase(), s = String(sid || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 40);
   if (!email || s.length < 8) return;
-  const now = new Date().toISOString(), pg = String(page || "").slice(0, 120);
+  const now = (/* @__PURE__ */ new Date()).toISOString(), pg = String(page || "").slice(0, 120);
   const row = await db.prepare("SELECT email,page FROM activity_sessions WHERE sid=?").bind(s).first();
-  if (row && String(row.email).toLowerCase() !== email) return; // session id belongs to someone else
+  if (row && String(row.email).toLowerCase() !== email) return;
   if (!row) {
     const ip = request.headers.get("cf-connecting-ip") || "", ua = String(request.headers.get("user-agent") || "").slice(0, 160);
     await db.prepare("INSERT INTO activity_sessions (sid,email,started,last,page,views,actions,ip,ua) VALUES (?,?,?,?,?,?,0,?,?)").bind(s, email, now, now, pg, pg ? 1 : 0, ip, ua).run();
     await logActivity(db, s, email, "login", "Opened the app" + (pg ? " (" + pg + ")" : ""));
   } else {
     const changed = pg && pg !== row.page;
-    await db.prepare("UPDATE activity_sessions SET last=?" + (changed ? ",page=?,views=views+1" : "") + " WHERE sid=?").bind(...(changed ? [now, pg, s] : [now, s])).run();
+    await db.prepare("UPDATE activity_sessions SET last=?" + (changed ? ",page=?,views=views+1" : "") + " WHERE sid=?").bind(...changed ? [now, pg, s] : [now, s]).run();
     if (changed) await logActivity(db, s, email, "view", pg);
   }
   const action = String(act || "").slice(0, 200);
   if (action) await logActivity(db, s, email, "action", action);
 }
-
-// ---- Page Builder: menu order/visibility + custom pages (settings: pages:published, pages:draft, pages:hist:<ts>, pages:histmeta) ----
-const NAV_KEYS = ["proposal", "alur", "tim", "sales", "product-team", "kontak"];
-const TOP_KEYS = ["presales", "inventaris"];
-const BLOCK_TYPES = ["heading", "text", "cards", "links", "button", "image", "callout", "divider"];
-const cutStr = (v, n) => String(v == null ? "" : v).slice(0, n);
-const safeUrl = u => { u = String(u || "").trim(); return /^(https?:\/\/|mailto:|#\/|\/)/i.test(u) ? u.slice(0, 500) : ""; };
+__name(trackPing, "trackPing");
+var NAV_KEYS = ["proposal", "alur", "tim", "sales", "product-team", "kontak"];
+var TOP_KEYS = ["presales", "inventaris"];
+var BLOCK_TYPES = ["heading", "text", "cards", "links", "button", "image", "callout", "divider"];
+var cutStr = /* @__PURE__ */ __name((v, n) => String(v == null ? "" : v).slice(0, n), "cutStr");
+var safeUrl = /* @__PURE__ */ __name((u) => {
+  u = String(u || "").trim();
+  return /^(https?:\/\/|mailto:|#\/|\/)/i.test(u) ? u.slice(0, 500) : "";
+}, "safeUrl");
 function cleanPagesCfg(c) {
   c = c && typeof c === "object" ? c : {};
   const nav = c.nav && typeof c.nav === "object" ? c.nav : {};
-  const pick = a => [...new Set((Array.isArray(a) ? a : []).filter(k => NAV_KEYS.includes(k)))];
-  const pickT = a => [...new Set((Array.isArray(a) ? a : []).filter(k => TOP_KEYS.includes(k)))];
+  const pick = /* @__PURE__ */ __name((a) => [...new Set((Array.isArray(a) ? a : []).filter((k) => NAV_KEYS.includes(k)))], "pick");
+  const pickT = /* @__PURE__ */ __name((a) => [...new Set((Array.isArray(a) ? a : []).filter((k) => TOP_KEYS.includes(k)))], "pickT");
   const out = { nav: { order: pick(nav.order), hidden: pick(nav.hidden), topOrder: pickT(nav.topOrder), topHidden: pickT(nav.topHidden) }, pages: [] };
-  if (out.nav.topHidden.length >= TOP_KEYS.length) out.nav.topHidden = []; // at least one main menu item must stay visible
-  const slugs = new Set(), ids = new Set();
+  if (out.nav.topHidden.length >= TOP_KEYS.length) out.nav.topHidden = [];
+  const slugs = /* @__PURE__ */ new Set(), ids = /* @__PURE__ */ new Set();
   for (const p of (Array.isArray(c.pages) ? c.pages : []).slice(0, 30)) {
     if (!p || typeof p !== "object") continue;
     let slug = cutStr(p.slug, 40).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || "page";
-    const base = slug; let n = 2; while (slugs.has(slug) || ["p", "builder", "activity"].includes(slug)) slug = base + "-" + (n++);
+    const base = slug;
+    let n = 2;
+    while (slugs.has(slug) || ["p", "builder", "activity"].includes(slug)) slug = base + "-" + n++;
     slugs.add(slug);
     const blocks = [];
     for (const b of (Array.isArray(p.blocks) ? p.blocks : []).slice(0, 60)) {
       if (!b || !BLOCK_TYPES.includes(b.type)) continue;
-      let bid = cutStr(b.id, 20).replace(/[^A-Za-z0-9_-]/g, "") || uuid().slice(0, 8); while (ids.has(bid)) bid = uuid().slice(0, 8); ids.add(bid);
+      let bid = cutStr(b.id, 20).replace(/[^A-Za-z0-9_-]/g, "") || uuid().slice(0, 8);
+      while (ids.has(bid)) bid = uuid().slice(0, 8);
+      ids.add(bid);
       const nb = { id: bid, type: b.type, hidden: b.hidden ? 1 : 0 };
-      if (b.type === "heading") { nb.text = cutStr(b.text, 200); nb.level = b.level === "h3" ? "h3" : "h2"; }
-      else if (b.type === "text") nb.text = cutStr(b.text, 6000);
-      else if (b.type === "cards" || b.type === "links") { nb.title = cutStr(b.title, 120); nb.items = (Array.isArray(b.items) ? b.items : []).slice(0, 40).map(it => ({ title: cutStr(it && it.title, 120), desc: cutStr(it && it.desc, 500), url: safeUrl(it && it.url) })); }
-      else if (b.type === "button") { nb.label = cutStr(b.label, 80); nb.url = safeUrl(b.url); }
-      else if (b.type === "image") { nb.url = /^https:\/\//i.test(String(b.url || "").trim()) ? cutStr(String(b.url).trim(), 500) : ""; nb.caption = cutStr(b.caption, 200); }
-      else if (b.type === "callout") { nb.title = cutStr(b.title, 120); nb.text = cutStr(b.text, 1500); nb.tone = ["info", "warn", "ok"].includes(b.tone) ? b.tone : "info"; }
+      if (b.type === "heading") {
+        nb.text = cutStr(b.text, 200);
+        nb.level = b.level === "h3" ? "h3" : "h2";
+      } else if (b.type === "text") nb.text = cutStr(b.text, 6e3);
+      else if (b.type === "cards" || b.type === "links") {
+        nb.title = cutStr(b.title, 120);
+        nb.items = (Array.isArray(b.items) ? b.items : []).slice(0, 40).map((it) => ({ title: cutStr(it && it.title, 120), desc: cutStr(it && it.desc, 500), url: safeUrl(it && it.url) }));
+      } else if (b.type === "button") {
+        nb.label = cutStr(b.label, 80);
+        nb.url = safeUrl(b.url);
+      } else if (b.type === "image") {
+        nb.url = /^https:\/\//i.test(String(b.url || "").trim()) ? cutStr(String(b.url).trim(), 500) : "";
+        nb.caption = cutStr(b.caption, 200);
+      } else if (b.type === "callout") {
+        nb.title = cutStr(b.title, 120);
+        nb.text = cutStr(b.text, 1500);
+        nb.tone = ["info", "warn", "ok"].includes(b.tone) ? b.tone : "info";
+      }
       blocks.push(nb);
     }
-    let pid = cutStr(p.id, 20).replace(/[^A-Za-z0-9_-]/g, "") || uuid().slice(0, 8); while (ids.has(pid)) pid = uuid().slice(0, 8); ids.add(pid);
+    let pid = cutStr(p.id, 20).replace(/[^A-Za-z0-9_-]/g, "") || uuid().slice(0, 8);
+    while (ids.has(pid)) pid = uuid().slice(0, 8);
+    ids.add(pid);
     out.pages.push({ id: pid, title: cutStr(p.title, 80).trim() || "Untitled page", slug, area: p.area === "inventaris" ? "inventaris" : "presales", hidden: p.hidden ? 1 : 0, blocks });
   }
-  if (JSON.stringify(out).length > 300000) throw new UserError("The page configuration is too large. Remove some blocks.");
+  if (JSON.stringify(out).length > 3e5) throw new UserError("The page configuration is too large. Remove some blocks.");
   return out;
 }
-async function readJsonSetting(db, key) { const r = await db.prepare("SELECT v FROM settings WHERE k=?").bind(key).first(); if (!r) return null; try { return JSON.parse(r.v); } catch (e) { return null; } }
-async function writeSetting(db, key, val) { await db.prepare("INSERT INTO settings (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(key, typeof val === "string" ? val : JSON.stringify(val)).run(); }
-const EMPTY_PAGES = { nav: { order: [], hidden: [], topOrder: [], topHidden: [] }, pages: [] };
+__name(cleanPagesCfg, "cleanPagesCfg");
+async function readJsonSetting(db, key) {
+  const r = await db.prepare("SELECT v FROM settings WHERE k=?").bind(key).first();
+  if (!r) return null;
+  try {
+    return JSON.parse(r.v);
+  } catch (e) {
+    return null;
+  }
+}
+__name(readJsonSetting, "readJsonSetting");
+async function writeSetting(db, key, val) {
+  await db.prepare("INSERT INTO settings (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(key, typeof val === "string" ? val : JSON.stringify(val)).run();
+}
+__name(writeSetting, "writeSetting");
+var EMPTY_PAGES = { nav: { order: [], hidden: [], topOrder: [], topHidden: [] }, pages: [] };
 async function getPagesFor(db, master) {
-  const published = (await readJsonSetting(db, "pages:published")) || EMPTY_PAGES;
-  const uiTexts = ((await readJsonSetting(db, "uitexts")) || {}).map || {};
-  if (!master) return { published: { ...published, pages: (published.pages || []).filter(p => !p.hidden) }, uiTexts }; // hidden pages are never sent to the team
+  const published = await readJsonSetting(db, "pages:published") || EMPTY_PAGES;
+  const uiTexts = (await readJsonSetting(db, "uitexts") || {}).map || {};
+  if (!master) return { published: { ...published, pages: (published.pages || []).filter((p) => !p.hidden) }, uiTexts };
   const draft = await readJsonSetting(db, "pages:draft");
-  const history = (await readJsonSetting(db, "pages:histmeta")) || [];
+  const history = await readJsonSetting(db, "pages:histmeta") || [];
   return { published, draft: draft || null, history, uiTexts };
 }
+__name(getPagesFor, "getPagesFor");
 async function readSite(db, withPrivate) {
   Object.assign(SITE_DEFAULT, SITE_ID);
   await seedSiteIfEmpty(db);
   await migrateInternal(db);
   const r = await db.prepare("SELECT v FROM settings WHERE k='site'").first();
-  const site = { ...SITE_DEFAULT, ...(r ? JSON.parse(r.v) : {}) };
+  const site = { ...SITE_DEFAULT, ...r ? JSON.parse(r.v) : {} };
   await seedSalesIfEmpty(db);
   await fixEri3dIfNeeded(db);
   await loadRosterIfNeeded(db);
@@ -493,8 +626,8 @@ async function readSite(db, withPrivate) {
   }
   return out;
 }
-
-const PRODUCT_TEAM = [
+__name(readSite, "readSite");
+var PRODUCT_TEAM = [
   {
     "name": "Usi Fajri",
     "level": "Staff",
@@ -1140,127 +1273,280 @@ const PRODUCT_TEAM = [
     ]
   }
 ];
-
-const productTeamKey=row=>"product_team_email:"+JSON.stringify([row.role,row.group,row.name]);
-
-const productTeamSpvKey=row=>"product_team_spv:"+JSON.stringify([row.role,row.group,row.name]);
-
-const productTeamManagerKey=row=>"product_team_email:"+JSON.stringify(["manager",row.group,row.manager]);
-
+var productTeamKey = /* @__PURE__ */ __name((row) => "product_team_email:" + JSON.stringify([row.role, row.group, row.name]), "productTeamKey");
+var productDirectoryCardKey = /* @__PURE__ */ __name((row) => JSON.stringify([row.role, row.group, row.name, row.level, row.manager, row.products]), "productDirectoryCardKey");
+var productTeamSpvKey = /* @__PURE__ */ __name((row) => "product_team_spv:" + JSON.stringify([row.role, row.group, row.name]), "productTeamSpvKey");
+var productTeamManagerKey = /* @__PURE__ */ __name((row) => "product_team_email:" + JSON.stringify(["manager", row.group, row.manager]), "productTeamManagerKey");
 function proposalReminderRecipients(proposal, site, productTeam) {
-  const normalize=value=>String(value||"").trim().toLowerCase();
-  const split=value=>String(value||"").split(/[;,\s]+/).filter(Boolean);
-  const assigned=new Set(String(proposal.presales||"").split(/[,;\n]+/).map(normalize).filter(Boolean));
-  const salesName=normalize(proposal.sales);
-  const sales=salesName?(site.sales||[]).find(row=>[row.name,row.email].some(value=>normalize(value)===salesName)):null;
-  const manager=sales&&(site.salesContacts||[]).find(row=>row.type==="Manager"&&row.email&&normalize(row.name)===normalize(sales.mgr));
-  const gm=sales&&(site.salesContacts||[]).find(row=>row.type==="GM"&&row.email&&normalize(row.name)===normalize(sales.gmName));
-  const brands=String(proposal.productBrand||"").split(/[,;]/).map(normalize).filter(Boolean);
-  const specialists=brands.length?productTeam.filter(row=>!row.inactive&&brands.some(brand=>{
-    const tpsAlias=brand==="dell isg"?"dell":"";
-    return row.products.some(value=>{
-      const product=normalize(value);
-      return product===brand||(row.role==="TPS"&&tpsAlias&&product===tpsAlias);
-    });
-  })):[];
-  const candidates=[
-    ...split(proposal.notifyEmails),...split(proposal.productPicEmails),
-    sales?.email,manager?.email||sales?.mgrEmail,gm?.email,
-    ...(assigned.size?["tss.solution-architect-eri@berca.co.id"]:[]),
-    ...(site.members||[]).filter(row=>row.inactive!=="1"&&(assigned.has(normalize(row.name))||assigned.has(normalize(row.email)))).map(row=>row.email),
-    ...specialists.flatMap(row=>[row.email,row.managerEmail])
-  ];
-  return [...new Set(candidates.map(normalize).filter(email=>/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(email)))].join(", ");
-}
-
-// Sales manager and GM of the tagged sales person (copied on the submit-day reminders that are still incomplete)
-function proposalEscalationEmails(proposal, site) {
-  const normalize = v => String(v || "").trim().toLowerCase();
+  const normalize = /* @__PURE__ */ __name((value) => String(value || "").trim().toLowerCase(), "normalize");
+  const split = /* @__PURE__ */ __name((value) => String(value || "").split(/[;,\s]+/).filter(Boolean), "split");
+  const assigned = new Set(String(proposal.presales || "").split(/[,;\n]+/).map(normalize).filter(Boolean));
   const salesName = normalize(proposal.sales);
-  const sales = salesName ? (site.sales || []).find(r => [r.name, r.email].some(v => normalize(v) === salesName)) : null;
-  if (!sales) return "";
-  const manager = (site.salesContacts || []).find(r => r.type === "Manager" && r.email && normalize(r.name) === normalize(sales.mgr));
-  const gm = (site.salesContacts || []).find(r => r.type === "GM" && r.email && normalize(r.name) === normalize(sales.gmName));
-  return [...new Set([manager && manager.email, sales.mgrEmail, gm && gm.email].map(normalize).filter(e => /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(e)))].join(", ");
+  const sales = salesName ? (site.sales || []).find((row) => [row.name, row.email].some((value) => normalize(value) === salesName)) : null;
+  const manager = sales && (site.salesContacts || []).find((row) => row.type === "Manager" && row.email && normalize(row.name) === normalize(sales.mgr));
+  const gm = sales && (site.salesContacts || []).find((row) => row.type === "GM" && row.email && normalize(row.name) === normalize(sales.gmName));
+  const brands = String(proposal.productBrand || "").split(/[,;]/).map(normalize).filter(Boolean);
+  const specialists = brands.length ? productTeam.filter((row) => !row.inactive && brands.some((brand) => {
+    const tpsAlias = brand === "dell isg" ? "dell" : "";
+    return row.products.some((value) => {
+      const product = normalize(value);
+      return product === brand || row.role === "TPS" && tpsAlias && product === tpsAlias;
+    });
+  })) : [];
+  const candidates = [
+    ...split(proposal.notifyEmails),
+    ...split(proposal.productPicEmails),
+    sales?.email,
+    manager?.email || sales?.mgrEmail,
+    gm?.email,
+    ...assigned.size ? ["tss.solution-architect-eri@berca.co.id"] : [],
+    ...(site.members || []).filter((row) => row.inactive !== "1" && (assigned.has(normalize(row.name)) || assigned.has(normalize(row.email)))).map((row) => row.email),
+    ...specialists.flatMap((row) => [row.email, row.managerEmail])
+  ];
+  return [...new Set(candidates.map(normalize).filter((email) => /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(email)))].join(", ");
 }
-
-// ---- Sales requests that arrive by e-mail (Google Group, read by an Apps Script) ----
-const REQ_TYPES = { proposal: "Proposal", service: "Harga Services", config: "Config / Sizing", bestprice: "Best Price" };
-const REQ_STATUS = ["new", "responded", "done", "ignored"];
-const REQ_RULES = [
+__name(proposalReminderRecipients, "proposalReminderRecipients");
+function proposalEscalationEmails(proposal, site) {
+  const normalize = /* @__PURE__ */ __name((v) => String(v || "").trim().toLowerCase(), "normalize");
+  const salesName = normalize(proposal.sales);
+  const sales = salesName ? (site.sales || []).find((r) => [r.name, r.email].some((v) => normalize(v) === salesName)) : null;
+  if (!sales) return "";
+  const manager = (site.salesContacts || []).find((r) => r.type === "Manager" && r.email && normalize(r.name) === normalize(sales.mgr));
+  const gm = (site.salesContacts || []).find((r) => r.type === "GM" && r.email && normalize(r.name) === normalize(sales.gmName));
+  return [...new Set([manager && manager.email, sales.mgrEmail, gm && gm.email].map(normalize).filter((e) => /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(e)))].join(", ");
+}
+__name(proposalEscalationEmails, "proposalEscalationEmails");
+var REQ_TYPES = { proposal: "Proposal", service: "Harga Services", config: "Config / Sizing", bestprice: "Best Price" };
+var REQ_STATUS = ["new", "responded", "done", "ignored"];
+var REQ_RULES = [
   ["proposal", /\b(rfp|rfq|rks|tender|lelang|penawaran teknis|proposal|compliance matrix|bid|pengadaan)\b/g],
   ["service", /\b(mandays?|man days?|jasa|implementasi|implementation|sow|scope of work|support|maintenance|sla|migrasi|migration|harga services?|service price|harga jasa)\b/g],
   ["bestprice", /\b(best price|bestprice|special price|harga terbaik|harga khusus|diskon|discount|nego|negosiasi)\b/g],
   ["config", /\b(sizing|bom|bill of materials?|konfigurasi|configuration|config|spesifikasi|specs?|specification|quotation|kapasitas|capacity)\b/g]
 ];
-// Keyword scoring: subject words count triple. Returns "" when nothing matches or two types tie.
-// An explicit tag in the subject, e.g. "[Config] PT Abc - sizing storage", decides the type.
-const REQ_TAGS = { proposal: "proposal", tender: "proposal", rfp: "proposal", config: "config", sizing: "config", konfigurasi: "config", bom: "config", harga: "service", service: "service", services: "service", jasa: "service", "best price": "bestprice", bestprice: "bestprice", bp: "bestprice", price: "bestprice" };
+var REQ_TAGS = { proposal: "proposal", tender: "proposal", rfp: "proposal", config: "config", sizing: "config", konfigurasi: "config", bom: "config", harga: "service", service: "service", services: "service", jasa: "service", "best price": "bestprice", bestprice: "bestprice", bp: "bestprice", price: "bestprice" };
 function classifyRequest(subject, body) {
-  for (const m of String(subject || "").matchAll(/\[([^\]]{1,24})\]/g)) { const k = REQ_TAGS[m[1].trim().toLowerCase().replace(/\s+/g, " ")]; if (k) return k; }
+  for (const m of String(subject || "").matchAll(/\[([^\]]{1,24})\]/g)) {
+    const k = REQ_TAGS[m[1].trim().toLowerCase().replace(/\s+/g, " ")];
+    if (k) return k;
+  }
   const s = String(subject || "").toLowerCase(), b = String(body || "").toLowerCase();
   const score = REQ_RULES.map(([k, re]) => [k, 3 * (s.match(re) || []).length + (b.match(re) || []).length]).sort((x, y) => y[1] - x[1]);
   if (!score[0][1] || score[0][1] === score[1][1]) return "";
   return score[0][0];
 }
-const reqOut = r => r && ({ id: r.id, subject: r.subject, fromEmail: r.fromEmail, fromName: r.fromName, sales: r.sales, customer: r.customer, type: r.type, typeAuto: !!r.typeAuto, status: r.status, receivedAt: r.receivedAt, firstResponseAt: r.firstResponseAt, responder: r.responder, doneAt: r.doneAt, snippet: r.snippet, link: r.link, assignee: r.assignee });
-async function reqIngest(db, payload) {
-  await ensureSchema(db); await cmSeed(db);
+__name(classifyRequest, "classifyRequest");
+var reqOut = /* @__PURE__ */ __name((r) => r && { id: r.id, subject: r.subject, fromEmail: r.fromEmail, fromName: r.fromName, sales: r.sales, customer: r.customer, type: r.type, typeAuto: !!r.typeAuto, status: r.status, receivedAt: r.receivedAt, firstResponseAt: r.firstResponseAt, responder: r.responder, doneAt: r.doneAt, snippet: r.snippet, link: r.link, assignee: r.assignee }, "reqOut");
+var DIRECT_REQUEST_TYPES = { proposal: "Proposal", config: "Config", service: "Harga", bestprice: "Best Price" };
+var REQUEST_GROUP = "tss.solution-architect-eri@berca.co.id";
+function requestManager(members, email) {
+  const to = clean(email).toLowerCase();
+  const record = members.find((m) => m.inactive !== "1" && clean(m.email).toLowerCase() === to);
+  return record && EMAIL_RE.test(to) && to !== REQUEST_GROUP ? { name: record.name || to, to } : null;
+}
+__name(requestManager, "requestManager");
+async function requestRouting(db, email, type, managerEmail) {
+  const rows = (await db.prepare("SELECT kind,data FROM site_items WHERE kind IN ('sales','member','salesContact')").all()).results;
+  const roster = rows.flatMap((r) => {
+    try {
+      return [{ ...JSON.parse(r.data), kind: r.kind }];
+    } catch (_) {
+      return [];
+    }
+  });
+  const { key, byEmail } = salesMonitorScope(roster, email);
+  const managesSales = byEmail.size > 0;
+  const own = roster.find((r) => r.kind === "sales" && r.active === "1" && key(r.email) === email);
+  if (own) byEmail.set(email, own);
+  const members = roster.filter((m) => m.kind === "member" && m.inactive !== "1");
+  const manager = requestManager(members, managerEmail);
+  const validRecipient = /* @__PURE__ */ __name((to) => EMAIL_RE.test(to) && to.endsWith("@berca.co.id") && to !== REQUEST_GROUP, "validRecipient");
+  if (manager?.to === email) {
+    return [...new Map(members.filter((m) => validRecipient(key(m.email))).map((m) => [key(m.email), m])).values()].map((m) => ({ salesEmail: email, sales: manager.name, name: m.name || m.email, to: key(m.email), chooseRecipient: true }));
+  }
+  if (!byEmail.size) throw new UserError("Only active Sales, their assigned managers and the Presales Manager can submit requests.");
+  const routeToManager = managesSales || type === "bestprice";
+  const alias = /* @__PURE__ */ __name((v) => key(v).replace(/[^a-z0-9]+/g, ""), "alias");
+  return [...byEmail].map(([salesEmail, sales]) => {
+    if (routeToManager) return { salesEmail, sales: sales.name || salesEmail, name: manager?.name || "", to: manager?.to || "", managerRoute: true };
+    const name = key(String(sales.presales || "").split(/[,;\n]/)[0]);
+    const exact = members.filter((m) => key(m.name) === name);
+    const matches = exact.length || !name ? exact : members.filter((m) => alias(String(m.email || "").split("@")[0]) === alias(name));
+    const member = matches.length === 1 ? matches[0] : null, to = key(member?.email);
+    const valid = EMAIL_RE.test(to) && to.endsWith("@berca.co.id") && to !== REQUEST_GROUP;
+    return { salesEmail, sales: sales.name || salesEmail, name: valid ? member.name : "", to: valid ? to : "" };
+  });
+}
+__name(requestRouting, "requestRouting");
+async function submitDirectRequest(env, email, body) {
+  const key = clean(body?.key), type = clean(body?.type), customer = clean(body?.customer).slice(0, 150), subject = clean(body?.subject).replace(/[\r\n]+/g, " ").slice(0, 160), details = String(body?.details || "").trim().slice(0, 4e3);
+  if (!/^[a-f\d-]{36}$/i.test(key) || !Object.hasOwn(DIRECT_REQUEST_TYPES, type) || !customer || !subject || !details) throw new UserError("Enter a customer, subject and request details.");
+  const { DB: db } = env;
+  const id = "app-" + key, now = (/* @__PURE__ */ new Date()).toISOString();
+  let saved = await db.prepare("SELECT * FROM sales_requests WHERE id=? AND fromEmail=?").bind(id, email).first();
+  if (!saved) {
+    const routes = await requestRouting(db, email, type, env.REQUEST_PRESALES_MANAGER);
+    const pic = routes.find((r) => r.salesEmail === clean(body?.salesEmail).toLowerCase() && (!r.chooseRecipient || r.to === clean(body?.recipient).toLowerCase()));
+    if (!pic?.to) throw new UserError(type === "bestprice" || pic?.managerRoute ? "An active Presales Manager must be configured." : "The selected Sales PIC must have an active 1st Presales PIC with a valid email.");
+    await db.prepare("INSERT INTO sales_requests (id,threadId,subject,fromEmail,fromName,sales,customer,type,typeAuto,status,receivedAt,snippet,assignee,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?,0,'new',?,?,?,?,?) ON CONFLICT(id) DO NOTHING").bind(id, id, subject, email, pic.sales, pic.sales, customer, type, now, details, pic.to, now, now).run();
+    saved = await db.prepare("SELECT * FROM sales_requests WHERE id=? AND fromEmail=?").bind(id, email).first();
+    if (!saved) throw new UserError("Request identifier already in use.");
+  }
+  if (!env.REQUEST_MAIL_FROM || !env.RESEND_API_KEY) return { id, emailStatus: "unconfigured" };
+  let emailStatus = "failed";
+  try {
+    const result = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json", "Idempotency-Key": id }, body: JSON.stringify({ from: env.REQUEST_MAIL_FROM, to: [saved.assignee], cc: [REQUEST_GROUP], reply_to: saved.fromEmail, subject: "[" + DIRECT_REQUEST_TYPES[saved.type] + "] [" + id + "] " + saved.subject, text: "Customer: " + saved.customer + "\nSales PIC: " + saved.sales + "\n\n" + saved.snippet }), signal: AbortSignal.timeout(1e4) });
+    if (result.ok) emailStatus = "accepted";
+  } catch (_) {
+  }
+  return { id, emailStatus };
+}
+__name(submitDirectRequest, "submitDirectRequest");
+async function reqIngest(db, payload, managerEmail) {
+  await ensureSchema(db);
+  await cmSeed(db);
   const site = await API.getSite(db);
-  const low = s => clean(s).toLowerCase();
-  const presales = new Map();
+  const low = /* @__PURE__ */ __name((s) => clean(s).toLowerCase(), "low");
+  const presales = /* @__PURE__ */ new Map();
   for (const x of site.members || []) if (x.inactive !== "1" && x.email) presales.set(low(x.email), x.name || x.email);
-  // Product specialists (PS / TPS) and their managers also count as responders: Config requests are sent to them directly
   const responders = new Map(presales);
   try {
     for (const r of await API.getProductTeam(db)) {
       if (!r.inactive && r.email && !responders.has(low(r.email))) responders.set(low(r.email), r.name || r.email);
       if (r.managerEmail && !responders.has(low(r.managerEmail))) responders.set(low(r.managerEmail), r.manager || r.managerEmail);
     }
-  } catch (_) {}
-  const salesBy = new Map();
+  } catch (_) {
+  }
+  const salesBy = /* @__PURE__ */ new Map();
   for (const x of site.sales || []) if (x.email) salesBy.set(low(x.email), x.name);
   for (const x of site.salesContacts || []) if (x.email && !salesBy.has(low(x.email))) salesBy.set(low(x.email), x.name);
-  const cm = (await db.prepare("SELECT name,nameKey FROM customer_master").all()).results.map(r => ({ name: r.name, key: r.nameKey })).filter(r => r.key && r.key.length >= 4).sort((a, b) => b.key.length - a.key.length);
-  const compact = s => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const cm = (await db.prepare("SELECT name,nameKey FROM customer_master").all()).results.map((r) => ({ name: r.name, key: r.nameKey })).filter((r) => r.key && r.key.length >= 4).sort((a, b) => b.key.length - a.key.length);
+  const compact = /* @__PURE__ */ __name((s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, ""), "compact");
   const out = { created: 0, updated: 0, skipped: 0 };
-  const now = new Date().toISOString();
-  for (const th of ((payload && payload.threads) || []).slice(0, 200)) {
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  for (const th of (payload && payload.threads || []).slice(0, 200)) {
     const threadId = clean(th && th.threadId);
-    const msgs = ((th && th.messages) || []).map(m => ({ from: low(m && m.from), name: clean(m && m.fromName), t: new Date(m && m.date).getTime() })).filter(m => m.from && Number.isFinite(m.t)).sort((a, b) => a.t - b.t);
-    if (!threadId || !msgs.length) { out.skipped++; continue; }
+    const msgs = (th && th.messages || []).map((m) => ({ from: low(m && m.from), name: clean(m && m.fromName), t: new Date(m && m.date).getTime() })).filter((m) => m.from && Number.isFinite(m.t)).sort((a, b) => a.t - b.t);
+    if (!threadId || !msgs.length) {
+      out.skipped++;
+      continue;
+    }
     const first = msgs[0];
-    if (presales.has(first.from)) { out.skipped++; continue; }   // started by presales: not a sales request
-    const resp = msgs.find(m => m.t > first.t && responders.has(m.from) && m.from !== first.from);
+    const appId = String(th.subject || "").match(/\[(app-[a-f\d-]{36})\]/i)?.[1];
+    if (appId) {
+      const row = await db.prepare("SELECT assignee,status,receivedAt,firstResponseAt FROM sales_requests WHERE id=? AND threadId=?").bind(appId, appId).first();
+      const reply = row && !row.firstResponseAt && msgs.find((m) => m.t > Date.parse(row.receivedAt) && m.from === row.assignee && presales.has(m.from));
+      if (reply) {
+        await db.prepare("UPDATE sales_requests SET firstResponseAt=?,responder=?,status=CASE WHEN status='new' THEN 'responded' ELSE status END,updatedAt=? WHERE id=? AND firstResponseAt=''").bind(new Date(reply.t).toISOString(), presales.get(reply.from), now, appId).run();
+        out.updated++;
+      } else out.skipped++;
+      continue;
+    }
+    if (presales.has(first.from)) {
+      out.skipped++;
+      continue;
+    }
+    const resp = msgs.find((m) => m.t > first.t && responders.has(m.from) && m.from !== first.from);
     const subject = clean(th.subject).slice(0, 300), snippet = clean(th.snippet).slice(0, 600);
     const hay = compact(subject + " " + snippet);
-    const hit = cm.find(r => hay.includes(r.key));
+    const hit = cm.find((r) => hay.includes(r.key));
     const type = classifyRequest(subject, snippet);
     const ex = await db.prepare("SELECT * FROM sales_requests WHERE threadId=?").bind(threadId).first();
-    const respAt = resp ? new Date(resp.t).toISOString() : "", respName = resp ? (responders.get(resp.from) || resp.name || resp.from) : "";
+    const respAt = resp ? new Date(resp.t).toISOString() : "", respName = resp ? responders.get(resp.from) || resp.name || resp.from : "";
     if (!ex) {
-      await db.prepare("INSERT INTO sales_requests (id,threadId,subject,fromEmail,fromName,sales,customer,type,typeAuto,status,receivedAt,firstResponseAt,responder,snippet,link,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?,1,?,?,?,?,?,?,?,?)")
-        .bind("req-" + uuid().slice(0, 8), threadId, subject, first.from, first.name, salesBy.get(first.from) || first.name || first.from, hit ? hit.name : "", type, resp ? "responded" : "new", new Date(first.t).toISOString(), respAt, respName, snippet, clean(th.link).slice(0, 500), now, now).run();
-      if (resp) await db.prepare("UPDATE sales_requests SET assignee=? WHERE threadId=? AND assignee=''").bind(resp.from, threadId).run();
+      await db.prepare("INSERT INTO sales_requests (id,threadId,subject,fromEmail,fromName,sales,customer,type,typeAuto,status,receivedAt,firstResponseAt,responder,snippet,link,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?,1,?,?,?,?,?,?,?,?)").bind("req-" + uuid().slice(0, 8), threadId, subject, first.from, first.name, salesBy.get(first.from) || first.name || first.from, hit ? hit.name : "", type, resp ? "responded" : "new", new Date(first.t).toISOString(), respAt, respName, snippet, clean(th.link).slice(0, 500), now, now).run();
+      const owner = type === "bestprice" ? requestManager(site.members || [], managerEmail)?.to : resp?.from;
+      if (owner) await db.prepare("UPDATE sales_requests SET assignee=? WHERE threadId=? AND assignee=''").bind(owner, threadId).run();
       out.created++;
     } else {
       const sets = [], vals = [];
-      if (!ex.assignee && resp) { sets.push("assignee=?"); vals.push(resp.from); }
-      if (!ex.firstResponseAt && resp) { sets.push("firstResponseAt=?", "responder=?"); vals.push(respAt, respName); if (ex.status === "new") sets.push("status='responded'"); }
-      if (ex.typeAuto && !ex.type && type) { sets.push("type=?"); vals.push(type); }
-      if (!ex.customer && hit) { sets.push("customer=?"); vals.push(hit.name); }
-      if (sets.length) { await db.prepare("UPDATE sales_requests SET " + sets.join(",") + ",updatedAt=? WHERE id=?").bind(...vals, now, ex.id).run(); out.updated++; } else out.skipped++;
+      if (!ex.assignee && resp) {
+        sets.push("assignee=?");
+        vals.push(resp.from);
+      }
+      if (!ex.firstResponseAt && resp) {
+        sets.push("firstResponseAt=?", "responder=?");
+        vals.push(respAt, respName);
+        if (ex.status === "new") sets.push("status='responded'");
+      }
+      if (ex.typeAuto && !ex.type && type) {
+        sets.push("type=?");
+        vals.push(type);
+      }
+      if (!ex.customer && hit) {
+        sets.push("customer=?");
+        vals.push(hit.name);
+      }
+      if (sets.length) {
+        await db.prepare("UPDATE sales_requests SET " + sets.join(",") + ",updatedAt=? WHERE id=?").bind(...vals, now, ex.id).run();
+        out.updated++;
+      } else out.skipped++;
     }
   }
   return out;
 }
-
-const API = {
+__name(reqIngest, "reqIngest");
+function salesMonitorScope(rows, email) {
+  const key = /* @__PURE__ */ __name((value) => String(value || "").trim().toLowerCase(), "key");
+  const manager = key(email);
+  const sales = rows.filter((row) => row.kind === "sales" && key(row.email) && key(row.name));
+  const contacts = rows.filter((row) => row.kind === "salesContact");
+  const reports = sales.filter((row) => {
+    if (!manager || row.active !== "1" || key(row.email) === manager) return false;
+    const matchesContact = /* @__PURE__ */ __name((name, role) => {
+      if (!key(name)) return false;
+      const matches = new Set(contacts.filter((c) => key(c.name) === key(name) && key(c.email) && (!role || key(c.type) === role)).map((c) => key(c.email)));
+      return matches.size === 1 && matches.has(manager);
+    }, "matchesContact");
+    const isManager = key(row.mgrEmail) ? key(row.mgrEmail) === manager : matchesContact(row.mgr);
+    const isGM = matchesContact(row.gmName, "gm");
+    return isManager || isGM;
+  });
+  const byEmail = new Map(reports.map((row) => [key(row.email), row]));
+  const byName = /* @__PURE__ */ new Map();
+  for (const row of reports) {
+    const name = key(row.name);
+    const owners = new Set(sales.filter((other) => key(other.name) === name).map((other) => key(other.email)));
+    if (owners.size === 1) byName.set(name, row);
+  }
+  return { key, byEmail, byName };
+}
+__name(salesMonitorScope, "salesMonitorScope");
+async function salesMonitorData(db, email, accessOnly) {
+  const roster = await db.prepare("SELECT kind,data FROM site_items WHERE kind IN ('sales','salesContact')").all();
+  const rows = roster.results.map((r) => ({ ...JSON.parse(r.data), kind: r.kind }));
+  const { key, byEmail, byName } = salesMonitorScope(rows, email);
+  if (accessOnly) return { allowed: byEmail.size > 0 };
+  if (!byEmail.size) return null;
+  const requests = [];
+  const emails = [...byEmail.keys()];
+  for (let i = 0; i < emails.length; i += 50) {
+    const batch = emails.slice(i, i + 50);
+    const result = await db.prepare("SELECT id,subject,customer,fromEmail,type,status,receivedAt,firstResponseAt,assignee FROM sales_requests WHERE status!='ignored' AND lower(trim(fromEmail)) IN (" + batch.map(() => "?").join(",") + ")").bind(...batch).all();
+    requests.push(...result.results.map((r) => {
+      const { fromEmail, ...details } = r;
+      return { ...details, member: byEmail.get(key(fromEmail)).name, memberKey: key(fromEmail) };
+    }));
+  }
+  const records = await db.prepare("SELECT id,data FROM site_items WHERE kind='proposal'").all();
+  const proposals = records.results.flatMap((row) => {
+    const p = JSON.parse(row.data), member = byEmail.get(key(p.sales)) || byName.get(key(p.sales));
+    if (!member) return [];
+    return [{ id: row.id, member: member.name, memberKey: key(member.email), customer: p.customer, title: p.title, presales: p.presales, status: p.status, submission: p.submission, archivedAt: p.archivedAt, adminDocumentsReady: p.adminDocumentsReady, productPricingConfirmed: p.productPricingConfirmed, proposalUploaded: p.proposalUploaded }];
+  });
+  return { members: [...byEmail].map(([id, row]) => ({ id, name: row.name, team: row.team || "" })), requests, proposals };
+}
+__name(salesMonitorData, "salesMonitorData");
+var API = {
   // Master sees every request; other presales only the ones they sent or that are assigned to them
   async getRequests(db, who, scope) {
     await ensureSchema(db);
-    if (scope === "all") { const r = await db.prepare("SELECT * FROM sales_requests ORDER BY receivedAt DESC LIMIT 500").all(); return r.results.map(reqOut); }
-    const em = String(who || "").trim().toLowerCase(); if (!em.includes("@")) return [];
+    if (scope === "all") {
+      const r2 = await db.prepare("SELECT * FROM sales_requests ORDER BY receivedAt DESC LIMIT 500").all();
+      return r2.results.map(reqOut);
+    }
+    const em = String(who || "").trim().toLowerCase();
+    if (!em.includes("@")) return [];
     const r = await db.prepare("SELECT * FROM sales_requests WHERE lower(fromEmail)=?1 OR lower(assignee)=?1 ORDER BY receivedAt DESC LIMIT 300").bind(em).all();
     return r.results.map(reqOut);
   },
@@ -1269,18 +1555,21 @@ const API = {
     await ensureSchema(db);
     const em = String(who || "").trim().toLowerCase();
     if (!em || !em.includes("@")) return [];
-    // A Sales Manager also sees the requests of the sales people who report to them
     let ems = [em];
     try {
       const site = await API.getSite(db);
-      const cEmail = name => { const c = (site.salesContacts || []).find(x => x.email && String(x.name || "").trim().toLowerCase() === String(name || "").trim().toLowerCase()); return c ? String(c.email).trim().toLowerCase() : ""; };
-      for (const s of (site.sales || [])) {
+      const cEmail = /* @__PURE__ */ __name((name) => {
+        const c = (site.salesContacts || []).find((x) => x.email && String(x.name || "").trim().toLowerCase() === String(name || "").trim().toLowerCase());
+        return c ? String(c.email).trim().toLowerCase() : "";
+      }, "cEmail");
+      for (const s of site.sales || []) {
         const e = String(s.email || "").trim().toLowerCase();
-        if (e && (String(s.mgrEmail || "").trim().toLowerCase() === em || (s.mgr && cEmail(s.mgr) === em))) ems.push(e);
+        if (e && (String(s.mgrEmail || "").trim().toLowerCase() === em || s.mgr && cEmail(s.mgr) === em)) ems.push(e);
       }
       ems = [...new Set(ems)].slice(0, 50);
-    } catch (_) { ems = [em]; }
-    // ...plus requests assigned to this account (e.g. a PS / TPS who replied to a Config request)
+    } catch (_) {
+      ems = [em];
+    }
     const r = await db.prepare("SELECT * FROM sales_requests WHERE (lower(fromEmail) IN (" + ems.map(() => "?").join(",") + ") OR lower(assignee)=?) AND status!='ignored' ORDER BY receivedAt DESC LIMIT 300").bind(...ems, em).all();
     return r.results.map(reqOut);
   },
@@ -1290,70 +1579,110 @@ const API = {
     if (!ex) throw new UserError("Request not found.");
     const me = String(who || "").trim().toLowerCase();
     if (scope !== "all" && !(String(ex.fromEmail || "").toLowerCase() === me || String(ex.assignee || "").toLowerCase() === me)) throw new UserError("This request is not assigned to you.");
-    patch = patch || {}; const sets = [], vals = [], now = new Date().toISOString();
-    if (patch.type !== undefined) { const t = clean(patch.type); if (t && !REQ_TYPES[t]) throw new UserError("Unknown request type."); sets.push("type=?", "typeAuto=0"); vals.push(t); }
-    if (patch.customer !== undefined) { sets.push("customer=?"); vals.push(clean(patch.customer).slice(0, 200)); }
-    if (patch.assignee !== undefined && scope === "all") { sets.push("assignee=?"); vals.push(clean(patch.assignee).slice(0, 200)); }
-    if (patch.status !== undefined) {
-      const s = clean(patch.status); if (!REQ_STATUS.includes(s)) throw new UserError("Unknown status.");
-      sets.push("status=?"); vals.push(s);
-      if (!ex.assignee && s !== "ignored") { sets.push("assignee=?"); vals.push(me); }
-      if (s === "responded" && !ex.firstResponseAt) { sets.push("firstResponseAt=?", "responder=?"); vals.push(now, String(who || "")); }
-      if (s === "done") { sets.push("doneAt=?"); vals.push(now); if (!ex.firstResponseAt) { sets.push("firstResponseAt=?", "responder=?"); vals.push(now, String(who || "")); } }
+    patch = patch || {};
+    const sets = [], vals = [], now = (/* @__PURE__ */ new Date()).toISOString();
+    if (patch.type !== void 0) {
+      const t = clean(patch.type);
+      if (t && !REQ_TYPES[t]) throw new UserError("Unknown request type.");
+      sets.push("type=?", "typeAuto=0");
+      vals.push(t);
+    }
+    if (patch.customer !== void 0) {
+      sets.push("customer=?");
+      vals.push(clean(patch.customer).slice(0, 200));
+    }
+    if (patch.assignee !== void 0 && scope === "all") {
+      sets.push("assignee=?");
+      vals.push(clean(patch.assignee).slice(0, 200));
+    }
+    if (patch.status !== void 0) {
+      const s = clean(patch.status);
+      if (!REQ_STATUS.includes(s)) throw new UserError("Unknown status.");
+      sets.push("status=?");
+      vals.push(s);
+      if (!ex.assignee && s !== "ignored") {
+        sets.push("assignee=?");
+        vals.push(me);
+      }
+      if (s === "responded" && !ex.firstResponseAt) {
+        sets.push("firstResponseAt=?", "responder=?");
+        vals.push(now, String(who || ""));
+      }
+      if (s === "done") {
+        sets.push("doneAt=?");
+        vals.push(now);
+        if (!ex.firstResponseAt) {
+          sets.push("firstResponseAt=?", "responder=?");
+          vals.push(now, String(who || ""));
+        }
+      }
     }
     if (!sets.length) return reqOut(ex);
     await db.prepare("UPDATE sales_requests SET " + sets.join(",") + ",updatedAt=? WHERE id=?").bind(...vals, now, ex.id).run();
     return reqOut(await db.prepare("SELECT * FROM sales_requests WHERE id=?").bind(ex.id).first());
   },
   async getProductTeam(db) {
-    const saved=await db.prepare("SELECT k,v FROM settings WHERE k LIKE 'product_team_email:%' OR k LIKE 'product_team_spv:%' OR k LIKE 'product_team_off:%'").all();
-    const emails=new Map(saved.results.map(row=>[row.k,row.v]));
-    return PRODUCT_TEAM.map(row=>{
-      const id=row.name?productTeamKey(row):"";
-      const managerId=row.manager?productTeamManagerKey(row):"";
-      const spvId=row.name&&row.level!=="SPV"?productTeamSpvKey(row):"";
-      const spv=spvId?emails.get(spvId)||"":"";
-      return {...row,id,inactive:!!(id&&emails.get("product_team_off:"+id)==="1"),email:emails.get(id)||"",managerId,managerEmail:emails.get(managerId)||"",spvId,spv:(spv==="@manager"&&row.manager)?"@manager":(PRODUCT_TEAM.some(x=>x.level==="SPV"&&x.name===spv&&x.role===row.role&&x.group===row.group)?spv:"")};
+    const saved = await db.prepare("SELECT k,v FROM settings WHERE k LIKE 'product_team_email:%' OR k LIKE 'product_team_spv:%' OR k LIKE 'product_team_off:%' OR k LIKE 'product_team_removed:%'").all();
+    const emails = new Map(saved.results.map((row) => [row.k, row.v]));
+    return PRODUCT_TEAM.filter((row) => emails.get("product_team_removed:" + productDirectoryCardKey(row)) !== "1").map((row) => {
+      const id = row.name ? productTeamKey(row) : "";
+      const managerId = row.manager ? productTeamManagerKey(row) : "";
+      const spvId = row.name && row.level !== "SPV" ? productTeamSpvKey(row) : "";
+      const spv = spvId ? emails.get(spvId) || "" : "";
+      return { ...row, cardKey: productDirectoryCardKey(row), id, inactive: !!(id && emails.get("product_team_off:" + id) === "1"), email: emails.get(id) || "", managerId, managerEmail: emails.get(managerId) || "", spvId, spv: spv === "@manager" && row.manager ? "@manager" : PRODUCT_TEAM.some((x) => x.level === "SPV" && x.name === spv && x.role === row.role && x.group === row.group) ? spv : "" };
     });
   },
   // Atasan langsung (SPV) untuk anggota non-SPV; hanya boleh SPV dari role+grup yang sama. Kosong = hapus.
-  async saveProductTeamSpv(db,id,value) {
-    const person=typeof id==="string"?PRODUCT_TEAM.find(row=>row.name&&row.level!=="SPV"&&productTeamSpvKey(row)===id):null;
-    if(!person||typeof value!=="string") return null;
-    const spv=value.trim();
-    if(spv==="@manager"){ if(!person.manager) return null; }
-    else if(spv&&!PRODUCT_TEAM.some(x=>x.level==="SPV"&&x.name===spv&&x.role===person.role&&x.group===person.group)) return null;
-    if(spv) await db.prepare("INSERT INTO settings (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(id,spv).run();
+  async saveProductTeamSpv(db, id, value) {
+    const person = typeof id === "string" ? PRODUCT_TEAM.find((row) => row.name && row.level !== "SPV" && productTeamSpvKey(row) === id) : null;
+    if (!person || typeof value !== "string") return null;
+    const spv = value.trim();
+    if (spv === "@manager") {
+      if (!person.manager) return null;
+    } else if (spv && !PRODUCT_TEAM.some((x) => x.level === "SPV" && x.name === spv && x.role === person.role && x.group === person.group)) return null;
+    if (spv) await db.prepare("INSERT INTO settings (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(id, spv).run();
     else await db.prepare("DELETE FROM settings WHERE k=?").bind(id).run();
-    return {id,spv};
+    return { id, spv };
   },
   // Activate / deactivate a Product Team member (master only). Inactive people are hidden from product contacts and reminders.
   // handled in the route block (need request identity); stubs let the route guard pass
-  async ping() { return null; },
+  async ping() {
+    return null;
+  },
   // Interface text overrides: { "original text": "replacement" }, applied in the browser by exact match.
   async saveUiTexts(db, who, map) {
-    const out = {}; let n = 0;
+    const out = {};
+    let n = 0;
     for (const [k, v] of Object.entries(map && typeof map === "object" ? map : {})) {
       const key = String(k).replace(/[\u0000-\u001f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 300);
       const val = String(v == null ? "" : v).replace(/[\u0000-\u001f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 500);
       if (!key || !val || val === key) continue;
-      if (++n > 2000) throw new UserError("Too many text changes (max 2000).");
+      if (++n > 2e3) throw new UserError("Too many text changes (max 2000).");
       out[key] = val;
     }
     const prev = await readJsonSetting(db, "uitexts");
     if (prev) await writeSetting(db, "uitexts:prev", prev);
-    await writeSetting(db, "uitexts", { map: out, by: who, ts: new Date().toISOString() });
+    await writeSetting(db, "uitexts", { map: out, by: who, ts: (/* @__PURE__ */ new Date()).toISOString() });
     return out;
   },
-  async getPages() { return null; },
-  async savePagesDraft(db, who, cfg) { const c = cleanPagesCfg(cfg); await writeSetting(db, "pages:draft", c); return { savedAt: new Date().toISOString(), cfg: c }; },
-  async discardPagesDraft(db) { await db.prepare("DELETE FROM settings WHERE k='pages:draft'").run(); return { ok: true }; },
+  async getPages() {
+    return null;
+  },
+  async savePagesDraft(db, who, cfg) {
+    const c = cleanPagesCfg(cfg);
+    await writeSetting(db, "pages:draft", c);
+    return { savedAt: (/* @__PURE__ */ new Date()).toISOString(), cfg: c };
+  },
+  async discardPagesDraft(db) {
+    await db.prepare("DELETE FROM settings WHERE k='pages:draft'").run();
+    return { ok: true };
+  },
   async publishPages(db, who, cfg, label) {
-    const c = cfg ? cleanPagesCfg(cfg) : (await readJsonSetting(db, "pages:draft")) || (await readJsonSetting(db, "pages:published")) || EMPTY_PAGES;
-    const ts = new Date().toISOString();
+    const c = cfg ? cleanPagesCfg(cfg) : await readJsonSetting(db, "pages:draft") || await readJsonSetting(db, "pages:published") || EMPTY_PAGES;
+    const ts = (/* @__PURE__ */ new Date()).toISOString();
     await writeSetting(db, "pages:published", c);
     await writeSetting(db, "pages:hist:" + ts, { ts, by: who, label: cutStr(label, 80), data: c });
-    const meta = (await readJsonSetting(db, "pages:histmeta")) || [];
+    const meta = await readJsonSetting(db, "pages:histmeta") || [];
     meta.unshift({ ts, by: who, label: cutStr(label, 80), pages: c.pages.length, blocks: c.pages.reduce((a, p) => a + p.blocks.length, 0) });
     for (const old of meta.splice(15)) await db.prepare("DELETE FROM settings WHERE k=?").bind("pages:hist:" + old.ts).run();
     await writeSetting(db, "pages:histmeta", meta);
@@ -1366,26 +1695,41 @@ const API = {
     await writeSetting(db, "pages:draft", row.data);
     return { draft: row.data };
   },
-  async getActivity() { return null; },
-  async getLeave() { return null; },
-  async saveLeave() { return null; },
-  async deleteLeave() { return null; },
-  async saveProductTeamActive(db,id,active) {
-    if(typeof id!=="string"||!PRODUCT_TEAM.some(row=>row.name&&productTeamKey(row)===id)) return null;
-    const k="product_team_off:"+id;
-    if(active) await db.prepare("DELETE FROM settings WHERE k=?").bind(k).run();
-    else await db.prepare("INSERT INTO settings (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(k,"1").run();
-    return {id,inactive:!active};
+  async getActivity() {
+    return null;
   },
-  async saveProductTeamEmail(db,id,value) {
-    if(typeof value!=="string"||!PRODUCT_TEAM.some(row=>(row.name&&productTeamKey(row)===id)||(row.manager&&productTeamManagerKey(row)===id))) return null;
-    const email=value.trim();
-    if(email&&(email.length>254||!/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(email))) return null;
-    await db.prepare("INSERT INTO settings (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(id,email).run();
-    return {id,email};
+  async getLeave() {
+    return null;
+  },
+  async saveLeave() {
+    return null;
+  },
+  async deleteLeave() {
+    return null;
+  },
+  async removeProductDirectoryCard(db, key) {
+    if (typeof key !== "string" || !PRODUCT_TEAM.some((row) => productDirectoryCardKey(row) === key)) return null;
+    await db.prepare("INSERT INTO settings (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind("product_team_removed:" + key, "1").run();
+    return { removed: true };
+  },
+  async saveProductTeamActive(db, id, active) {
+    if (typeof id !== "string" || !PRODUCT_TEAM.some((row) => row.name && productTeamKey(row) === id)) return null;
+    const k = "product_team_off:" + id;
+    if (active) await db.prepare("DELETE FROM settings WHERE k=?").bind(k).run();
+    else await db.prepare("INSERT INTO settings (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(k, "1").run();
+    return { id, inactive: !active };
+  },
+  async saveProductTeamEmail(db, id, value) {
+    if (typeof value !== "string" || !PRODUCT_TEAM.some((row) => row.name && productTeamKey(row) === id || row.manager && productTeamManagerKey(row) === id)) return null;
+    const email = value.trim();
+    if (email && (email.length > 254 || !/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(email))) return null;
+    await db.prepare("INSERT INTO settings (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(id, email).run();
+    return { id, email };
   },
   // portal: publik (Beranda/Layanan/Kontak) dan lengkap untuk pengguna login
-  async getPublic(db) { return readSite(db, false); },
+  async getPublic(db) {
+    return readSite(db, false);
+  },
   async getSite(db) {
     const data = await readSite(db, true);
     data.skills = data.skills.map(({ certFile, ...skill }) => skill);
@@ -1393,36 +1737,50 @@ const API = {
   },
   async saveSiteText(db, who, rec) {
     const cur = (await readSite(db, false)).site, next = { ...cur };
-    for (const k of SITE_KEYS) if (rec && rec[k] !== undefined) next[k] = clean(rec[k]).slice(0, 600);
+    for (const k of SITE_KEYS) if (rec && rec[k] !== void 0) next[k] = clean(rec[k]).slice(0, 600);
     if (next.contactEmail && !EMAIL_RE.test(next.contactEmail)) throw new UserError("Contact email is not valid.");
     await db.prepare("INSERT INTO settings (k,v) VALUES ('site',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(JSON.stringify(next)).run();
     return next;
   },
   async saveItem(db, who, kind, rec) {
-    const fields = ITEM_KINDS[kind]; if (!fields) throw new UserError("Unknown content type.");
+    let proposalSnapshot;
+    const fields = ITEM_KINDS[kind];
+    if (!fields) throw new UserError("Unknown content type.");
     rec = rec || {};
     const d = {};
     let oldSkill = null;
-    if (kind === "skill" && rec.id && (rec.certFile === undefined || rec.certFileName === undefined)) {
+    if (kind === "skill" && rec.id && (rec.certFile === void 0 || rec.certFileName === void 0)) {
       const old = await db.prepare("SELECT data FROM site_items WHERE id=? AND kind='skill'").bind(clean(rec.id)).first();
       if (old) oldSkill = JSON.parse(old.data);
     }
     for (const f of fields) {
-      if (kind === "skill" && f === "certFile" && rec.certFile === undefined) d[f] = String(oldSkill && oldSkill.certFile || "");
-      else if (kind === "skill" && f === "certFileName" && rec.certFileName === undefined) d[f] = String(oldSkill && oldSkill.certFileName || "");
+      if (kind === "skill" && f === "certFile" && rec.certFile === void 0) d[f] = String(oldSkill && oldSkill.certFile || "");
+      else if (kind === "skill" && f === "certFileName" && rec.certFileName === void 0) d[f] = String(oldSkill && oldSkill.certFileName || "");
       else if (f === "photo") d[f] = String(rec.photo || "");
-      else if (f === "analysis") d[f] = String(rec.analysis || "").slice(0, 40000);
+      else if (f === "analysis") d[f] = String(rec.analysis || "").slice(0, 4e4);
       else if (kind === "skill" && f === "certFile") d[f] = String(rec[f] || "");
-      else d[f] = clean(rec[f]).slice(0, (f === "desc" || f === "note") ? 1200 : f === "certFileName" ? 180 : 300);
+      else d[f] = clean(rec[f]).slice(0, f === "desc" || f === "note" ? 1200 : f === "certFileName" ? 180 : 300);
     }
     if (kind === "service" && !d.title) throw new UserError("Service title is required.");
-    if (kind === "sales") { if (!d.name) throw new UserError("Sales name is required."); if (d.email && !EMAIL_RE.test(d.email)) throw new UserError("Sales email is not valid."); if (d.mgrEmail && !EMAIL_RE.test(d.mgrEmail)) throw new UserError("Email manager tidak valid."); d.active = d.active ? "1" : ""; }
-    if (kind === "salesContact") { if (!d.name) throw new UserError("GM/Manager name is required."); if (!["GM", "Manager"].includes(d.type)) throw new UserError("Contact type must be GM or Manager."); if (d.email && !EMAIL_RE.test(d.email)) throw new UserError("Format email GM/Manager tidak valid."); }
+    if (kind === "sales") {
+      if (!d.name) throw new UserError("Sales name is required.");
+      if (d.email && !EMAIL_RE.test(d.email)) throw new UserError("Sales email is not valid.");
+      if (d.mgrEmail && !EMAIL_RE.test(d.mgrEmail)) throw new UserError("Email manager tidak valid.");
+      d.active = d.active ? "1" : "";
+    }
+    if (kind === "salesContact") {
+      if (!d.name) throw new UserError("GM/Manager name is required.");
+      if (!["GM", "Manager"].includes(d.type)) throw new UserError("Contact type must be GM or Manager.");
+      if (d.email && !EMAIL_RE.test(d.email)) throw new UserError("Format email GM/Manager tidak valid.");
+    }
     if ((kind === "report" || kind === "resource") && (!d.title || !/^https:\/\//.test(d.url))) throw new UserError("Title and link (https://) are required.");
-    if (kind === "vendor") { if (!d.brand || !d.product) throw new UserError("Vendor and product are required."); if (d.url && !/^https:\/\//.test(d.url)) throw new UserError("EoSL link must start with https://"); }
+    if (kind === "vendor") {
+      if (!d.brand || !d.product) throw new UserError("Vendor and product are required.");
+      if (d.url && !/^https:\/\//.test(d.url)) throw new UserError("EoSL link must start with https://");
+    }
     if (kind === "skill" && (!d.person || !d.domain)) throw new UserError("Member name and domain are required.");
     if (kind === "skill" && d.certFile) {
-      if (d.certFile.length > 700000) throw new UserError("Certificate file exceeds the 500 KB upload limit.");
+      if (d.certFile.length > 7e5) throw new UserError("Certificate file exceeds the 500 KB upload limit.");
       if (!/^data:(application\/pdf|image\/(jpeg|png|webp));base64,[A-Za-z0-9+/=]+$/.test(d.certFile)) throw new UserError("Use a PDF, JPEG, PNG, or WebP certificate file.");
       if (!d.certFileName) d.certFileName = "certificate";
     }
@@ -1431,17 +1789,17 @@ const API = {
       if (!d.name) throw new UserError("Member name is required.");
       if (d.email && !EMAIL_RE.test(d.email)) throw new UserError("Member email is not valid.");
       if (d.photo && !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(d.photo)) throw new UserError("Photo format is not supported.");
-      if (d.photo.length > 300000) throw new UserError("Photo size is too large.");
+      if (d.photo.length > 3e5) throw new UserError("Photo size is too large.");
     }
     if (kind === "sales") {
       d.photo = String(d.photo || "");
       if (d.photo && !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(d.photo)) throw new UserError("Photo format is not supported.");
-      if (d.photo.length > 300000) throw new UserError("Photo size is too large.");
+      if (d.photo.length > 3e5) throw new UserError("Photo size is too large.");
     }
     if (kind === "org") {
       if (!d.name) throw new UserError("Name is required.");
       if (d.photo && !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(d.photo)) throw new UserError("Photo format is not supported.");
-      if (d.photo.length > 300000) throw new UserError("Photo size is too large.");
+      if (d.photo.length > 3e5) throw new UserError("Photo size is too large.");
       d.you = d.you ? "1" : "";
     }
     if (kind === "proposal") {
@@ -1449,14 +1807,24 @@ const API = {
       if (!d.status) d.status = "Prebid";
       if (!PROP_STATUS.includes(d.status)) throw new UserError("Unknown proposal status.");
       if (d.rksUrl && !/^https:\/\//.test(d.rksUrl)) throw new UserError("RKS link must start with https://");
-      for (const [key] of PROPOSAL_SUBMISSION_CHECKS) d[key] = d[key] === "1" ? "1" : "";
+      const row = rec.id ? await db.prepare("SELECT data FROM site_items WHERE id=? AND kind='proposal'").bind(clean(rec.id)).first() : null;
+      const prior = row ? JSON.parse(row.data) : {};
+      if (d.status === "Cancelled") {
+        d.cancelReason = clean(d.cancelReason === void 0 ? prior.cancelReason : d.cancelReason);
+        if (d.cancelReason.length > 1e3) throw new UserError("Cancellation reason must be 1,000 characters or fewer.");
+        if (!d.cancelReason && (prior.status !== "Cancelled" || prior.cancelReason)) throw new UserError("Enter a reason why the proposal was cancelled or not submitted.");
+        const cancelledDate = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" }).format(/* @__PURE__ */ new Date());
+        d.cancelledAt = d.cancelledAt || prior.cancelledAt || cancelledDate;
+        d.archivedAt = d.archivedAt || prior.archivedAt || d.cancelledAt;
+      } else d.cancelReason = "";
+      for (const [key] of PROPOSAL_SUBMISSION_CHECKS) d[key] = prior[key] === "1" ? "1" : "";
+      d.checklistAudit = prior.checklistAudit || {};
+      proposalSnapshot = row?.data;
       d.checklistExtra = JSON.stringify(parseChecklistExtra(d.checklistExtra));
       if (d.submissionTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(d.submissionTime)) throw new UserError("Submission time must be HH:MM (24 hours).");
       if (d.submissionTime && !d.submission) throw new UserError("Set the submission date before adding a submission time.");
       if (d.status === "Submitted") {
-        const existing = rec.id
-          ? await db.prepare("SELECT data FROM site_items WHERE id=? AND kind='proposal'").bind(clean(rec.id)).first()
-          : null;
+        const existing = rec.id ? await db.prepare("SELECT data FROM site_items WHERE id=? AND kind='proposal'").bind(clean(rec.id)).first() : null;
         const previousStatus = existing ? JSON.parse(existing.data).status : "";
         if (previousStatus !== "Submitted") {
           const missing = proposalSubmissionGaps(d);
@@ -1467,15 +1835,23 @@ const API = {
     if (kind === "proposal") {
       const prev = rec.id ? await db.prepare("SELECT data FROM site_items WHERE id=? AND kind='proposal'").bind(clean(rec.id)).first() : null;
       let creator = "";
-      try { creator = prev ? String(JSON.parse(prev.data).createdBy || "") : (who && who !== "admin" ? String(who).toLowerCase() : ""); } catch (_) {}
+      try {
+        creator = prev ? String(JSON.parse(prev.data).createdBy || "") : who && who !== "admin" ? String(who).toLowerCase() : "";
+      } catch (_) {
+      }
       delete d.canManage;
       d.createdBy = creator;
     }
-    const id = clean(rec.id) || (kind.slice(0, 3) + "-" + uuid().slice(0, 8));
+    const id = clean(rec.id) || kind.slice(0, 3) + "-" + uuid().slice(0, 8);
     const sort = Number.isFinite(+rec.sort) && rec.sort !== "" ? Math.round(+rec.sort) : Date.now() % 1e6;
-    await db.prepare("INSERT INTO site_items (id,kind,sort,data,updatedAt,updatedBy) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET sort=excluded.sort,data=excluded.data,updatedAt=excluded.updatedAt,updatedBy=excluded.updatedBy")
-      .bind(id, kind, sort, JSON.stringify(d), new Date().toISOString(), who).run();
-    if (kind === "proposal") { try { await cmEnsure(db, d.customer, { sales: d.sales ? [d.sales] : [], source: "proposal", who }); } catch (_) {} }
+    const saved = await db.prepare("INSERT INTO site_items (id,kind,sort,data,updatedAt,updatedBy) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET sort=excluded.sort,data=excluded.data,updatedAt=excluded.updatedAt,updatedBy=excluded.updatedBy WHERE ? IS NULL OR site_items.data=?").bind(id, kind, sort, JSON.stringify(d), (/* @__PURE__ */ new Date()).toISOString(), who, proposalSnapshot ?? null, proposalSnapshot ?? null).run();
+    if (!saved.meta.changes) throw new UserError("Proposal changed. Reload before saving.");
+    if (kind === "proposal") {
+      try {
+        await cmEnsure(db, d.customer, { sales: d.sales ? [d.sales] : [], source: "proposal", who });
+      } catch (_) {
+      }
+    }
     return { id, sort, ...d };
   },
   async deleteItem(db, who, id) {
@@ -1483,56 +1859,53 @@ const API = {
     return true;
   },
   async getAll(db, ctx, full) {
-    // ctx: { master:boolean, edit:Set(customerId) } — hak lihat detail (SN, PIC, email) per customer
-    ctx = ctx || { master: false, edit: new Set() };
-    const tagged = ctx.tagged || new Set();
-    const canSee = id => full || ctx.master || ctx.edit.has(id) || tagged.has(id);
+    ctx = ctx || { master: false, edit: /* @__PURE__ */ new Set() };
+    const tagged = ctx.tagged || /* @__PURE__ */ new Set();
+    const restricted = !full && !ctx.master && (ctx.presales || ctx.salesOnly);
     await seedIfEmpty(db);
     await seedBayanIfNeeded(db);
     const c = await db.prepare("SELECT id,name,code,pic,note,presales,COALESCE(sales,'') AS sales,COALESCE(external,'') AS external,updatedAt,createdBy FROM customers").all();
     const d = await db.prepare("SELECT " + DEV_COLS.join(",") + ",COALESCE(muteWarranty,'') AS muteWarranty,COALESCE(renewalStatus,'') AS renewalStatus,COALESCE(renewalOwner,'') AS renewalOwner,COALESCE(dismantled,'') AS dismantled FROM devices").all();
-    // Pengunjung tanpa login: alamat email disamarkan (h***@berca.co.id)
-    // Sales accounts only see the customers they are tagged on (or administer)
-    const ownRow = x => ctx.master || ctx.edit.has(x.id) || tagged.has(x.id) || mayEditCustomer(ctx, { id: x.id, createdBy: x.createdBy });
-    const rows = ctx.salesOnly && !full ? c.results.filter(ownRow) : c.results;
+    const ownRow = /* @__PURE__ */ __name((x) => ctx.master || ctx.edit.has(x.id) || tagged.has(x.id) || mayEditCustomer(ctx, { id: x.id, createdBy: x.createdBy }), "ownRow");
+    const rows = restricted ? c.results.filter((customer) => ctx.presales ? !!ctx.email && (clean(customer.createdBy).toLowerCase() === ctx.email || String(customer.presales || "").toLowerCase().split(/[\s,;]+/).includes(ctx.email)) : ownRow(customer)) : c.results;
+    const visibleIds = new Set(rows.map((customer) => customer.id));
+    const canSee = /* @__PURE__ */ __name((id) => restricted ? visibleIds.has(id) : full || ctx.master || ctx.edit.has(id) || tagged.has(id), "canSee");
     const customers = rows.map(({ createdBy, ...customer }) => {
       const canEdit = mayEditCustomer(ctx, { id: customer.id, createdBy });
-      // Export/download only for customers this account created or is tagged on (master always)
       const canExport = !!(ctx.master || ctx.edit.has(customer.id) || tagged.has(customer.id) || canEdit);
-      return (canSee(customer.id) || canEdit) ? { ...customer, canEdit, canExport }
-        : { ...customer, pic: "", note: maskEmails(customer.note), presales: maskEmails(customer.presales), sales: maskEmails(customer.sales), external: maskEmails(customer.external), canEdit, canExport };
+      return canSee(customer.id) || canEdit ? { ...customer, canEdit, canExport } : { ...customer, pic: "", note: maskEmails(customer.note), presales: maskEmails(customer.presales), sales: maskEmails(customer.sales), external: maskEmails(customer.external), canEdit, canExport };
     });
     let devices = d.results;
-    if (ctx.salesOnly && !full) { const ok = new Set(rows.map(x => x.id)); devices = devices.filter(x => ok.has(x.customerId)); }
-    if (devices.some(x => !canSee(x.customerId))) {
-      // Pengunjung tanpa login: Serial Number disembunyikan, termasuk SN yang tertulis di keterangan
-      const sns = [...new Set(devices.map(x => String(x.sn || "").trim()).filter(v => v.length >= 4))]
-        .sort((x, y) => y.length - x.length).map(v => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    if (restricted) devices = devices.filter((device) => visibleIds.has(device.customerId));
+    if (devices.some((x) => !canSee(x.customerId))) {
+      const sns = [...new Set(devices.map((x) => String(x.sn || "").trim()).filter((v) => v.length >= 4))].sort((x, y) => y.length - x.length).map((v) => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
       const snRe = sns.length ? new RegExp(sns.join("|"), "gi") : null;
-      const hideNote = v => {
-        let t = String(v || "")
-          .replace(/(tertulis\s+)(?=[\w-]*\d)(?=[\w-]*[A-Za-z])[\w-]{5,}/gi, "$1" + SN_MASK)
-          .replace(/(\bSN\s*:?\s+)(?=[\w-]*\d)[\w-]{5,}/g, "$1" + SN_MASK);
+      const hideNote = /* @__PURE__ */ __name((v) => {
+        let t = String(v || "").replace(/(tertulis\s+)(?=[\w-]*\d)(?=[\w-]*[A-Za-z])[\w-]{5,}/gi, "$1" + SN_MASK).replace(/(\bSN\s*:?\s+)(?=[\w-]*\d)[\w-]{5,}/g, "$1" + SN_MASK);
         return snRe ? t.replace(snRe, SN_MASK) : t;
-      };
-      devices = devices.map(x => canSee(x.customerId) ? x : ({ ...x, sn: SN_MASK, note: hideNote(x.note), muteWarranty: x.muteWarranty ? "*" : "", renewalStatus: "", renewalOwner: "" }));
+      }, "hideNote");
+      devices = devices.map((x) => canSee(x.customerId) ? x : { ...x, sn: SN_MASK, note: hideNote(x.note), muteWarranty: x.muteWarranty ? "*" : "", renewalStatus: "", renewalOwner: "" });
     }
     return { customers, devices, canWrite: ctx.master || ctx.edit.size > 0, isMaster: !!ctx.master, editable: [...ctx.edit], sheetUrl: "", salesOnly: !!(ctx.salesOnly && !full) };
   },
   async getCustomerMaster(db) {
-    await ensureSchema(db); await cmSeed(db);
+    await ensureSchema(db);
+    await cmSeed(db);
     const r = await db.prepare("SELECT * FROM customer_master ORDER BY name COLLATE NOCASE").all();
     return r.results.map(cmOut);
   },
   async saveCustomerMaster(db, who, rec) {
-    await ensureSchema(db); await cmSeed(db);
-    const name = clean(rec && rec.name); if (!name) throw new UserError("Customer name is required.");
+    await ensureSchema(db);
+    await cmSeed(db);
+    const name = clean(rec && rec.name);
+    if (!name) throw new UserError("Customer name is required.");
     const id = clean(rec && rec.id);
-    if (!id) return await cmEnsure(db, name, { code: rec && rec.code, sales: rec && rec.sales, source: clean(rec && rec.source) || "manual", who });
+    if (!id) return await cmEnsure(db, name, { code: rec && rec.code, sales: rec && rec.sales, managers: rec && rec.managers, source: clean(rec && rec.source) || "manual", who });
     const key = cmKey(name);
     const dup = await db.prepare("SELECT 1 FROM customer_master WHERE nameKey=? AND id<>?").bind(key, id).first();
     if (dup) throw new UserError("Customer " + name + " already exists.");
-    const r = await db.prepare("UPDATE customer_master SET name=?,nameKey=?,code=?,sales=?,updatedAt=? WHERE id=?").bind(name, key, clean(rec.code), JSON.stringify(cmSales(rec.sales)), new Date().toISOString(), id).run();
+    const managers = Array.isArray(rec.managers) ? JSON.stringify(cmSales(rec.managers)) : null;
+    const r = await db.prepare("UPDATE customer_master SET name=?,nameKey=?,code=?,sales=?,managers=COALESCE(?,managers),updatedAt=? WHERE id=?").bind(name, key, clean(rec.code), JSON.stringify(cmSales(rec.sales)), managers, (/* @__PURE__ */ new Date()).toISOString(), id).run();
     if (!r.meta.changes) throw new UserError("Customer not found.");
     return cmOut(await db.prepare("SELECT * FROM customer_master WHERE id=?").bind(id).first());
   },
@@ -1543,33 +1916,37 @@ const API = {
   },
   async saveCustomer(db, who, rec) {
     const existingId = clean(rec && rec.id);
-    const c = { id: existingId || uuid(), name: clean(rec && rec.name), code: clean(rec && rec.code), pic: clean(rec && rec.pic), note: clean(rec && rec.note), presales: clean(rec && rec.presales), external: clean(rec && rec.external).toLowerCase(), sales: clean(rec && rec.sales).toLowerCase(), updatedAt: new Date().toISOString(), updatedBy: who };
+    const c = { id: existingId || uuid(), name: clean(rec && rec.name), code: clean(rec && rec.code), pic: clean(rec && rec.pic), note: clean(rec && rec.note), presales: clean(rec && rec.presales), external: clean(rec && rec.external).toLowerCase(), sales: clean(rec && rec.sales).toLowerCase(), updatedAt: (/* @__PURE__ */ new Date()).toISOString(), updatedBy: who };
     if (!c.name) throw new UserError("Customer name is required.");
     const dup = await db.prepare("SELECT 1 FROM customers WHERE lower(name)=lower(?) AND id<>?").bind(c.name, c.id).first();
     if (dup) throw new UserError("Customer " + c.name + " already exists.");
-    const bad = c.presales.split(/[\s,;]+/).filter(Boolean).filter(e => !EMAIL_RE.test(e));
+    const bad = c.presales.split(/[\s,;]+/).filter(Boolean).filter((e) => !EMAIL_RE.test(e));
     if (bad.length) throw new UserError("Presales PIC email is not valid: " + bad.join(", ") + ". Separate multiple emails with commas.");
-    const badSales = c.sales.split(/[\s,;]+/).filter(Boolean).filter(e => !EMAIL_RE.test(e));
+    const badSales = c.sales.split(/[\s,;]+/).filter(Boolean).filter((e) => !EMAIL_RE.test(e));
     if (badSales.length) throw new UserError("Sales email is not valid: " + badSales.join(", ") + ". Separate multiple emails with commas.");
-    const badExt = c.external.split(/[\s,;]+/).filter(Boolean).filter(e => !EMAIL_RE.test(e));
+    const badExt = c.external.split(/[\s,;]+/).filter(Boolean).filter((e) => !EMAIL_RE.test(e));
     if (badExt.length) throw new UserError("External (customer) email is not valid: " + badExt.join(", ") + ". Separate multiple emails with commas.");
     const values = [c.name, c.code, c.pic, c.note, c.presales, c.sales, c.external, c.updatedAt, c.updatedBy];
     if (existingId) {
-      const result = await db.prepare("UPDATE customers SET name=?,code=?,pic=?,note=?,presales=?,sales=?,external=?,updatedAt=?,updatedBy=? WHERE id=?")
-        .bind(...values, existingId).run();
+      const result = await db.prepare("UPDATE customers SET name=?,code=?,pic=?,note=?,presales=?,sales=?,external=?,updatedAt=?,updatedBy=? WHERE id=?").bind(...values, existingId).run();
       if (!result.meta.changes) throw new UserError("Customer not found.");
     } else {
-      await db.prepare("INSERT INTO customers (name,code,pic,note,presales,sales,external,updatedAt,updatedBy,id,createdBy) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
-        .bind(...values, c.id, who).run();
+      await db.prepare("INSERT INTO customers (name,code,pic,note,presales,sales,external,updatedAt,updatedBy,id,createdBy) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(...values, c.id, who).run();
     }
-    try { await cmEnsure(db, c.name, { code: c.code, source: "inventory", who }); } catch (_) {}
+    try {
+      await cmEnsure(db, c.name, { code: c.code, source: "inventory", who });
+    } catch (_) {
+    }
     return c;
   },
   // ---- Kelola admin per customer (khusus master admin) ----
   async listAdmins(db) {
     const r = await db.prepare("SELECT email, customerId, addedBy, addedAt FROM customer_admins ORDER BY email").all();
-    const m = new Map();
-    for (const x of r.results) { if (!m.has(x.email)) m.set(x.email, { email: x.email, customers: [], addedBy: x.addedBy, addedAt: x.addedAt }); m.get(x.email).customers.push(x.customerId); }
+    const m = /* @__PURE__ */ new Map();
+    for (const x of r.results) {
+      if (!m.has(x.email)) m.set(x.email, { email: x.email, customers: [], addedBy: x.addedBy, addedAt: x.addedAt });
+      m.get(x.email).customers.push(x.customerId);
+    }
     return [...m.values()];
   },
   async saveAdmin(db, who, email, customerIds, domain) {
@@ -1577,11 +1954,14 @@ const API = {
     if (!EMAIL_RE.test(email) || !email.endsWith("@" + domain)) throw new UserError("Admin email must be an @" + domain + " account.");
     const ids = [...new Set((Array.isArray(customerIds) ? customerIds : []).map(clean).filter(Boolean))];
     if (!ids.length) throw new UserError("Pilih minimal satu customer.");
-    const known = new Set((await db.prepare("SELECT id FROM customers").all()).results.map(x => x.id));
-    const bad = ids.filter(i => !known.has(i)); if (bad.length) throw new UserError("Customer not found: " + bad.join(", "));
-    const now = new Date().toISOString();
-    await db.batch([db.prepare("DELETE FROM customer_admins WHERE email=?").bind(email),
-      ...ids.map(i => db.prepare("INSERT INTO customer_admins (email,customerId,addedBy,addedAt) VALUES (?,?,?,?)").bind(email, i, who, now))]);
+    const known = new Set((await db.prepare("SELECT id FROM customers").all()).results.map((x) => x.id));
+    const bad = ids.filter((i) => !known.has(i));
+    if (bad.length) throw new UserError("Customer not found: " + bad.join(", "));
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    await db.batch([
+      db.prepare("DELETE FROM customer_admins WHERE email=?").bind(email),
+      ...ids.map((i) => db.prepare("INSERT INTO customer_admins (email,customerId,addedBy,addedAt) VALUES (?,?,?,?)").bind(email, i, who, now))
+    ]);
     return { email, customers: ids };
   },
   async deleteAdmin(db, who, email) {
@@ -1601,17 +1981,18 @@ const API = {
     if (!r) throw new UserError("Device not found.");
     const v = on ? String(r.warranty || "") : "";
     if (on && !v) throw new UserError("This device has no warranty date yet.");
-    await db.prepare("UPDATE devices SET muteWarranty=?, updatedAt=?, updatedBy=? WHERE id=?").bind(v, new Date().toISOString(), who, clean(id)).run();
+    await db.prepare("UPDATE devices SET muteWarranty=?, updatedAt=?, updatedBy=? WHERE id=?").bind(v, (/* @__PURE__ */ new Date()).toISOString(), who, clean(id)).run();
     return { id: clean(id), muteWarranty: v };
   },
   // Pipeline renewal: status tindak lanjut perpanjangan warranty per perangkat.
   async setRenewal(db, who, id, status, owner) {
-    const S = new Set(["", "contacted", "quoting", "po", "won", "lost"]);
-    const st = String(status || "").trim(); if (!S.has(st)) throw new UserError("Unknown renewal status.");
+    const S = /* @__PURE__ */ new Set(["", "contacted", "quoting", "po", "won", "lost"]);
+    const st = String(status || "").trim();
+    if (!S.has(st)) throw new UserError("Unknown renewal status.");
     const ow = String(owner || "").trim().slice(0, 120);
     const r = await db.prepare("SELECT 1 FROM devices WHERE id=?").bind(clean(id)).first();
     if (!r) throw new UserError("Device not found.");
-    await db.prepare("UPDATE devices SET renewalStatus=?, renewalOwner=?, updatedAt=?, updatedBy=? WHERE id=?").bind(st, ow, new Date().toISOString(), who, clean(id)).run();
+    await db.prepare("UPDATE devices SET renewalStatus=?, renewalOwner=?, updatedAt=?, updatedBy=? WHERE id=?").bind(st, ow, (/* @__PURE__ */ new Date()).toISOString(), who, clean(id)).run();
     return { id: clean(id), renewalStatus: st, renewalOwner: ow };
   },
   // Dismantle: perangkat yang sudah dicabut / tidak dipakai lagi. Data tetap disimpan (riwayat),
@@ -1619,8 +2000,8 @@ const API = {
   async setDismantle(db, who, id, on) {
     const r = await db.prepare("SELECT 1 FROM devices WHERE id=?").bind(clean(id)).first();
     if (!r) throw new UserError("Device not found.");
-    const v = on ? new Date().toISOString() : "";
-    await db.prepare("UPDATE devices SET dismantled=?, updatedAt=?, updatedBy=? WHERE id=?").bind(v, new Date().toISOString(), who, clean(id)).run();
+    const v = on ? (/* @__PURE__ */ new Date()).toISOString() : "";
+    await db.prepare("UPDATE devices SET dismantled=?, updatedAt=?, updatedBy=? WHERE id=?").bind(v, (/* @__PURE__ */ new Date()).toISOString(), who, clean(id)).run();
     return { id: clean(id), dismantled: v };
   },
   async saveDevice(db, who, rec) {
@@ -1636,9 +2017,9 @@ const API = {
   },
   async importDevices(db, who, list) {
     const rows = await db.prepare("SELECT customerId, lower(sn) AS sn FROM devices").all();
-    const existing = new Set(rows.results.map(r => r.customerId + "|" + r.sn));
+    const existing = new Set(rows.results.map((r) => r.customerId + "|" + r.sn));
     const stmts = [];
-    for (const r of (Array.isArray(list) ? list : [])) {
+    for (const r of Array.isArray(list) ? list : []) {
       const d = normDevice(r, who);
       const k = d.customerId + "|" + d.sn.toLowerCase();
       if (existing.has(k)) continue;
@@ -1649,16 +2030,15 @@ const API = {
     return stmts.length;
   }
 };
-
-
-// ---------- Auth: Google ID token -> signed session cookie ----------
-const COOKIE = "inv_session";
-const SESSION_HOURS = 12;
-const VERSION = "2026-11-25.1";   // dinaikkan tiap rilis; tampil di /health untuk memastikan deploy berhasil
-const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-const b64uDecode = s => { s = String(s).replace(/-/g, "+").replace(/_/g, "/"); return Uint8Array.from(atob(s + "=".repeat((4 - s.length % 4) % 4)), c => c.charCodeAt(0)); };
-let hmacKey = null;
-
+var COOKIE = "inv_session";
+var SESSION_HOURS = 12;
+var VERSION = "2026-11-25.1";
+var b64u = /* @__PURE__ */ __name((buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""), "b64u");
+var b64uDecode = /* @__PURE__ */ __name((s) => {
+  s = String(s).replace(/-/g, "+").replace(/_/g, "/");
+  return Uint8Array.from(atob(s + "=".repeat((4 - s.length % 4) % 4)), (c) => c.charCodeAt(0));
+}, "b64uDecode");
+var hmacKey = null;
 async function getHmacKey(db) {
   if (hmacKey) return hmacKey;
   let row = await db.prepare("SELECT v FROM settings WHERE k='session_secret'").first();
@@ -1670,11 +2050,13 @@ async function getHmacKey(db) {
   hmacKey = await crypto.subtle.importKey("raw", b64uDecode(row.v), { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
   return hmacKey;
 }
+__name(getHmacKey, "getHmacKey");
 async function makeSession(db, email) {
-  const body = b64u(new TextEncoder().encode(JSON.stringify({ e: email, x: Date.now() + SESSION_HOURS * 3600e3 })));
+  const body = b64u(new TextEncoder().encode(JSON.stringify({ e: email, x: Date.now() + SESSION_HOURS * 36e5 })));
   const sig = b64u(await crypto.subtle.sign("HMAC", await getHmacKey(db), new TextEncoder().encode(body)));
   return body + "." + sig;
 }
+__name(makeSession, "makeSession");
 async function readSession(db, request) {
   const m = (request.headers.get("cookie") || "").match(new RegExp("(?:^|;\\s*)" + COOKIE + "=([^;]+)"));
   if (!m) return null;
@@ -1682,135 +2064,186 @@ async function readSession(db, request) {
   if (!body || !sig) return null;
   const ok = await crypto.subtle.verify("HMAC", await getHmacKey(db), b64uDecode(sig), new TextEncoder().encode(body)).catch(() => false);
   if (!ok) return null;
-  try { const p = JSON.parse(new TextDecoder().decode(b64uDecode(body))); return p.x > Date.now() ? p.e : null; } catch { return null; }
+  try {
+    const p = JSON.parse(new TextDecoder().decode(b64uDecode(body)));
+    return p.x > Date.now() ? p.e : null;
+  } catch {
+    return null;
+  }
 }
-const cookieHeader = (val, maxAge) => COOKIE + "=" + val + "; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=" + maxAge;
-
-// ---------- Login Google (hanya domain ALLOWED_DOMAIN) ----------
-let jwksCache = null, jwksAt = 0;
+__name(readSession, "readSession");
+var cookieHeader = /* @__PURE__ */ __name((val, maxAge) => COOKIE + "=" + val + "; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=" + maxAge, "cookieHeader");
+var jwksCache = null;
+var jwksAt = 0;
 async function googleKeys() {
-  if (jwksCache && Date.now() - jwksAt < 3600e3) return jwksCache;
+  if (jwksCache && Date.now() - jwksAt < 36e5) return jwksCache;
   const r = await fetch("https://www.googleapis.com/oauth2/v3/certs");
   if (!r.ok) throw new UserError("Unable to reach Google to verify the sign-in.");
-  jwksCache = (await r.json()).keys || []; jwksAt = Date.now();
+  jwksCache = (await r.json()).keys || [];
+  jwksAt = Date.now();
   return jwksCache;
 }
+__name(googleKeys, "googleKeys");
 async function verifyGoogleToken(token, clientId, domain) {
   const parts = String(token || "").split(".");
   if (parts.length !== 3) throw new UserError("Sign-in token is not valid.");
-  const dec = s => JSON.parse(new TextDecoder().decode(b64uDecode(s)));
+  const dec = /* @__PURE__ */ __name((s) => JSON.parse(new TextDecoder().decode(b64uDecode(s))), "dec");
   let head, pl;
-  try { head = dec(parts[0]); pl = dec(parts[1]); b64uDecode(parts[2]); } catch (e) { throw new UserError("Sign-in token is not valid."); }
-  let jwk = (await googleKeys()).find(k => k.kid === head.kid);
-  if (!jwk) { jwksCache = null; jwk = (await googleKeys()).find(k => k.kid === head.kid); }
+  try {
+    head = dec(parts[0]);
+    pl = dec(parts[1]);
+    b64uDecode(parts[2]);
+  } catch (e) {
+    throw new UserError("Sign-in token is not valid.");
+  }
+  let jwk = (await googleKeys()).find((k) => k.kid === head.kid);
+  if (!jwk) {
+    jwksCache = null;
+    jwk = (await googleKeys()).find((k) => k.kid === head.kid);
+  }
   if (!jwk || head.alg !== "RS256") throw new UserError("Sign-in token is not recognized.");
   const key = await crypto.subtle.importKey("jwk", jwk, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]);
   const ok = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, b64uDecode(parts[2]), new TextEncoder().encode(parts[0] + "." + parts[1]));
   if (!ok) throw new UserError("Sign-in token signature is not valid.");
   if (pl.aud !== clientId) throw new UserError("Sign-in token is not for this application.");
   if (pl.iss !== "accounts.google.com" && pl.iss !== "https://accounts.google.com") throw new UserError("Token issuer is not valid.");
-  if (!pl.exp || pl.exp * 1000 < Date.now()) throw new UserError("Google session expired, please sign in again.");
+  if (!pl.exp || pl.exp * 1e3 < Date.now()) throw new UserError("Google session expired, please sign in again.");
   const email = String(pl.email || "").toLowerCase();
   if (!pl.email_verified || pl.hd !== domain || !email.endsWith("@" + domain)) throw new UserError("Only @" + domain + " accounts may access this application.");
   return email;
 }
-// ---------- Hak akses: master admin vs admin per customer ----------
+__name(verifyGoogleToken, "verifyGoogleToken");
 async function accessCtx(env, me) {
   const masters = String(env.MASTER_EMAILS || "").toLowerCase().split(/[\s,;]+/).filter(Boolean);
-  const master = me.admin || (!!me.email && masters.includes(me.email));
-  let presales = master;
+  let presales = false;
   if (!presales && me.email) {
     const members = await env.DB.prepare("SELECT data FROM site_items WHERE kind='member'").all();
-    presales = (members.results || []).some(r => {
-      try { const d = JSON.parse(r.data); return d.inactive !== "1" && String(d.email || "").trim().toLowerCase() === me.email; } catch (_) { return false; }
+    presales = (members.results || []).some((r) => {
+      try {
+        const d = JSON.parse(r.data);
+        return d.inactive !== "1" && String(d.email || "").trim().toLowerCase() === me.email;
+      } catch (_) {
+        return false;
+      }
     });
   }
-  const edit = new Set();
-  if (!master && me.email) (await env.DB.prepare("SELECT customerId FROM customer_admins WHERE email=?").bind(me.email).all()).results.forEach(r => edit.add(r.customerId));
-  // Presales who created a customer can manage that customer's devices automatically
-  if (!master && presales && me.email) (await env.DB.prepare("SELECT id FROM customers WHERE lower(createdBy)=?").bind(me.email).all()).results.forEach(r => edit.add(r.id));
-  // Sales: tagged customers (customer card "Sales" field). A sales person's Manager gets the same access.
-  const tagged = new Set(); let salesOnly = false;
+  const master = presales && masters.includes(me.email);
+  const edit = /* @__PURE__ */ new Set();
+  if (!master && me.email) (await env.DB.prepare("SELECT customerId FROM customer_admins WHERE email=?").bind(me.email).all()).results.forEach((r) => edit.add(r.customerId));
+  if (!master && presales && me.email) (await env.DB.prepare("SELECT id FROM customers WHERE lower(createdBy)=?").bind(me.email).all()).results.forEach((r) => edit.add(r.id));
+  const tagged = /* @__PURE__ */ new Set();
+  let salesOnly = false;
   if (!master && me.email) {
     const em = me.email.toLowerCase();
     const items = (await env.DB.prepare("SELECT kind,data FROM site_items WHERE kind IN ('sales','salesContact')").all()).results || [];
     const salesRecs = [], contacts = [];
-    for (const r of items) { try { (r.kind === "sales" ? salesRecs : contacts).push(JSON.parse(r.data)); } catch (_) {} }
-    const low = v => String(v || "").trim().toLowerCase();
-    const contactEmail = name => { const n = low(name); const c = n && contacts.find(x => low(x.name) === n && x.email); return c ? low(c.email) : ""; };
-    const covered = new Set([em]);   // sales e-mails whose customers this account may view
+    for (const r of items) {
+      try {
+        (r.kind === "sales" ? salesRecs : contacts).push(JSON.parse(r.data));
+      } catch (_) {
+      }
+    }
+    const low = /* @__PURE__ */ __name((v) => String(v || "").trim().toLowerCase(), "low");
+    const contactEmail = /* @__PURE__ */ __name((name) => {
+      const n = low(name);
+      const c = n && contacts.find((x) => low(x.name) === n && x.email);
+      return c ? low(c.email) : "";
+    }, "contactEmail");
+    const covered = /* @__PURE__ */ new Set([em]);
     let isManager = false;
     for (const rec of salesRecs) {
-      if (!rec.email) continue;
+      if (!rec.email || String(rec.active) !== "1") continue;
       const mgrEmail = low(rec.mgrEmail) || contactEmail(rec.mgr);
-      if (mgrEmail && mgrEmail === em) { covered.add(low(rec.email)); isManager = true; }
+      if (mgrEmail && mgrEmail === em) {
+        covered.add(low(rec.email));
+        isManager = true;
+      }
     }
-    (await env.DB.prepare("SELECT id,COALESCE(sales,'') AS sales FROM customers").all()).results.forEach(r => {
-      if (String(r.sales).toLowerCase().split(/[\s,;]+/).some(x => covered.has(x))) tagged.add(r.id);
+    (await env.DB.prepare("SELECT id,COALESCE(sales,'') AS sales FROM customers").all()).results.forEach((r) => {
+      if (String(r.sales).toLowerCase().split(/[\s,;]+/).some((x) => covered.has(x))) tagged.add(r.id);
     });
-    // Sales side = Sales Directory person, a Sales Manager, or any Sales Contact. They only see customers they are tagged on.
-    if (!presales) salesOnly = isManager || salesRecs.some(r => low(r.email) === em) || contacts.some(c => low(c.email) === em);
+    if (!presales) salesOnly = isManager || salesRecs.some((r) => String(r.active) === "1" && low(r.email) === em) || contacts.some((c) => low(c.email) === em && /\b(sales|gm|director|manager)\b/i.test(String(c.type || "")));
   }
   return { master, presales, edit, email: me.email, tagged, salesOnly };
 }
+__name(accessCtx, "accessCtx");
+function checklistFields(data, ctx, proposal) {
+  if (!ctx.email || ["Submitted", "Cancelled", "Won", "Lost", "Menang", "Kalah"].includes(proposal.status)) return [];
+  const norm = /* @__PURE__ */ __name((v) => clean(v).toLowerCase(), "norm");
+  const owns = /* @__PURE__ */ __name((rows, value) => String(value || "").split(/[,;\n]+/).some((name) => {
+    const key = norm(name);
+    if (!key) return false;
+    const exact = rows.filter((r) => norm(r.name) === key || norm(r.email) === key);
+    const parts = key.split(/[^a-z0-9]+/).filter(Boolean);
+    const matches = exact.length || parts.length < 2 ? exact : rows.filter((r) => [r.name, clean(r.email).split("@")[0]].some((v) => {
+      const identity = norm(v).split(/[^a-z0-9]+/).filter(Boolean);
+      const [short, long] = parts.length <= identity.length ? [parts, identity] : [identity, parts];
+      return short.length >= 2 && short.every((t) => long.includes(t));
+    }));
+    return matches.length === 1 && norm(matches[0].email) === ctx.email;
+  }), "owns");
+  const keys = [];
+  if (owns((data.sales || []).filter((r) => r.active === "1"), proposal.sales)) keys.push("adminDocumentsReady", "productPricingConfirmed");
+  if (ctx.presales && owns((data.members || []).filter((r) => r.inactive !== "1"), proposal.presales)) keys.push("proposalUploaded");
+  return keys;
+}
+__name(checklistFields, "checklistFields");
 function proposalsVisibleTo(data, ctx, email) {
-  if (ctx.master) return { ...data, proposals: (data.proposals || []).map(p => ({ ...p, canManage: true })) };
+  data = { ...data, proposals: (data.proposals || []).map((p) => ({ ...p, checklistFields: checklistFields(data, ctx, p) })) };
+  if (ctx.master) return { ...data, proposals: (data.proposals || []).map((p) => ({ ...p, canManage: true })) };
   const userEmail = String(email || "").trim().toLowerCase();
   if (!userEmail) return { ...data, proposals: [] };
-  const toks = v => [...new Set(String(v || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean))];
-  // Same person if names are equal, or the shorter name (2+ words) is fully contained in the longer one ("Tasya Putri" ~ "Tasya Putri Kamila")
-  const same = (a, b) => {
+  const toks = /* @__PURE__ */ __name((v) => [...new Set(String(v || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean))], "toks");
+  const same = /* @__PURE__ */ __name((a, b) => {
     const x = toks(a), y = toks(b);
     if (!x.length || !y.length) return false;
     const [sm, lg] = x.length <= y.length ? [x, y] : [y, x];
-    return sm.length >= 2 ? sm.every(t => lg.includes(t)) : (x.length === y.length && x[0] === y[0]);
-  };
+    return sm.length >= 2 ? sm.every((t) => lg.includes(t)) : x.length === y.length && x[0] === y[0];
+  }, "same");
   const mine = [];
-  for (const x of (data.members || [])) if (x.inactive !== "1" && String(x.email || "").trim().toLowerCase() === userEmail && x.name) mine.push(x.name);
-  for (const x of (data.sales || [])) if (String(x.email || "").trim().toLowerCase() === userEmail && x.name) mine.push(x.name);
-  // The email's own name parts (e.g. tasya.kamila@ -> "tasya kamila") count as an identity too
+  for (const x of data.members || []) if (x.inactive !== "1" && String(x.email || "").trim().toLowerCase() === userEmail && x.name) mine.push(x.name);
+  for (const x of data.sales || []) if (String(x.email || "").trim().toLowerCase() === userEmail && x.name) mine.push(x.name);
   const local = userEmail.split("@")[0].replace(/[._-]+/g, " ");
   if (toks(local).length >= 2) mine.push(local);
-  for (const x of (data.salesContacts || [])) if (String(x.email || "").trim().toLowerCase() === userEmail && x.name) mine.push(x.name);
-  const isMe = name => mine.some(n => same(n, name));
-  // Manager access: sales people who report to this account (by manager email, the Manager contact's email, or manager name)
-  const contactEmail = name => { const c = (data.salesContacts || []).find(x => x.email && same(x.name, name)); return c ? String(c.email).trim().toLowerCase() : ""; };
-  const reports = (data.sales || []).filter(r => r.name && r.mgr !== undefined && (
-    String(r.mgrEmail || "").trim().toLowerCase() === userEmail ||
-    (r.mgr && (contactEmail(r.mgr) === userEmail || mine.some(n => same(n, r.mgr)))))).map(r => r.name);
-  const isMyReport = name => reports.some(n => same(n, name));
+  for (const x of data.salesContacts || []) if (String(x.email || "").trim().toLowerCase() === userEmail && x.name) mine.push(x.name);
+  const isMe = /* @__PURE__ */ __name((name) => mine.some((n) => same(n, name)), "isMe");
+  const contactEmail = /* @__PURE__ */ __name((name) => {
+    const c = (data.salesContacts || []).find((x) => x.email && same(x.name, name));
+    return c ? String(c.email).trim().toLowerCase() : "";
+  }, "contactEmail");
+  const reports = (data.sales || []).filter((r) => r.name && r.mgr !== void 0 && (String(r.mgrEmail || "").trim().toLowerCase() === userEmail || r.mgr && (contactEmail(r.mgr) === userEmail || mine.some((n) => same(n, r.mgr))))).map((r) => r.name);
+  const isMyReport = /* @__PURE__ */ __name((name) => reports.some((n) => same(n, name)), "isMyReport");
   return {
     ...data,
-    proposals: (data.proposals || []).map(p => ({ ...p, canManage: !!(ctx.presales && (
-      String(p.createdBy || "").toLowerCase() === userEmail ||
-      String(p.presales || "").split(/[,;\n]+/).some(name => isMe(name.trim())))) })).filter(p => {
-      // 1) created or last edited by this account
+    proposals: (data.proposals || []).map((p) => ({ ...p, canManage: !!(ctx.presales && (String(p.createdBy || "").toLowerCase() === userEmail || String(p.presales || "").split(/[,;\n]+/).some((name) => isMe(name.trim())))) })).filter((p) => {
       if (String(p.createdBy || "").toLowerCase() === userEmail || String(p.editedBy || "").toLowerCase() === userEmail) return true;
-      // 2) tagged as Sales
       if (isMe(String(p.sales || "").trim())) return true;
-      // 2b) tagged Sales reports to this account (Manager view)
       if (isMyReport(String(p.sales || "").trim())) return true;
-      // 3) tagged as Presales
-      return String(p.presales || "").split(/[,;\n]+/).some(name => isMe(name.trim()));
+      return String(p.presales || "").split(/[,;\n]+/).some((name) => isMe(name.trim()));
     })
   };
 }
-const MASTER_ONLY = new Set(["savePagesDraft", "publishPages", "restorePages", "discardPagesDraft", "deleteCustomer", "listAdmins", "saveAdmin", "deleteAdmin", "saveSiteText", "saveUiTexts", "saveItem", "deleteItem"]);
+__name(proposalsVisibleTo, "proposalsVisibleTo");
+var MASTER_ONLY = /* @__PURE__ */ new Set(["savePagesDraft", "publishPages", "restorePages", "discardPagesDraft", "deleteCustomer", "listAdmins", "saveAdmin", "deleteAdmin", "saveSiteText", "saveUiTexts", "saveItem", "deleteItem"]);
 function mayEditCustomer(ctx, customer) {
-  return !!(ctx && (ctx.master || (ctx.presales
-    ? ctx.email && customer.createdBy === ctx.email
-    : ctx.edit.has(customer.id))));
+  return !!(ctx && (ctx.master || (ctx.presales ? ctx.email && customer.createdBy === ctx.email : ctx.edit.has(customer.id))));
 }
+__name(mayEditCustomer, "mayEditCustomer");
 async function canManageProposal(db, ctx, id) {
   if (!ctx || !ctx.presales || !ctx.email) return false;
   const row = await db.prepare("SELECT id FROM site_items WHERE id=? AND kind='proposal'").bind(clean(id)).first();
   if (!row) return false;
   const vis = proposalsVisibleTo(await API.getSite(db), ctx, ctx.email);
-  const p = (vis.proposals || []).find(x => x.id === clean(id));
+  const p = (vis.proposals || []).find((x) => x.id === clean(id));
   return !!(p && p.canManage);
 }
+__name(canManageProposal, "canManageProposal");
 async function authorize(db, ctx, fn, args) {
-  const deny = () => { const e = new UserError("You do not have admin rights for this customer."); e.status = 403; throw e; };
+  const deny = /* @__PURE__ */ __name(() => {
+    const e = new UserError("You do not have admin rights for this customer.");
+    e.status = 403;
+    throw e;
+  }, "deny");
   if (ctx.master) return;
   if (fn === "saveItem") {
     const kind = args[0], rec = args[1] || {};
@@ -1820,14 +2253,25 @@ async function authorize(db, ctx, fn, args) {
       }
       return;
     }
-    // Presales who created the proposal or is tagged as Presales (Primary / Co) may edit it
     if (kind === "proposal" && ctx.presales && clean(rec.id) && await canManageProposal(db, ctx, rec.id)) return;
     deny();
   }
-  if (fn === "getCustomerMaster") { if (ctx.presales) return; deny(); }
-  if (fn === "getMyRequests") { if (ctx.email) return; deny(); }
-  if (fn === "getRequests" || fn === "updateRequest") { if (ctx.presales) return; deny(); }
-  if (fn === "saveCustomerMaster") { if (ctx.presales && !clean(args[0] && args[0].id)) return; deny(); }
+  if (fn === "getCustomerMaster") {
+    if (ctx.presales) return;
+    deny();
+  }
+  if (fn === "getMyRequests") {
+    if (ctx.email) return;
+    deny();
+  }
+  if (fn === "getRequests" || fn === "updateRequest") {
+    if (ctx.presales) return;
+    deny();
+  }
+  if (fn === "saveCustomerMaster") {
+    if (ctx.presales && !clean(args[0] && args[0].id)) return;
+    deny();
+  }
   if (fn === "deleteItem") {
     if (ctx.presales && await canManageProposal(db, ctx, args[0])) return;
     deny();
@@ -1840,21 +2284,24 @@ async function authorize(db, ctx, fn, args) {
     return;
   }
   if (!ctx.edit.size || MASTER_ONLY.has(fn)) deny();
-  const devCust = async id => { const r = await db.prepare("SELECT customerId FROM devices WHERE id=?").bind(clean(id)).first(); return r ? r.customerId : null; };
+  const devCust = /* @__PURE__ */ __name(async (id) => {
+    const r = await db.prepare("SELECT customerId FROM devices WHERE id=?").bind(clean(id)).first();
+    return r ? r.customerId : null;
+  }, "devCust");
   if (fn === "saveDevice") {
     const rec = args[0] || {};
     if (!ctx.edit.has(clean(rec.customerId))) deny();
     const old = rec.id ? await devCust(rec.id) : null;
     if (old && !ctx.edit.has(old)) deny();
   } else if (fn === "deleteDevice" || fn === "muteDevice" || fn === "setRenewal" || fn === "setDismantle") {
-    const c = await devCust(args[0]); if (!c || !ctx.edit.has(c)) deny();
+    const c = await devCust(args[0]);
+    if (!c || !ctx.edit.has(c)) deny();
   } else if (fn === "importDevices") {
     const list = Array.isArray(args[0]) ? args[0] : [];
-    if (list.some(r => !ctx.edit.has(clean(r && r.customerId)))) deny();
+    if (list.some((r) => !ctx.edit.has(clean(r && r.customerId)))) deny();
   } else deny();
 }
-
-// isi sesi: "admin" | "admin|email" | "user:email"
+__name(authorize, "authorize");
 function parseWho(who) {
   if (!who) return { admin: false, email: "" };
   if (who === "admin") return { admin: true, email: "" };
@@ -1862,34 +2309,24 @@ function parseWho(who) {
   if (who.startsWith("user:")) return { admin: false, email: who.slice(5) };
   return { admin: false, email: "" };
 }
-
-// ---------- Admin login (password) with simple brute-force throttle ----------
-async function sha256(s) { return new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s))); }
+__name(parseWho, "parseWho");
+async function sha256(s) {
+  return new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
+}
+__name(sha256, "sha256");
 async function safeEqual(a, b) {
   const [x, y] = [await sha256(a), await sha256(b)];
-  let d = 0; for (let i = 0; i < x.length; i++) d |= x[i] ^ y[i];
+  let d = 0;
+  for (let i = 0; i < x.length; i++) d |= x[i] ^ y[i];
   return d === 0;
 }
-const MAX_FAILS = 10, LOCK_MIN = 15;
-async function checkThrottle(db, ip) {
-  const r = await db.prepare("SELECT fails, until FROM login_attempts WHERE ip=?").bind(ip).first();
-  if (r && r.until && r.until > Date.now()) throw new UserError("Too many attempts. Try again in " + Math.ceil((r.until - Date.now()) / 60000) + " minutes.");
-  return r;
-}
-async function recordFail(db, ip, prev) {
-  const fails = (prev && (!prev.until || prev.until <= Date.now()) ? prev.fails : 0) + 1;
-  const until = fails >= MAX_FAILS ? Date.now() + LOCK_MIN * 60000 : 0;
-  await db.prepare("INSERT INTO login_attempts (ip,fails,until) VALUES (?,?,?) ON CONFLICT(ip) DO UPDATE SET fails=excluded.fails, until=excluded.until").bind(ip, until ? 0 : fails, until).run();
-}
-
-export default {
+__name(safeEqual, "safeEqual");
+var worker_default = {
   async fetch(request, env) {
     const url = new URL(request.url);
     const p = url.pathname;
-    // Health check untuk uptime monitor. Publik: status ringkas (tanpa data sensitif).
-    // Dengan header x-notify-key yang benar: status DB + jumlah customer/perangkat.
     if (p === "/health") {
-      const base = { ok: true, service: "inventory-aset", version: VERSION, time: new Date().toISOString() };
+      const base = { ok: true, service: "inventory-aset", version: VERSION, time: (/* @__PURE__ */ new Date()).toISOString() };
       const keyed = !!env.NOTIFY_KEY && await safeEqual(String(request.headers.get("x-notify-key") || ""), String(env.NOTIFY_KEY));
       if (!keyed) return json(base);
       try {
@@ -1897,41 +2334,30 @@ export default {
         const c = await env.DB.prepare("SELECT (SELECT COUNT(*) FROM customers) AS customers, (SELECT COUNT(*) FROM devices) AS devices").first();
         return json({ ...base, db: "up", customers: c.customers, devices: c.devices });
       } catch (e) {
-        return json({ ...base, ok: false, db: "down", error: String((e && e.message) || e) }, 503);
+        return json({ ...base, ok: false, db: "down", error: String(e && e.message || e) }, 503);
       }
     }
     if (request.method === "GET" && (p === "/" || p === "/index.html")) {
-      return new Response(HTML_TEMPLATE, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-frame-options": (new URL(request.url).searchParams.get("vmframe") === "1" ? "SAMEORIGIN" : "DENY"), "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors " + (new URL(request.url).searchParams.get("vmframe") === "1" ? "'self'" : "'none'") + "; script-src 'self' 'unsafe-inline' https://accounts.google.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://accounts.google.com; frame-src 'self' https://accounts.google.com" } });
+      return new Response(HTML_TEMPLATE, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-frame-options": new URL(request.url).searchParams.get("vmframe") === "1" ? "SAMEORIGIN" : "DENY", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors " + (new URL(request.url).searchParams.get("vmframe") === "1" ? "'self'" : "'none'") + "; script-src 'self' 'unsafe-inline' https://accounts.google.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://accounts.google.com; worker-src 'self' blob:; frame-src 'self' https://accounts.google.com" } });
     }
     if (!env.DB) return json({ error: "The D1 database is not bound (binding name: DB)." }, 500);
     try {
       await ensureSchema(env.DB);
       if (p === "/auth/admin" && request.method === "POST") {
-        if (!env.ADMIN_PASSWORD) throw new UserError("The admin password is not set on the server (wrangler secret put ADMIN_PASSWORD).");
-        const ip = request.headers.get("cf-connecting-ip") || "unknown";
-        const prev = await checkThrottle(env.DB, ip);
-        const body = await request.json().catch(() => ({}));
-        if (!(await safeEqual(String(body.password || ""), env.ADMIN_PASSWORD))) {
-          await recordFail(env.DB, ip, prev);
-          await new Promise(r => setTimeout(r, 800));
-          throw new UserError("Incorrect admin password.");
-        }
-        await env.DB.prepare("DELETE FROM login_attempts WHERE ip=?").bind(ip).run();
-        const prevEmail = parseWho(await readSession(env.DB, request)).email;
-        return new Response(JSON.stringify({ admin: true }), { headers: { "content-type": "application/json", "set-cookie": cookieHeader(await makeSession(env.DB, prevEmail ? "admin|" + prevEmail : "admin"), SESSION_HOURS * 3600) } });
+        return json({ error: "Use an authorized Berca Google account to sign in." }, 403);
       }
       const domain = String(env.ALLOWED_DOMAIN || "berca.co.id").toLowerCase();
-      const gated = !!env.GOOGLE_CLIENT_ID;   // login Google wajib untuk melihat data bila Client ID diisi
+      const gated = !!env.GOOGLE_CLIENT_ID;
       if (p === "/auth/google" && request.method === "POST") {
         if (!gated) throw new UserError("Google sign-in is not configured (GOOGLE_CLIENT_ID).");
         const body = await request.json().catch(() => ({}));
         const email = await verifyGoogleToken(body.credential, env.GOOGLE_CLIENT_ID, domain);
-        const cur = parseWho(await readSession(env.DB, request));
-        const sess = cur.admin ? "admin|" + email : "user:" + email;
+        const access = await accessCtx(env, { admin: false, email });
+        if (!access.presales && !access.salesOnly) return json({ error: "Access is restricted to active Sales and Presales accounts." }, 403);
+        const sess = "user:" + email;
         return new Response(JSON.stringify({ ok: true, email }), { headers: { "content-type": "application/json", "set-cookie": cookieHeader(await makeSession(env.DB, sess), SESSION_HOURS * 3600) } });
       }
       if (p === "/auth/logout" && request.method === "POST") {
-        // keluar admin -> kembali jadi viewer (jika sudah login Google); ?all=1 -> keluar total
         const cur = parseWho(await readSession(env.DB, request));
         const keep = cur.admin && cur.email && url.searchParams.get("all") !== "1";
         const val = keep ? await makeSession(env.DB, "user:" + cur.email) : "";
@@ -1939,9 +2365,8 @@ export default {
       }
       const me = parseWho(await readSession(env.DB, request));
       const isAdmin = me.admin;
-      const isViewer = isAdmin || !!me.email || !gated;
-      const realCtx = isViewer ? await accessCtx(env, me) : { master: false, edit: new Set() };
-      // Master-only "Preview as": see the app exactly as another user would (read-only)
+      let isViewer = false;
+      const realCtx = me.email ? await accessCtx(env, me) : { master: false, edit: /* @__PURE__ */ new Set() };
       if (p === "/auth/preview" && request.method === "POST") {
         if (!realCtx.master) return json({ error: "Only master admins can preview as another user." }, 403);
         const body = await request.json().catch(() => ({}));
@@ -1953,10 +2378,259 @@ export default {
       if (realCtx.master) {
         const pm = String(request.headers.get("cookie") || "").match(/(?:^|;\s*)previewAs=([^;]+)/);
         const pe = pm ? decodeURIComponent(pm[1]).trim().toLowerCase() : "";
-        if (pe && EMAIL_RE.test(pe) && pe.endsWith("@" + domain)) { previewAs = pe; ctx = await accessCtx(env, { admin: false, email: pe }); }
+        if (pe && EMAIL_RE.test(pe) && pe.endsWith("@" + domain)) {
+          previewAs = pe;
+          ctx = await accessCtx(env, { admin: false, email: pe });
+        }
       }
+      isViewer = !!(ctx.presales || ctx.salesOnly);
       const eff = previewAs ? { admin: false, email: previewAs } : me;
-      if (p === "/auth/me") return json({ admin: ctx.master, master: ctx.master, presales: ctx.presales, pwAdmin: previewAs ? false : isAdmin, editable: [...ctx.edit], viewer: isViewer, email: eff.email, gated, clientId: gated ? env.GOOGLE_CLIENT_ID : "", domain, previewAs, realMaster: realCtx.master, realEmail: me.email || "" });
+      const quotationManager = !!(!previewAs && isViewer && ctx.presales && eff.email === clean(env.REQUEST_PRESALES_MANAGER).toLowerCase());
+      if (p === "/auth/me") return json({ quotationManager, admin: ctx.master, master: ctx.master, presales: ctx.presales, pwAdmin: previewAs ? false : isAdmin, editable: [...ctx.edit], viewer: isViewer, email: eff.email, gated, clientId: gated ? env.GOOGLE_CLIENT_ID : "", domain, previewAs, realMaster: realCtx.master, realEmail: me.email || "" });
+      if (request.method === "POST" && ["/api/requestPrimary", "/api/submitDirectRequest"].includes(p)) {
+        if (!isViewer || !ctx.salesOnly && !(ctx.presales && eff.email === clean(env.REQUEST_PRESALES_MANAGER).toLowerCase())) return json({ error: "Authorized Sales or Presales Manager sign-in required." }, 403);
+        const args = await request.json().catch(() => []);
+        if (p === "/api/requestPrimary") {
+          if (!Object.hasOwn(DIRECT_REQUEST_TYPES, args?.[0])) throw new UserError("Select a request type.");
+          return json({ result: { routes: await requestRouting(env.DB, eff.email, args[0], env.REQUEST_PRESALES_MANAGER), readOnly: !!previewAs } });
+        }
+        if (previewAs) return json({ error: "Preview mode is read-only. Sign in as Sales to submit." }, 403);
+        return json({ result: await submitDirectRequest(env, eff.email, args?.[0]) });
+      }
+      if (p === "/api/updateProposalChecklist" && request.method === "POST") {
+        if (!isViewer || previewAs) return json({ error: "Sign in as the assigned PIC to update the checklist." }, 403);
+        const [id, key, ready] = await request.json();
+        if (typeof ready !== "boolean") throw new UserError("Invalid checklist value.");
+        const row = await env.DB.prepare("SELECT data FROM site_items WHERE id=? AND kind='proposal'").bind(clean(id)).first();
+        if (!row) return json({ error: "Proposal not found." }, 404);
+        const proposal = JSON.parse(row.data);
+        if (!checklistFields(await API.getSite(env.DB), ctx, proposal).includes(key)) return json({ error: "Only the assigned PIC may change this checklist item." }, 403);
+        const at = (/* @__PURE__ */ new Date()).toISOString();
+        const audit = { ...proposal.checklistAudit, [key]: { by: ctx.email, at } };
+        const next = { ...proposal, [key]: ready ? "1" : "", checklistAudit: audit };
+        const result = await env.DB.prepare("UPDATE site_items SET data=?,updatedAt=?,updatedBy=? WHERE id=? AND kind='proposal' AND data=?").bind(JSON.stringify(next), at, ctx.email, id, row.data).run();
+        if (!result.meta.changes) return json({ error: "Proposal changed. Reload and try again." }, 409);
+        return json({ result: { [key]: next[key], checklistAudit: audit } });
+      }
+      if (p === "/api/salesFollowups" && request.method === "POST") {
+        if (!isViewer || !eff.email) return json({ error: "Sign in to view requests." }, 403);
+        const [action, input] = await request.json();
+        if (previewAs && action !== "list" && action !== "options") return json({ error: "Preview is read-only." }, 403);
+        const db = env.DB, email = eff.email;
+        await db.prepare("CREATE TABLE IF NOT EXISTS sales_followups (id TEXT PRIMARY KEY, parent TEXT NOT NULL, proposal TEXT NOT NULL, sender TEXT NOT NULL, recipient TEXT NOT NULL, subject TEXT NOT NULL, details TEXT NOT NULL, created TEXT NOT NULL, reply TEXT NOT NULL DEFAULT '', replied TEXT NOT NULL DEFAULT '')").run();
+        if (action === "list") {
+          const rows = await db.prepare("SELECT * FROM sales_followups WHERE sender=?1 OR recipient=?1 ORDER BY created DESC LIMIT 100").bind(email).all();
+          return json({ result: rows.results });
+        }
+        if (action === "reply") {
+          const reply = clean(input?.reply).slice(0, 4e3);
+          if (!reply) throw new UserError("Enter a reply.");
+          const result = await db.prepare("UPDATE sales_followups SET reply=?,replied=? WHERE id=? AND recipient=? AND replied=''").bind(reply, (/* @__PURE__ */ new Date()).toISOString(), clean(input?.id), email).run();
+          if (!result.meta.changes) return json({ error: "This request has already been answered or is not assigned to you." }, 403);
+          return json({ result: true });
+        }
+        if (!ctx.presales) return json({ error: "Presales sign-in required." }, 403);
+        const site = await API.getSite(db), norm = /* @__PURE__ */ __name((v) => clean(v).toLowerCase(), "norm");
+        const active = site.sales.filter((r) => r.active === "1" && EMAIL_RE.test(norm(r.email)));
+        const manager = email === norm(env.REQUEST_PRESALES_MANAGER);
+        const identities = /* @__PURE__ */ new Set([norm(email.split("@")[0]).replace(/[^a-z0-9]/g, ""), ...site.members.filter((m2) => norm(m2.email) === email).map((m2) => norm(m2.name).replace(/[^a-z0-9]/g, ""))]);
+        const visible = proposalsVisibleTo(site, ctx, email);
+        const choices = active.filter((r) => manager || String(r.presales || "").split(/[,;\n]/).some((n) => identities.has(norm(n).replace(/[^a-z0-9]/g, ""))));
+        const proposals = visible.proposals.flatMap((p2) => {
+          if (!p2.checklistFields.includes("proposalUploaded") && !manager) return [];
+          const match = active.filter((r) => [norm(r.name), norm(r.email)].includes(norm(p2.sales)));
+          return match.length === 1 ? [{ id: p2.id, label: p2.customer || p2.title, recipient: norm(match[0].email) }] : [];
+        });
+        const requests = (await db.prepare("SELECT id,subject,fromEmail FROM sales_requests WHERE assignee=? AND status IN ('new','responded') ORDER BY receivedAt DESC LIMIT 100").bind(email).all()).results;
+        const parents = requests.filter((r) => active.some((a) => norm(a.email) === norm(r.fromEmail))).map((r) => ({ id: r.id, label: r.subject, recipient: norm(r.fromEmail) }));
+        const recipients = new Map(choices.map((r) => [norm(r.email), { email: norm(r.email), name: r.name, role: "Sales PIC" }]));
+        if (manager) {
+          const add = /* @__PURE__ */ __name((name, email2, role) => {
+            const address = norm(email2);
+            if (EMAIL_RE.test(address) && address.endsWith("@" + domain)) recipients.set(address, { email: address, name: clean(name) || address, role });
+          }, "add");
+          for (const r of active) add(r.mgr, r.mgrEmail, "Sales Manager");
+          for (const r of site.salesContacts || []) {
+            const role = norm(r.type);
+            if (role === "manager" || role === "gm") add(r.name, r.email, role === "gm" ? "GM" : "Sales Manager");
+          }
+        }
+        if (action === "options") return json({ result: { sales: [...recipients.values()], proposals, parents, readOnly: !!previewAs } });
+        if (action !== "create") throw new UserError("Unknown request action.");
+        const parent = clean(input?.parent), proposal = clean(input?.proposal), recipient = norm(input?.recipient);
+        const valid = parent ? parents.some((p2) => p2.id === parent && p2.recipient === recipient) : proposal ? proposals.some((p2) => p2.id === proposal && p2.recipient === recipient) : recipients.has(recipient);
+        const subject = clean(input?.subject).slice(0, 160), details = clean(input?.details).slice(0, 4e3), key = clean(input?.key);
+        if (!valid || !subject || !details || !/^[-a-f\d]{36}$/i.test(key)) throw new UserError("Choose an authorized Sales PIC and enter a subject and details.");
+        const id = parent || "sales-" + key;
+        await db.prepare("INSERT INTO sales_followups (id,parent,proposal,sender,recipient,subject,details,created) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING").bind(id, parent, proposal, email, recipient, subject, details, (/* @__PURE__ */ new Date()).toISOString()).run();
+        const saved = await db.prepare("SELECT replied FROM sales_followups WHERE id=? AND sender=? AND recipient=?").bind(id, email, recipient).first();
+        if (!saved || saved.replied) throw new UserError("This request already has a completed Sales follow-up.");
+        return json({ result: { id } });
+      }
+      if (p === "/api/servicesQuota") {
+        if (!quotationManager || previewAs) return json({ error: "Only the Presales Manager may access services pricing." }, 403);
+        const db = env.DB;
+        await db.prepare("CREATE TABLE IF NOT EXISTS service_quota_targets (year INTEGER PRIMARY KEY, amount INTEGER NOT NULL)").run();
+        const year = Number(url.searchParams.get("year"));
+        if (!Number.isInteger(year) || year < 2027 || year > 2100) throw new UserError("Choose a target year from 2027 onward.");
+        if (request.method === "POST") {
+          if (!quotationManager || previewAs) return json({ error: "Only the Presales Manager can set a target." }, 403);
+          const body = await request.json().catch(() => null), amount = body?.amount;
+          if (!Number.isSafeInteger(amount) || amount <= 0) throw new UserError("Enter a positive target in whole rupiah.");
+          await db.prepare("INSERT INTO service_quota_targets VALUES (?,?) ON CONFLICT(year) DO UPDATE SET amount=excluded.amount").bind(year, amount).run();
+        } else if (request.method !== "GET") return json({ error: "Method not allowed." }, 405);
+        const target = await db.prepare("SELECT amount FROM service_quota_targets WHERE year=?").bind(year).first();
+        const data = await db.prepare("WITH latest AS (SELECT q.id,q.submitted,ROW_NUMBER() OVER(PARTITION BY q.number ORDER BY q.created DESC,q.id DESC) AS version FROM service_quotations q WHERE q.archived=0) SELECT CAST(substr(q.submitted,6,2) AS INTEGER) AS month, SUM(json_extract(b.data,'$.total')) AS amount FROM latest q JOIN service_quotation_budget b ON b.id=q.id WHERE q.version=1 AND substr(q.submitted,1,4)=? GROUP BY month").bind(String(year)).all();
+        const quarters = [0, 0, 0, 0];
+        for (const row of data.results) if (row.month >= 1 && row.month <= 12) quarters[Math.ceil(row.month / 3) - 1] += Number(row.amount) || 0;
+        return json({ result: { target: target?.amount ?? null, quarters, canEdit: quotationManager && !previewAs } });
+      }
+      if (p === "/api/servicesQuotaHistorical" && request.method === "GET") {
+        if (!quotationManager || previewAs) return json({ error: "Only the Presales Manager may access services pricing." }, 403);
+        return json({ result: { "annualOrdering": [{ "year": 2025, "integration": 16059e5, "infrastructure": 310364087518e-2, "integrationItems": 53, "infrastructureItems": 86 }, { "year": 2026, "integration": 2093880183, "infrastructure": 883500024, "integrationItems": 47, "infrastructureItems": 35 }], "year": 2026, "accounts": [{ "name": "Ithaca Resources", "sales": ["Natalia Desy Dwi Cahyani"], "total": 52e6 }, { "name": "Borneo Alumina Indonesia", "sales": ["Lydia Stefani Tasik"], "total": 74e6 }, { "name": "ARUTMIN INDONESIA", "sales": ["Evelin Yulian Hartanto"], "total": 15e6 }, { "name": "Searah Ketapang 2 Ltd.", "sales": ["Daffa Adlianto Yuwono"], "total": 165e6 }, { "name": "Kaltim Prima Coal - KPC", "sales": ["Evelin Yulian Hartanto"], "total": 136e6 }, { "name": "Petrochina Indonesia (Jabung)", "sales": ["Fitri Herdyanti Mardhiyah"], "total": 3e7 }, { "name": "Borneo Alumina Indonesia", "sales": ["Chynthia Ludya Soen"], "total": 92e6 }, { "name": "Pupuk Kaltim Bontang", "sales": ["Chynthia Ludya Soen"], "total": 15408e4 }, { "name": "Bumi Resources Tbk PT", "sales": ["Evelin Yulian Hartanto"], "total": 3e7 }, { "name": "PT Kumala Sarana Utama", "sales": ["Hoki Yohanes Park"], "total": 3e6 }, { "name": "Indonesia Comnets Plus, PT", "sales": ["Shada Mahira Ramadhani"], "total": 4e6 }, { "name": "Indonesia Pratama", "sales": ["Shada Mahira Ramadhani"], "total": 35e6 }, { "name": "Indonesia Pratama", "sales": ["Syafira Ramadhanti Siregar"], "total": 64000014 }, { "name": "COGINDO DAYA BERSAMA PT", "sales": ["Farrel Simon"], "total": 149000010 }, { "name": "PLN Indonesia Power", "sales": ["Shada Mahira Ramadhani"], "total": 800000024 }, { "name": "PLN Indonesia Power", "sales": ["Handijaya Handijaya"], "total": 1e8 }, { "name": "PT Kalimantan Jawa Gas", "sales": ["Farrel Simon"], "total": 9e7 }, { "name": "Vale Indonesia", "sales": ["Sophie Dwivita Evans Anthen"], "total": 28e6 }, { "name": "United Tractor Pandu Engineering", "sales": ["Shinta Oktriviani"], "total": 7125e4 }, { "name": "JOB PERTAMINA - MEDCO E&P TOMORI SULAWESI", "sales": ["Puti Salsabila"], "total": 4e7 }, { "name": "PT Berau Coal", "sales": ["Gebby Seskia Veronika"], "total": 346050155 }, { "name": "INDO MURO KENCANA PT", "sales": ["Fahmi Ardiansyah"], "total": 133000004 }, { "name": "Indo Tambangraya Megah", "sales": ["Puti Salsabila"], "total": 24e6 }, { "name": "Pelsart Tambang Kencana", "sales": ["Fahmi Ardiansyah"], "total": 133e6 }, { "name": "Indonesia Morowali Industrial Park (IMIP)", "sales": ["Gebby Seskia Veronika"], "total": 155e6 }, { "name": "PT Unggul Dinamika Utama", "sales": ["Fahmi Ardiansyah"], "total": 36e6 }, { "name": "PTTEP MALUNDA LIMITED", "sales": ["Fahmi Ardiansyah"], "total": 8e6 }, { "name": "PT Borneo Indobara", "sales": ["Gebby Seskia Veronika"], "total": 1e7 }], "customers": [{ "name": "PLN Indonesia Power", "integration": 51e7, "infrastructure": 390000024, "total": 900000024 }, { "name": "PT Berau Coal", "integration": 346050155, "infrastructure": 0, "total": 346050155 }, { "name": "Borneo Alumina Indonesia", "integration": 166e6, "infrastructure": 0, "total": 166e6 }, { "name": "Searah Ketapang 2 Ltd.", "integration": 825e5, "infrastructure": 825e5, "total": 165e6 }, { "name": "Indonesia Morowali Industrial Park (IMIP)", "integration": 155e6, "infrastructure": 0, "total": 155e6 }, { "name": "Pupuk Kaltim Bontang", "integration": 15408e4, "infrastructure": 0, "total": 15408e4 }, { "name": "COGINDO DAYA BERSAMA PT", "integration": 80000010, "infrastructure": 69e6, "total": 149000010 }, { "name": "Kaltim Prima Coal - KPC", "integration": 68e6, "infrastructure": 68e6, "total": 136e6 }, { "name": "INDO MURO KENCANA PT", "integration": 129000004, "infrastructure": 4e6, "total": 133000004 }, { "name": "Pelsart Tambang Kencana", "integration": 129e6, "infrastructure": 4e6, "total": 133e6 }, { "name": "Indonesia Pratama", "integration": 75000014, "infrastructure": 24e6, "total": 99000014 }, { "name": "PT Kalimantan Jawa Gas", "integration": 48e6, "infrastructure": 42e6, "total": 9e7 }, { "name": "United Tractor Pandu Engineering", "integration": 4725e4, "infrastructure": 24e6, "total": 7125e4 }, { "name": "Ithaca Resources", "integration": 0, "infrastructure": 52e6, "total": 52e6 }, { "name": "JOB PERTAMINA - MEDCO E&P TOMORI SULAWESI", "integration": 4e7, "infrastructure": 0, "total": 4e7 }, { "name": "PT Unggul Dinamika Utama", "integration": 36e6, "infrastructure": 0, "total": 36e6 }, { "name": "Bumi Resources Tbk PT", "integration": 0, "infrastructure": 3e7, "total": 3e7 }, { "name": "Petrochina Indonesia (Jabung)", "integration": 0, "infrastructure": 3e7, "total": 3e7 }, { "name": "Vale Indonesia", "integration": 0, "infrastructure": 28e6, "total": 28e6 }, { "name": "Indo Tambangraya Megah", "integration": 24e6, "infrastructure": 0, "total": 24e6 }, { "name": "ARUTMIN INDONESIA", "integration": 0, "infrastructure": 15e6, "total": 15e6 }, { "name": "PT Borneo Indobara", "integration": 0, "infrastructure": 1e7, "total": 1e7 }, { "name": "PTTEP MALUNDA LIMITED", "integration": 0, "infrastructure": 8e6, "total": 8e6 }, { "name": "Indonesia Comnets Plus, PT", "integration": 4e6, "infrastructure": 0, "total": 4e6 }, { "name": "PT Kumala Sarana Utama", "integration": 0, "infrastructure": 3e6, "total": 3e6 }], "sales": [{ "name": "Shada Mahira Ramadhani", "integration": 479e6, "infrastructure": 360000024, "total": 839000024 }, { "name": "Gebby Seskia Veronika", "integration": 501050155, "infrastructure": 1e7, "total": 511050155 }, { "name": "Fahmi Ardiansyah", "integration": 294000004, "infrastructure": 16e6, "total": 310000004 }, { "name": "Chynthia Ludya Soen", "integration": 24608e4, "infrastructure": 0, "total": 24608e4 }, { "name": "Farrel Simon", "integration": 128000010, "infrastructure": 111e6, "total": 239000010 }, { "name": "Evelin Yulian Hartanto", "integration": 68e6, "infrastructure": 113e6, "total": 181e6 }, { "name": "Daffa Adlianto Yuwono", "integration": 825e5, "infrastructure": 825e5, "total": 165e6 }, { "name": "Handijaya Handijaya", "integration": 6e7, "infrastructure": 4e7, "total": 1e8 }, { "name": "Lydia Stefani Tasik", "integration": 74e6, "infrastructure": 0, "total": 74e6 }, { "name": "Shinta Oktriviani", "integration": 4725e4, "infrastructure": 24e6, "total": 7125e4 }, { "name": "Syafira Ramadhanti Siregar", "integration": 50000014, "infrastructure": 14e6, "total": 64000014 }, { "name": "Puti Salsabila", "integration": 64e6, "infrastructure": 0, "total": 64e6 }, { "name": "Natalia Desy Dwi Cahyani", "integration": 0, "infrastructure": 52e6, "total": 52e6 }, { "name": "Fitri Herdyanti Mardhiyah", "integration": 0, "infrastructure": 3e7, "total": 3e7 }, { "name": "Sophie Dwivita Evans Anthen", "integration": 0, "infrastructure": 28e6, "total": 28e6 }, { "name": "Hoki Yohanes Park", "integration": 0, "infrastructure": 3e6, "total": 3e6 }], "total": 2977380207, "integration": 2093880183, "infrastructure": 883500024, "funnelValue": 2e8 } });
+      }
+      const quotationFile = p.match(/^\/api\/servicesQuotations\/([a-f0-9-]{36})\.pdf$/);
+      if (p === "/api/servicesQuotations" || quotationFile) {
+        if (!isViewer || !ctx.presales || !eff.email) return json({ error: "Presales access required." }, 403);
+        if (request.method !== "GET" && !quotationManager) return json({ error: "Only the Presales Manager may manage submitted quotations." }, 403);
+        const db = env.DB;
+        await db.batch([
+          db.prepare("CREATE TABLE IF NOT EXISTS service_quotations (id TEXT PRIMARY KEY, number TEXT NOT NULL, customer TEXT NOT NULL, project TEXT NOT NULL, submitted TEXT NOT NULL, validUntil TEXT NOT NULL, pics TEXT NOT NULL, created TEXT NOT NULL, archived INTEGER NOT NULL DEFAULT 0)"),
+          db.prepare("CREATE INDEX IF NOT EXISTS service_quotation_number ON service_quotations(number,created)"),
+          db.prepare("CREATE TABLE IF NOT EXISTS service_quotation_pdf (id TEXT NOT NULL, seq INTEGER NOT NULL, bytes BLOB NOT NULL, PRIMARY KEY(id,seq))"),
+          db.prepare("CREATE TABLE IF NOT EXISTS service_quotation_budget (id TEXT PRIMARY KEY, data TEXT NOT NULL)"),
+          db.prepare("CREATE TABLE IF NOT EXISTS service_quotation_customer (id TEXT PRIMARY KEY, customerId TEXT NOT NULL)"),
+          db.prepare("CREATE TABLE IF NOT EXISTS service_quotation_sales (number TEXT PRIMARY KEY, sales TEXT NOT NULL)")
+        ]);
+        const salesNames = /* @__PURE__ */ __name((value) => {
+          try {
+            const names = JSON.parse(value || "[]");
+            return Array.isArray(names) ? [...new Map(names.filter((n) => typeof n === "string" && n.trim()).map((n) => [n.trim().toLowerCase(), n.trim()])).values()] : [];
+          } catch (_) {
+            return [];
+          }
+        }, "salesNames");
+        const permitted = /* @__PURE__ */ __name((row) => quotationManager || JSON.parse(row.pics).some((email) => clean(email).toLowerCase() === clean(eff.email).toLowerCase()), "permitted");
+        if (quotationFile && request.method === "GET") {
+          const row = await db.prepare("SELECT * FROM service_quotations WHERE id=?").bind(quotationFile[1]).first();
+          const latest = quotationManager || !row ? null : await db.prepare("SELECT id FROM service_quotations WHERE number=? AND archived=0 ORDER BY created DESC,id DESC LIMIT 1").bind(row.number).first();
+          if (!row || row.archived || !permitted(row) || !quotationManager && latest?.id !== row.id) return json({ error: "Quotation not found." }, 404);
+          const parts = (await db.prepare("SELECT bytes FROM service_quotation_pdf WHERE id=? ORDER BY seq").bind(row.id).all()).results;
+          const disposition = url.searchParams.has("download") ? "attachment" : "inline";
+          return new Response(new Blob(parts.map((part) => new Uint8Array(part.bytes)), { type: "application/pdf" }), { headers: { "content-type": "application/pdf", "content-disposition": disposition + '; filename="' + row.number + '.pdf"', "cache-control": "private, no-store", "x-content-type-options": "nosniff", "x-frame-options": "SAMEORIGIN" } });
+        }
+        if (request.method === "GET" && !quotationFile) {
+          const rows = (await db.prepare("SELECT q.*, b.data AS budget, c.id AS customerId,c.sales AS customerSales,a.sales AS assignedSales, COALESCE(c.name,q.customer) AS customerDisplay FROM service_quotations q LEFT JOIN service_quotation_budget b ON q.id=b.id LEFT JOIN service_quotation_customer link ON q.id=link.id LEFT JOIN customer_master c ON c.id=COALESCE(link.customerId,(SELECT MIN(m.id) FROM customer_master m WHERE lower(trim(m.name))=lower(trim(q.customer)) HAVING COUNT(*)=1)) LEFT JOIN service_quotation_sales a ON a.number=q.number ORDER BY q.created DESC,q.id DESC").all()).results;
+          const visibleRows = quotationManager ? rows : [...Map.groupBy(rows.filter((row) => !row.archived), (row) => row.number).values()].map(([latest]) => latest).filter(permitted);
+          const site = await API.getSite(db);
+          const roster2 = site.members.filter((m2) => m2.inactive !== "1" && EMAIL_RE.test(clean(m2.email)));
+          const names = new Map(roster2.map((m2) => [clean(m2.email).toLowerCase(), m2.name]));
+          return json({ result: { rows: visibleRows.map(({ customerSales, assignedSales, ...r }) => {
+            const candidates = salesNames(customerSales);
+            if (!quotationManager && r.budget) {
+              const budget2 = JSON.parse(r.budget);
+              delete budget2.total;
+              r.budget = JSON.stringify(budget2);
+            }
+            return { ...r, salesPic: assignedSales || (candidates.length === 1 ? candidates[0] : ""), ...quotationManager && !previewAs ? { salesOptions: candidates } : {}, picNames: JSON.parse(r.pics).map((e) => names.get(e) || e) };
+          }), canUpload: quotationManager && !previewAs, ...quotationManager && !previewAs ? { teamCounts: { sales: new Set(site.sales.filter((r) => r.active === "1" && EMAIL_RE.test(clean(r.email))).map((r) => clean(r.email).toLowerCase())).size, presales: new Set(roster2.map((r) => clean(r.email).toLowerCase())).size } } : {}, contacts: quotationManager && !previewAs ? roster2 : [], customers: quotationManager && !previewAs ? (await db.prepare("SELECT id,name,code FROM customer_master ORDER BY name").all()).results : [] } });
+        }
+        if (quotationFile && ["DELETE", "PATCH"].includes(request.method)) {
+          if (!quotationManager || previewAs) return json({ error: "Only the Presales Manager may manage submitted quotations." }, 403);
+          const archived = request.method === "DELETE" ? 1 : 0;
+          const changed = await db.prepare("UPDATE service_quotations SET archived=? WHERE id=? AND archived<>?").bind(archived, quotationFile[1], archived).run();
+          if (!changed.meta.changes) return json({ error: "Quotation not found or already updated." }, 404);
+          return json({ result: true });
+        }
+        if (quotationFile && request.method === "POST") {
+          if (!quotationManager || previewAs) return json({ error: "Only the Presales Manager may assign quotations." }, 403);
+          const input = await request.json().catch(() => null);
+          if (input?.action === "sales") {
+            const current = await db.prepare("SELECT q.number,c.sales FROM service_quotations q LEFT JOIN service_quotation_customer link ON q.id=link.id LEFT JOIN customer_master c ON c.id=COALESCE(link.customerId,(SELECT MIN(m.id) FROM customer_master m WHERE lower(trim(m.name))=lower(trim(q.customer)) HAVING COUNT(*)=1)) WHERE q.id=? AND q.archived=0").bind(quotationFile[1]).first();
+            if (!current) return json({ error: "Active quotation not found." }, 404);
+            const name = clean(input.name);
+            if (!salesNames(current.sales).includes(name)) throw new UserError("Select a Sales PIC assigned to this customer.");
+            await db.prepare("INSERT INTO service_quotation_sales (number,sales) VALUES (?,?) ON CONFLICT(number) DO UPDATE SET sales=excluded.sales").bind(current.number, name).run();
+            return json({ result: true });
+          }
+          if (input?.action === "price") {
+            const valid = /* @__PURE__ */ __name((n) => Number.isSafeInteger(n) && n >= 0 && n <= 999999999999999, "valid");
+            const { total: total2, shared: shared2, dedicated: dedicated2 } = input;
+            const hasSplit = shared2 !== null || dedicated2 !== null;
+            if (!valid(total2) || hasSplit && (!valid(shared2) || !valid(dedicated2) || shared2 + dedicated2 !== total2)) throw new UserError("Shared and Dedicated must add up to Grand Total Final.");
+            const id2 = quotationFile[1];
+            const row = await db.prepare("SELECT b.data FROM service_quotations q LEFT JOIN service_quotation_budget b ON b.id=q.id WHERE q.id=? AND q.archived=0").bind(id2).first();
+            if (!row) return json({ error: "Active quotation not found." }, 404);
+            const budget2 = row.data ? JSON.parse(row.data) : { items: [], pmo: null, smo: null, allocated: 0, owners: null };
+            if (budget2.owners) {
+              const labels = Object.keys(budget2.owners);
+              if (!labels.every((label) => input.owners?.[label] === null || valid(input.owners?.[label]))) throw new UserError("Enter valid Service Owner amounts.");
+              budget2.owners = Object.fromEntries(labels.map((label) => [label, input.owners[label]]));
+              budget2.allocated = Object.values(budget2.owners).reduce((sum, n) => sum + (n ?? 0), 0);
+              if (budget2.allocated !== total2) throw new UserError("Service Owner prices must add up to Grand Total Final.");
+            } else if (budget2.allocated > total2) throw new UserError("Existing work allocations exceed the new total.");
+            const data = JSON.stringify({ ...budget2, total: total2, delivery: hasSplit ? { shared: shared2, dedicated: dedicated2 } : null });
+            const updated = await db.prepare("INSERT INTO service_quotation_budget (id,data) SELECT id,? FROM service_quotations WHERE id=? AND archived=0 ON CONFLICT(id) DO UPDATE SET data=excluded.data WHERE service_quotation_budget.data=?").bind(data, id2, row.data).run();
+            if (!updated.meta.changes) return json({ error: "Quotation pricing changed. Reopen the editor and try again." }, 409);
+            return json({ result: true });
+          }
+          if (!Array.isArray(input?.pics)) throw new UserError("Choose at least one active Presales PIC.");
+          const pics2 = [...new Set(input.pics.map((e) => clean(e).toLowerCase()))];
+          const members = (await API.getSite(db)).members.filter((m2) => m2.inactive !== "1");
+          if (!pics2.length || pics2.some((e) => !EMAIL_RE.test(e) || !members.some((m2) => clean(m2.email).toLowerCase() === e))) throw new UserError("Choose valid active Presales contacts.");
+          const changed = await db.prepare("UPDATE service_quotations SET pics=? WHERE id=? AND archived=0").bind(JSON.stringify(pics2), quotationFile[1]).run();
+          if (!changed.meta.changes) return json({ error: "Active quotation not found." }, 404);
+          return json({ result: true });
+        }
+        if (request.method !== "POST" || quotationFile) return json({ error: "Method not allowed." }, 405);
+        if (!quotationManager || previewAs) return json({ error: "Only the Presales Manager may manage submitted quotations." }, 403);
+        const contentLength = Number(request.headers.get("content-length") || 0);
+        if (contentLength > 6 * 1024 * 1024) throw new UserError("PDF must be 5 MB or smaller.");
+        const form = await request.formData();
+        const number = clean(form.get("number")).toUpperCase();
+        const replacement = clean(form.get("replaceId"));
+        if (replacement) {
+          const previous = await db.prepare("SELECT number FROM service_quotations WHERE id=? AND archived=0").bind(replacement).first();
+          if (!previous || previous.number !== number) throw new UserError("Replace PDF must use the same active quotation number.");
+        }
+        if (!/^[A-Z0-9][A-Z0-9._-]{0,79}$/.test(number)) throw new UserError("Enter a valid quotation number.");
+        const customerId = clean(form.get("customerId"));
+        const masterCustomer = await db.prepare("SELECT name FROM customer_master WHERE id=?").bind(customerId).first();
+        if (!masterCustomer) throw new UserError("Select a customer from Customer Master.");
+        const customer = masterCustomer.name, project = clean(form.get("project")).slice(0, 240), submitted = clean(form.get("submitted")) || new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" }).format(/* @__PURE__ */ new Date()), validUntil = clean(form.get("validUntil"));
+        const date = /* @__PURE__ */ __name((v) => /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v, "date");
+        if (!customer || !project || !date(submitted) || validUntil && !date(validUntil) || submitted > new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" }).format(/* @__PURE__ */ new Date())) throw new UserError("Enter customer, project, submission date and a valid expiry date.");
+        const roster = (await API.getSite(db)).members.filter((m2) => m2.inactive !== "1");
+        const pics = [...new Set(form.getAll("pics").map((e) => clean(e).toLowerCase()))];
+        if (!pics.length || pics.some((e) => !EMAIL_RE.test(e) || !roster.some((m2) => clean(m2.email).toLowerCase() === e))) throw new UserError("Choose at least one active Presales PIC.");
+        const file = form.get("pdf");
+        if (!(file instanceof File) || file.size > 5 * 1024 * 1024 || await file.slice(0, 5).text() !== "%PDF-") throw new UserError("Upload a valid PDF file of up to 5 MB.");
+        const amount = /* @__PURE__ */ __name((name, required = false) => {
+          const raw = clean(form.get(name));
+          if (!raw && !required) return null;
+          if (!/^\d{1,15}$/.test(raw)) throw new UserError("Enter budget amounts in whole rupiah.");
+          return Number(raw);
+        }, "amount");
+        const items = [["integration-install", "TSS Integration", "Installation", "pmo"], ["integration-maint", "TSS Integration", "Maintenance", "smo"], ["infra-install", "TSS Infrastruktur", "Installation", "pmo"], ["infra-maint", "TSS Infrastruktur", "Maintenance", "smo"]].map(([key, owner, work, support]) => ({ owner, work, support, base: amount(key), budget: amount(key + "-" + support) }));
+        const pmo = amount("shared-pmo"), smo = amount("shared-smo"), total = amount("final-total", true);
+        if (items.some((r) => r.budget !== null && (r.support === "pmo" ? pmo : smo) !== null)) throw new UserError("Use either a shared budget or per-work budgets for each support role.");
+        const ownerEntries = [["infra", "TSS Infrastructure"], ["integration", "TSS Integration"], ["pmo", "TSS PMO"], ["smo", "TSS SMO"]].map(([key, label]) => [label, amount("owner-" + key)]);
+        const owners = ownerEntries.some(([, value]) => value !== null) ? Object.fromEntries(ownerEntries) : null;
+        const workAllocated = items.reduce((sum, r) => sum + (r.base ?? 0) + (r.budget ?? 0), (pmo ?? 0) + (smo ?? 0));
+        if (owners && (items.some((r) => r.base !== null || r.budget !== null) || pmo !== null || smo !== null)) throw new UserError("Use service owner totals or work allocations, not both.");
+        const allocated = owners ? Object.values(owners).reduce((sum, n) => sum + (n ?? 0), 0) : workAllocated;
+        if (owners && allocated !== total) throw new UserError("Service owner amounts must add up to the final quotation total.");
+        if (allocated > total) throw new UserError("Budget allocations exceed the final quotation total.");
+        const shared = amount("delivery-shared"), dedicated = amount("delivery-dedicated");
+        if ((shared !== null || dedicated !== null) && (shared === null || dedicated === null || shared + dedicated !== total)) throw new UserError("Shared and Dedicated prices must both be entered and add up to the final total.");
+        const budget = { items, pmo, smo, total, allocated, owners, delivery: shared === null ? null : { shared, dedicated } };
+        const bytes = await file.arrayBuffer(), id = uuid(), batch = [db.prepare("INSERT INTO service_quotations (id,number,customer,project,submitted,validUntil,pics,created) VALUES (?,?,?,?,?,?,?,?)").bind(id, number, customer, project, submitted, validUntil, JSON.stringify(pics), (/* @__PURE__ */ new Date()).toISOString())];
+        for (let offset = 0, seq = 0; offset < bytes.byteLength; offset += 4e5, seq++) batch.push(db.prepare("INSERT INTO service_quotation_pdf VALUES (?,?,?)").bind(id, seq, bytes.slice(offset, offset + 4e5)));
+        batch.push(db.prepare("INSERT INTO service_quotation_budget (id,data) VALUES (?,?)").bind(id, JSON.stringify(budget)));
+        batch.push(db.prepare("INSERT INTO service_quotation_customer (id,customerId) VALUES (?,?)").bind(id, customerId));
+        await db.batch(batch);
+        return json({ result: { id } });
+      }
       const certMatch = p.match(/^\/api\/certificate\/([A-Za-z0-9_-]+)$/);
       if (certMatch && request.method === "GET") {
         if (!isViewer) return json({ error: "Sign in with an authorized company account to view certificates.", login: true }, 401);
@@ -1965,103 +2639,135 @@ export default {
         const skill = JSON.parse(row.data);
         const match = String(skill.certFile || "").match(/^data:(application\/pdf|image\/(jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
         if (!match) return new Response("Certificate not found", { status: 404 });
-        const bytes = Uint8Array.from(atob(match[3]), ch => ch.charCodeAt(0));
+        const bytes = Uint8Array.from(atob(match[3]), (ch) => ch.charCodeAt(0));
         const filename = String(skill.certFileName || "certificate").replace(/[\r\n"]/g, "_");
-        return new Response(bytes, { headers: { "content-type": match[1], "content-disposition": "inline; filename=\"" + filename + "\"", "cache-control": "private, no-store", "x-content-type-options": "nosniff" } });
+        return new Response(bytes, { headers: { "content-type": match[1], "content-disposition": 'inline; filename="' + filename + '"', "cache-control": "private, no-store", "x-content-type-options": "nosniff" } });
       }
       if (p === "/api/notifyData") {
-        // Dipakai script notifikasi email (Google Apps Script) — butuh kunci rahasia NOTIFY_KEY
         if (!env.NOTIFY_KEY) return json({ error: "NOTIFY_KEY is not set in Cloudflare." }, 503);
-        if (!(await safeEqual(String(request.headers.get("x-notify-key") || ""), String(env.NOTIFY_KEY)))) return json({ error: "Incorrect notification key." }, 401);
-        // Every e-mail on the customer card (Notes/Sales Manager, Presales PIC, Sales, External) gets the warranty notification.
-        // They are merged into "presales" so the existing Apps Script (which reads note + presales) needs no change.
+        if (!await safeEqual(String(request.headers.get("x-notify-key") || ""), String(env.NOTIFY_KEY))) return json({ error: "Incorrect notification key." }, 401);
         const all = await API.getAll(env.DB, null, true);
-        const mails = t => String(t || "").match(/[A-Za-z0-9._%+'-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) || [];
-        all.customers = all.customers.map(c => {
-          const seen = new Set(), out = [];
-          for (const e of [...mails(c.note), ...mails(c.presales), ...mails(c.sales), ...mails(c.external)]) { const k = e.toLowerCase(); if (!seen.has(k)) { seen.add(k); out.push(e); } }
+        const mails = /* @__PURE__ */ __name((t) => String(t || "").match(/[A-Za-z0-9._%+'-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) || [], "mails");
+        all.customers = all.customers.map((c) => {
+          const seen = /* @__PURE__ */ new Set(), out = [];
+          for (const e of [...mails(c.note), ...mails(c.presales), ...mails(c.sales), ...mails(c.external)]) {
+            const k = e.toLowerCase();
+            if (!seen.has(k)) {
+              seen.add(k);
+              out.push(e);
+            }
+          }
           return { ...c, notifyEmails: out.join(", "), presales: out.join(", ") };
         });
         return json({ result: all });
       }
       if (p === "/api/requestIngest" && request.method === "POST") {
-        // Used by the Apps Script that reads the presales Google Group mailbox. Needs NOTIFY_KEY.
         if (!env.NOTIFY_KEY) return json({ error: "NOTIFY_KEY is not set in Cloudflare." }, 503);
-        if (!(await safeEqual(String(request.headers.get("x-notify-key") || ""), String(env.NOTIFY_KEY)))) return json({ error: "Incorrect notification key." }, 401);
+        if (!await safeEqual(String(request.headers.get("x-notify-key") || ""), String(env.NOTIFY_KEY))) return json({ error: "Incorrect notification key." }, 401);
         const body = await request.json().catch(() => null);
         if (!body || !Array.isArray(body.threads)) return json({ error: "Invalid request." }, 400);
-        return json({ result: await reqIngest(env.DB, body) });
+        return json({ result: await reqIngest(env.DB, body, env.REQUEST_PRESALES_MANAGER) });
       }
       if (p === "/api/requestData") {
-        // Used by the request-escalation Apps Script: requests that are still waiting for a response (needs NOTIFY_KEY)
         if (!env.NOTIFY_KEY) return json({ error: "NOTIFY_KEY is not set in Cloudflare." }, 503);
-        if (!(await safeEqual(String(request.headers.get("x-notify-key") || ""), String(env.NOTIFY_KEY)))) return json({ error: "Incorrect notification key." }, 401);
+        if (!await safeEqual(String(request.headers.get("x-notify-key") || ""), String(env.NOTIFY_KEY))) return json({ error: "Incorrect notification key." }, 401);
         await ensureSchema(env.DB);
         const r = await env.DB.prepare("SELECT * FROM sales_requests WHERE status='new' ORDER BY receivedAt ASC LIMIT 200").all();
         return json({ result: r.results.map(reqOut) });
       }
       if (p === "/api/proposalData") {
-        // Dipakai script pengingat proposal (Apps Script) — butuh NOTIFY_KEY
         if (!env.NOTIFY_KEY) return json({ error: "NOTIFY_KEY is not set in Cloudflare." }, 503);
-        if (!(await safeEqual(String(request.headers.get("x-notify-key") || ""), String(env.NOTIFY_KEY)))) return json({ error: "Incorrect notification key." }, 401);
+        if (!await safeEqual(String(request.headers.get("x-notify-key") || ""), String(env.NOTIFY_KEY))) return json({ error: "Incorrect notification key." }, 401);
         const site = await readSite(env.DB, true);
         const productTeam = await API.getProductTeam(env.DB);
-        const props = site.proposals.map(x => ({ id: x.id, title: x.title || "", customer: x.customer || "", sales: x.sales || "", presales: x.presales || "", submission: x.submission || "", submissionTime: x.submissionTime || "", status: x.status || "", notifyEmails: proposalReminderRecipients(x, site, productTeam),
+        const props = site.proposals.map((x) => ({
+          id: x.id,
+          title: x.title || "",
+          customer: x.customer || "",
+          sales: x.sales || "",
+          presales: x.presales || "",
+          submission: x.submission || "",
+          submissionTime: x.submissionTime || "",
+          status: x.status || "",
+          notifyEmails: proposalReminderRecipients(x, site, productTeam),
           // Checklist for the submit-day reminder: what is still missing
           checks: { admin: x.adminDocumentsReady === "1", pricing: x.productPricingConfirmed === "1", uploaded: x.proposalUploaded === "1", rks: !!clean(x.rksUrl), extra: parseChecklistExtra(x.checklistExtra) },
-          escalateEmails: proposalEscalationEmails(x, site) }));
+          escalateEmails: proposalEscalationEmails(x, site)
+        }));
         return json({ result: props });
+      }
+      if (request.method === "POST" && ["/api/getSalesMonitorAccess", "/api/getSalesTeamMonitor"].includes(p)) {
+        if (!isViewer || !eff.email) return json({ error: "Sales Manager or GM sign-in required." }, 403);
+        const result = await salesMonitorData(env.DB, eff.email, p === "/api/getSalesMonitorAccess");
+        return result ? json({ result }) : json({ error: "No active sales team is assigned to this account." }, 403);
       }
       const m = p.match(/^\/api\/([A-Za-z]+)$/);
       if (m && request.method === "POST" && API[m[1]]) {
         if (!isViewer) return json({ error: "Please sign in with a Google @" + domain + " account.", login: true }, 401);
-        if (previewAs && !["getAll", "getSite", "getPublic", "getProductTeam", "getLeave", "getPages"].includes(m[1])) return json({ error: "Preview mode is read-only. Exit the preview to make changes." }, 403);
+        if (previewAs && !["getAll", "getSite", "getPublic", "getProductTeam", "getLeave", "getPages", "getRequests", "getMyRequests"].includes(m[1])) return json({ error: "Preview mode is read-only. Exit the preview to make changes." }, 403);
         if (m[1] === "getPages") return json({ result: await getPagesFor(env.DB, !!realCtx.master && !previewAs) });
         if (m[1] === "ping") {
           if (previewAs || !me.email) return json({ result: { ok: true } });
-          const args = await request.json().catch(() => []);
-          await trackPing(env.DB, me, args[0], args[1], args[2], request).catch(() => {});
+          const args2 = await request.json().catch(() => []);
+          await trackPing(env.DB, me, args2[0], args2[1], args2[2], request).catch(() => {
+          });
           return json({ result: { ok: true } });
         }
         if (m[1] === "getActivity") {
           if (!realCtx.master || previewAs) return json({ error: "Master Admin access required." }, 403);
-          const args = await request.json().catch(() => []);
-          const days = Math.min(90, Math.max(1, Number(args[0]) || 14)), since = new Date(Date.now() - days * 864e5).toISOString();
-          const sessions = ((await env.DB.prepare("SELECT sid,email,started,last,page,views,actions,ip,ua FROM activity_sessions WHERE last>=? ORDER BY last DESC LIMIT 400").bind(since).all()).results) || [];
-          const events = ((await env.DB.prepare("SELECT ts,sid,email,kind,detail FROM activity_events WHERE ts>=? ORDER BY ts DESC LIMIT 600").bind(since).all()).results) || [];
+          const args2 = await request.json().catch(() => []);
+          const days = Math.min(90, Math.max(1, Number(args2[0]) || 14)), since = new Date(Date.now() - days * 864e5).toISOString();
+          const sessions = (await env.DB.prepare("SELECT sid,email,started,last,page,views,actions,ip,ua FROM activity_sessions WHERE last>=? ORDER BY last DESC LIMIT 400").bind(since).all()).results || [];
+          const events = (await env.DB.prepare("SELECT ts,sid,email,kind,detail FROM activity_events WHERE ts>=? ORDER BY ts DESC LIMIT 600").bind(since).all()).results || [];
           const site = await readSite(env.DB, true), nameOf = {};
-          (site.members || []).forEach(x => { if (x.email) nameOf[String(x.email).toLowerCase()] = x.name; });
-          (site.sales || []).forEach(x => { if (x.email && !nameOf[String(x.email).toLowerCase()]) nameOf[String(x.email).toLowerCase()] = x.name; });
-          return json({ result: { now: new Date().toISOString(), days, names: nameOf, sessions, events } });
+          (site.members || []).forEach((x) => {
+            if (x.email) nameOf[String(x.email).toLowerCase()] = x.name;
+          });
+          (site.sales || []).forEach((x) => {
+            if (x.email && !nameOf[String(x.email).toLowerCase()]) nameOf[String(x.email).toLowerCase()] = x.name;
+          });
+          return json({ result: { now: (/* @__PURE__ */ new Date()).toISOString(), days, names: nameOf, sessions, events } });
         }
         if (m[1] === "getLeave" || m[1] === "saveLeave" || m[1] === "deleteLeave") {
           if (!(ctx.master || ctx.presales)) return json({ error: "Presales access required." }, 403);
           const myEmail = String(me.email || "").toLowerCase();
           const site = await readSite(env.DB, true);
-          const people = (site.members || []).filter(x => x && x.name && x.inactive !== "1" && x.email);
-          const today = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
+          const people = (site.members || []).filter((x) => x && x.name && x.inactive !== "1" && x.email);
+          const today = new Date(Date.now() + 7 * 36e5).toISOString().slice(0, 10);
           const horizon = new Date(Date.parse(today + "T00:00:00Z") + 60 * 864e5).toISOString().slice(0, 10);
           if (m[1] === "getLeave") {
-            let items = (await listManualLeave(env.DB, today, horizon)).map(x => ({ ...x, mine: String(x.email || "").toLowerCase() === myEmail, canEdit: ctx.master || String(x.email || "").toLowerCase() === myEmail }));
+            let items = (await listManualLeave(env.DB, today, horizon)).map((x) => ({ ...x, mine: String(x.email || "").toLowerCase() === myEmail, canEdit: ctx.master || String(x.email || "").toLowerCase() === myEmail }));
             let cal = false;
-            if (env.LEAVE_ICAL_URL) { try { const g = await getLeave(env, site.members); cal = g.configured; items = items.concat(g.items); } catch (e) { /* calendar optional */ } }
-            items = items.filter(x => x.end >= today && x.start <= horizon).sort((a, b) => a.start.localeCompare(b.start) || a.name.localeCompare(b.name));
-            const mePerson = people.find(x => String(x.email).toLowerCase() === myEmail);
-            return json({ result: { configured: true, today, items, calendar: cal, canAdd: ctx.master || !!mePerson, master: !!ctx.master, me: mePerson ? mePerson.name : "", people: ctx.master ? people.map(x => ({ name: x.name, email: String(x.email).toLowerCase() })) : (mePerson ? [{ name: mePerson.name, email: myEmail }] : []) } });
+            if (env.LEAVE_ICAL_URL) {
+              try {
+                const g = await getLeave(env, site.members);
+                cal = g.configured;
+                items = items.concat(g.items);
+              } catch (e) {
+              }
+            }
+            items = items.filter((x) => x.end >= today && x.start <= horizon).sort((a, b) => a.start.localeCompare(b.start) || a.name.localeCompare(b.name));
+            const mePerson = people.find((x) => String(x.email).toLowerCase() === myEmail);
+            return json({ result: { configured: true, today, items, calendar: cal, canAdd: ctx.master || !!mePerson, master: !!ctx.master, me: mePerson ? mePerson.name : "", people: ctx.master ? people.map((x) => ({ name: x.name, email: String(x.email).toLowerCase() })) : mePerson ? [{ name: mePerson.name, email: myEmail }] : [] } });
           }
-          const args = await request.json().catch(() => null);
-          if (!Array.isArray(args)) return json({ error: "Invalid request." }, 400);
+          const args2 = await request.json().catch(() => null);
+          if (!Array.isArray(args2)) return json({ error: "Invalid request." }, 400);
           if (m[1] === "deleteLeave") {
-            const id = clean(args[0]); const row = await env.DB.prepare("SELECT v FROM settings WHERE k=?").bind("leave:" + id).first();
+            const id2 = clean(args2[0]);
+            const row = await env.DB.prepare("SELECT v FROM settings WHERE k=?").bind("leave:" + id2).first();
             if (!row) return json({ error: "Leave entry not found." }, 404);
-            let x = {}; try { x = JSON.parse(row.v); } catch (e) { /* */ }
+            let x = {};
+            try {
+              x = JSON.parse(row.v);
+            } catch (e) {
+            }
             if (!ctx.master && String(x.email || "").toLowerCase() !== myEmail) return json({ error: "You can only remove your own leave." }, 403);
-            await env.DB.prepare("DELETE FROM settings WHERE k=?").bind("leave:" + id).run();
-            await logActivity(env.DB, request.headers.get("x-sid"), myEmail, "action", "deleteLeave — " + (x.name || id));
-            return json({ result: { id } });
+            await env.DB.prepare("DELETE FROM settings WHERE k=?").bind("leave:" + id2).run();
+            await logActivity(env.DB, request.headers.get("x-sid"), myEmail, "action", "deleteLeave \u2014 " + (x.name || id2));
+            return json({ result: { id: id2 } });
           }
-          const rec = args[0] || {}, date = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v)) && !isNaN(Date.parse(v + "T00:00:00Z"));
-          const email = (ctx.master ? clean(rec.email) : myEmail).toLowerCase(), person = people.find(x => String(x.email).toLowerCase() === email);
+          const rec = args2[0] || {}, date = /* @__PURE__ */ __name((v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v)) && !isNaN(Date.parse(v + "T00:00:00Z")), "date");
+          const email = (ctx.master ? clean(rec.email) : myEmail).toLowerCase(), person = people.find((x) => String(x.email).toLowerCase() === email);
           if (!person) return json({ error: "Pick a team member." }, 400);
           if (!LEAVE_TYPES.includes(rec.type)) return json({ error: "Type must be Annual or Business trip." }, 400);
           if (!date(rec.start) || !date(rec.end) || rec.end < rec.start) return json({ error: "Enter a valid start and end date (end on or after start)." }, 400);
@@ -2070,48 +2776,60 @@ export default {
           if (clean(rec.id)) {
             const row = await env.DB.prepare("SELECT v FROM settings WHERE k=?").bind("leave:" + id).first();
             if (!row) return json({ error: "Leave entry not found." }, 404);
-            let x = {}; try { x = JSON.parse(row.v); } catch (e) { /* */ }
+            let x = {};
+            try {
+              x = JSON.parse(row.v);
+            } catch (e) {
+            }
             if (!ctx.master && String(x.email || "").toLowerCase() !== myEmail) return json({ error: "You can only edit your own leave." }, 403);
           }
-          const val = { name: person.name, email, type: rec.type, start: rec.start, end: rec.end, by: myEmail, at: new Date().toISOString() };
+          const val = { name: person.name, email, type: rec.type, start: rec.start, end: rec.end, by: myEmail, at: (/* @__PURE__ */ new Date()).toISOString() };
           await env.DB.prepare("INSERT INTO settings (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind("leave:" + id, JSON.stringify(val)).run();
-          await logActivity(env.DB, request.headers.get("x-sid"), myEmail, "action", (clean(rec.id) ? "editLeave" : "addLeave") + " — " + person.name + " · " + rec.type + " " + rec.start + "→" + rec.end);
+          await logActivity(env.DB, request.headers.get("x-sid"), myEmail, "action", (clean(rec.id) ? "editLeave" : "addLeave") + " \u2014 " + person.name + " \xB7 " + rec.type + " " + rec.start + "\u2192" + rec.end);
           return json({ result: { id, ...val } });
         }
         if (m[1] === "getProductTeam") return me.email || isAdmin ? json({ result: await API.getProductTeam(env.DB) }) : json({ error: "Sign in to view the directory." }, 403);
         if (m[1] === "saveProductTeamEmail") {
-          if(!ctx.master) return json({error:"Master Admin access required."},403);
-          const args=await request.json().catch(()=>null);
-          if(!Array.isArray(args)) return json({error:"Invalid request."},400);
-          const saved=await API.saveProductTeamEmail(env.DB,args[0],args[1]);
-          if(saved) await logActivity(env.DB, request.headers.get("x-sid"), me.email, "action", "saveProductTeamEmail — " + String(args[0]||"") + (args[1]!==undefined?" · "+String(args[1]):""));
-          return saved?json({result:saved}):json({error:"Invalid PIC or email address."},400);
+          if (!ctx.master) return json({ error: "Master Admin access required." }, 403);
+          const args2 = await request.json().catch(() => null);
+          if (!Array.isArray(args2)) return json({ error: "Invalid request." }, 400);
+          const saved = await API.saveProductTeamEmail(env.DB, args2[0], args2[1]);
+          if (saved) await logActivity(env.DB, request.headers.get("x-sid"), me.email, "action", "saveProductTeamEmail \u2014 " + String(args2[0] || "") + (args2[1] !== void 0 ? " \xB7 " + String(args2[1]) : ""));
+          return saved ? json({ result: saved }) : json({ error: "Invalid PIC or email address." }, 400);
+        }
+        if (m[1] === "removeProductDirectoryCard") {
+          if (!ctx.master || previewAs) return json({ error: "Master Admin access required." }, 403);
+          const args2 = await request.json().catch(() => null);
+          if (!Array.isArray(args2)) return json({ error: "Invalid request." }, 400);
+          const result = await API.removeProductDirectoryCard(env.DB, args2[0]);
+          return result ? json({ result }) : json({ error: "Unknown product team card." }, 404);
         }
         if (m[1] === "saveProductTeamActive") {
-          if(!ctx.master) return json({error:"Master Admin access required."},403);
-          const args=await request.json().catch(()=>null);
-          if(!Array.isArray(args)) return json({error:"Invalid request."},400);
-          const saved=await API.saveProductTeamActive(env.DB,args[0],!!args[1]);
-          if(saved) await logActivity(env.DB, request.headers.get("x-sid"), me.email, "action", "saveProductTeamActive — " + String(args[0]||"") + (args[1]!==undefined?" · "+String(args[1]):""));
-          return saved?json({result:saved}):json({error:"Unknown product team member."},400);
+          if (!ctx.master) return json({ error: "Master Admin access required." }, 403);
+          const args2 = await request.json().catch(() => null);
+          if (!Array.isArray(args2)) return json({ error: "Invalid request." }, 400);
+          const saved = await API.saveProductTeamActive(env.DB, args2[0], !!args2[1]);
+          if (saved) await logActivity(env.DB, request.headers.get("x-sid"), me.email, "action", "saveProductTeamActive \u2014 " + String(args2[0] || "") + (args2[1] !== void 0 ? " \xB7 " + String(args2[1]) : ""));
+          return saved ? json({ result: saved }) : json({ error: "Unknown product team member." }, 400);
         }
         if (m[1] === "saveProductTeamSpv") {
-          if(!ctx.master) return json({error:"Master Admin access required."},403);
-          const args=await request.json().catch(()=>null);
-          if(!Array.isArray(args)) return json({error:"Invalid request."},400);
-          const saved=await API.saveProductTeamSpv(env.DB,args[0],args[1]);
-          if(saved) await logActivity(env.DB, request.headers.get("x-sid"), me.email, "action", "saveProductTeamSpv — " + String(args[0]||"") + (args[1]!==undefined?" · "+String(args[1]):""));
-          return saved?json({result:saved}):json({error:"Invalid person or SPV."},400);
+          if (!ctx.master) return json({ error: "Master Admin access required." }, 403);
+          const args2 = await request.json().catch(() => null);
+          if (!Array.isArray(args2)) return json({ error: "Invalid request." }, 400);
+          const saved = await API.saveProductTeamSpv(env.DB, args2[0], args2[1]);
+          if (saved) await logActivity(env.DB, request.headers.get("x-sid"), me.email, "action", "saveProductTeamSpv \u2014 " + String(args2[0] || "") + (args2[1] !== void 0 ? " \xB7 " + String(args2[1]) : ""));
+          return saved ? json({ result: saved }) : json({ error: "Invalid person or SPV." }, 400);
         }
         if (m[1] === "getAll") return json({ result: await API.getAll(env.DB, ctx) });
         if (m[1] === "getSite") return json({ result: { ...proposalsVisibleTo(await API.getSite(env.DB), ctx, eff.email), isMaster: ctx.master } });
         if (m[1] === "getPublic") return json({ result: proposalsVisibleTo(await API.getSite(env.DB), ctx, eff.email) });
-        let args = await request.json().catch(() => []); if (!Array.isArray(args)) args = [];
+        let args = await request.json().catch(() => []);
+        if (!Array.isArray(args)) args = [];
         const canCreateProposal = m[1] === "saveItem" && args[0] === "proposal" && ctx.presales && !clean(args[1] && args[1].id);
         const canSaveCustomer = m[1] === "saveCustomer" && ctx.presales && !!ctx.email;
-        const canManageProp = ctx.presales && ((m[1] === "saveItem" && args[0] === "proposal" && !!clean(args[1] && args[1].id)) || m[1] === "deleteItem");
+        const canManageProp = ctx.presales && (m[1] === "saveItem" && args[0] === "proposal" && !!clean(args[1] && args[1].id) || m[1] === "deleteItem");
         const canCustMaster = ctx.presales && (m[1] === "getCustomerMaster" || m[1] === "saveCustomerMaster");
-        const canReq = (ctx.presales && (m[1] === "getRequests" || m[1] === "updateRequest")) || (!!ctx.email && m[1] === "getMyRequests");
+        const canReq = ctx.presales && (m[1] === "getRequests" || m[1] === "updateRequest") || !!ctx.email && m[1] === "getMyRequests";
         if (!ctx.master && !ctx.edit.size && !canCreateProposal && !canSaveCustomer && !canManageProp && !canCustMaster && !canReq) return json({ error: "You do not have permission to perform this action." }, 403);
         if (m[1] === "getRequests") args = [ctx.master ? "all" : "own"];
         if (m[1] === "updateRequest") args = [args[0], args[1], ctx.master ? "all" : "own"];
@@ -2124,7 +2842,10 @@ export default {
       }
       return new Response("Not found", { status: 404 });
     } catch (e) {
-      return json({ error: e instanceof UserError ? e.message : "Server error: " + (e && e.message || e) }, e instanceof UserError ? (e.status || 400) : 500);
+      return json({ error: e instanceof UserError ? e.message : "Server error: " + (e && e.message || e) }, e instanceof UserError ? e.status || 400 : 500);
     }
   }
+};
+export {
+  worker_default as default
 };
