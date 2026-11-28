@@ -4,7 +4,11 @@
   "scripts": {
     "deploy": "wrangler deploy",
     "backup": "bash scripts/backup.sh",
-    "health": "curl -s https://presales.bhp-eri.workers.dev/health"
+    "health": "curl -s https://presales.bhp-eri.workers.dev/health",
+    "test": "node --experimental-sqlite tests/smoke.mjs",
+    "deploy:staging": "wrangler deploy --config wrangler.staging.toml"
   },
-  "devDependencies": { "wrangler": "^4.156.0" }
+  "devDependencies": {
+    "wrangler": "^4.156.0"
+  }
 }

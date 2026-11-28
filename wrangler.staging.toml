@@ -1,0 +1,18 @@
+# Staging - Worker terpisah dengan D1 terpisah. Tidak menyentuh data live.
+name = "presales-staging"
+main = "src/worker.js"
+compatibility_date = "2024-11-01"
+workers_dev = true
+account_id = "190caf983ef384fa72f7285d6aee157a"
+rules = [{ type = "Text", globs = ["**/*.html"], fallthrough = true }]
+
+[vars]
+REQUEST_PRESALES_MANAGER = "indra.malau@berca.co.id"
+ALLOWED_DOMAIN = "berca.co.id"
+MASTER_EMAILS = "indra.malau@berca.co.id"
+GOOGLE_CLIENT_ID = "343472001568-0rumo10bpb4tc5rdjogb5uu95hvdd1n7.apps.googleusercontent.com"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "presales-staging"
+database_id = "REPLACE_WITH_STAGING_D1_ID"

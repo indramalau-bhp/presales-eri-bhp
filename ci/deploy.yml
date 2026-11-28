@@ -1,0 +1,38 @@
+name: Deploy to Cloudflare Workers (production)
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Pengaman: jangan deploy bila source/konfigurasi tidak lengkap (cegah fitur hilang lagi)
+      - name: Guard - source dan konfigurasi harus lengkap
+        run: |
+          set -e
+          grep -q "service_quotations" src/worker.js        || { echo "::error::worker.js tanpa Services Quota"; exit 1; }
+          grep -q "service_quota_targets" src/worker.js     || { echo "::error::worker.js tanpa target quota"; exit 1; }
+          grep -q "Services Quota" src/index.html           || { echo "::error::index.html tanpa Services Quota"; exit 1; }
+          grep -q "REQUEST_PRESALES_MANAGER" wrangler.toml  || { echo "::error::wrangler.toml tanpa REQUEST_PRESALES_MANAGER"; exit 1; }
+          grep -q "MASTER_EMAILS" wrangler.toml             || { echo "::error::wrangler.toml tanpa MASTER_EMAILS"; exit 1; }
+          test "$(wc -c < src/worker.js)" -gt 150000        || { echo "::error::worker.js terlalu kecil"; exit 1; }
+          test "$(wc -c < src/index.html)" -gt 900000       || { echo "::error::index.html terlalu kecil"; exit 1; }
+          node --check src/worker.js
+      - name: Dry-run - variabel harus ada di bundel
+        run: npx wrangler deploy --dry-run 2>&1 | tee dry.txt; grep -q "REQUEST_PRESALES_MANAGER" dry.txt
+      - run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 190caf983ef384fa72f7285d6aee157a
+      - run: curl -fsS https://presales.bhp-eri.workers.dev/health

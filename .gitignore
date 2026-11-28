@@ -22,3 +22,19 @@ backups/
 Thumbs.db
 .DS_Store
 .vscode/
+
+# hasil kerja sementara / diagnosis
+diag/
+live-index.html
+index-live-cf.html
+old-index.html
+old-worker.js
+worker-live.js
+worker-3abff6d3.js
+wrangler-live.jsonc
+version-*.json
+version-api-*.out
+*.zip
+Presales-Deploy/
+Sales-Team-Monitor-Manager-GM/
+Deploy-*.ps1

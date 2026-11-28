@@ -1,0 +1,13 @@
+#!/bin/sh
+# Hook pre-push: sebelum push ke main, jalankan tes asap. Aktifkan sekali:  git config core.hooksPath .githooks
+while read local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/heads/main)
+      bk=$(ls -t backups/pre-deploy-*.sql 2>/dev/null | head -1)
+      if [ -z "$bk" ]; then echo "[pre-push] Tidak ada backups/pre-deploy-*.sql; tes dilewati."; exit 0; fi
+      echo "[pre-push] Tes asap dengan $bk ..."
+      node --experimental-sqlite tests/smoke.mjs "$bk" src/worker.js || { echo "[pre-push] TES GAGAL. Push ke main dibatalkan."; exit 1; }
+      ;;
+  esac
+done
+exit 0
