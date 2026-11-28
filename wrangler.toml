@@ -15,6 +15,7 @@ rules = [{ type = "Text", globs = ["**/*.html"], fallthrough = true }]
 
 # Login Google: hanya akun @berca.co.id yang bisa melihat data
 [vars]
+REQUEST_PRESALES_MANAGER = "indra.malau@berca.co.id"
 ALLOWED_DOMAIN = "berca.co.id"
 # Master admin (akses semua customer + menu Kelola Admin). Pisahkan dengan koma bila lebih dari satu.
 MASTER_EMAILS = "indra.malau@berca.co.id"

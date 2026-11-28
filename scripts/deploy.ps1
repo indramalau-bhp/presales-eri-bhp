@@ -48,16 +48,20 @@ if ($LASTEXITCODE -ne 0) { Fail "wrangler deploy gagal. Versi lama tetap aktif (
 Write-Host "6/6 Cek live" -ForegroundColor Cyan
 Start-Sleep -Seconds 5
 $ok = $false
-try {
-  $r = Invoke-WebRequest "$live/" -UseBasicParsing -TimeoutSec 30
-  $ok = ($r.StatusCode -eq 200) -and $r.Content.Contains("Services Quota")
-} catch { }
-if ($ok) {
-  Write-Host "   Live OK (Services Quota ada)." -ForegroundColor Green
-  Write-Host "`nSelesai. Backup: $sql"
-  Write-Host "Rollback manual: npx.cmd wrangler rollback $prev"
-} else {
-  Write-Host "   Live GAGAL / Services Quota hilang. Rollback otomatis ke $prev ..." -ForegroundColor Red
+try { $r = Invoke-WebRequest "$live/" -UseBasicParsing -TimeoutSec 30; $ok = ($r.StatusCode -eq 200) -and $r.Content.Contains("Services Quota") } catch { }
+if (-not $ok) {
+  Write-Host "   Halaman live GAGAL. Rollback otomatis ke $prev ..." -ForegroundColor Red
   npx.cmd wrangler rollback $prev --message "auto-rollback" -y
   exit 2
 }
+Write-Host "   Halaman live terbuka. Pengecekan data harus manual (butuh login)." -ForegroundColor Yellow
+Write-Host "   Buka $live/#/presales/quotations (Ctrl+F5) dan pastikan angka & daftar quotation TAMPIL." -ForegroundColor Yellow
+$a = Read-Host "   Ketik OK bila Services Quota terisi; apa pun selain OK = rollback otomatis"
+if ($a -ne "OK") {
+  Write-Host "   Rollback ke $prev ..." -ForegroundColor Red
+  npx.cmd wrangler rollback $prev --message "rollback: quota tidak terisi" -y
+  exit 2
+}
+Write-Host ""
+Write-Host "Selesai. Backup: $sql" -ForegroundColor Green
+Write-Host "Rollback manual: npx.cmd wrangler rollback $prev"
